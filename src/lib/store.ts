@@ -90,24 +90,25 @@ export const store = {
 };
 
 export function useStore<T>(selector: (s: typeof state) => T): T {
-  const getSnapshot = () => selector(store.getState());
-  const cache = { current: undefined as { value: T } | undefined };
-  const memoized = () => {
-    const next = getSnapshot();
-    if (
-      cache.current &&
-      (Object.is(cache.current.value, next) ||
-        (Array.isArray(cache.current.value) &&
-          Array.isArray(next) &&
-          cache.current.value.length === (next as unknown[]).length &&
-          (cache.current.value as unknown[]).every((v, i) => v === (next as unknown[])[i])))
-    ) {
-      return cache.current.value;
+  const cache = useRef<{ value: T; has: boolean }>({ value: undefined as unknown as T, has: false });
+  const getSnapshot = () => {
+    const next = selector(store.getState());
+    const prev = cache.current;
+    if (prev.has) {
+      if (Object.is(prev.value, next)) return prev.value;
+      if (
+        Array.isArray(prev.value) &&
+        Array.isArray(next) &&
+        (prev.value as unknown[]).length === (next as unknown[]).length &&
+        (prev.value as unknown[]).every((v, i) => v === (next as unknown[])[i])
+      ) {
+        return prev.value;
+      }
     }
-    cache.current = { value: next };
+    cache.current = { value: next, has: true };
     return next;
   };
-  return useSyncExternalStore(store.subscribe, memoized, memoized);
+  return useSyncExternalStore(store.subscribe, getSnapshot, getSnapshot);
 }
 
 export const randomStudent = () => seedStudents[Math.floor(Math.random() * seedStudents.length)];
