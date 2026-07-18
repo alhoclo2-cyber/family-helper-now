@@ -90,7 +90,24 @@ export const store = {
 };
 
 export function useStore<T>(selector: (s: typeof state) => T): T {
-  return useSyncExternalStore(store.subscribe, () => selector(store.getState()), () => selector(store.getState()));
+  const getSnapshot = () => selector(store.getState());
+  const cache = { current: undefined as { value: T } | undefined };
+  const memoized = () => {
+    const next = getSnapshot();
+    if (
+      cache.current &&
+      (Object.is(cache.current.value, next) ||
+        (Array.isArray(cache.current.value) &&
+          Array.isArray(next) &&
+          cache.current.value.length === (next as unknown[]).length &&
+          (cache.current.value as unknown[]).every((v, i) => v === (next as unknown[])[i])))
+    ) {
+      return cache.current.value;
+    }
+    cache.current = { value: next };
+    return next;
+  };
+  return useSyncExternalStore(store.subscribe, memoized, memoized);
 }
 
 export const randomStudent = () => seedStudents[Math.floor(Math.random() * seedStudents.length)];
