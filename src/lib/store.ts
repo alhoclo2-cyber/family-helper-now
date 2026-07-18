@@ -1,5 +1,5 @@
 // Simple in-memory store shared across the app for the demo flow.
-import { useSyncExternalStore } from "react";
+import { useRef, useSyncExternalStore } from "react";
 
 export type NeedType = "Compagnie/Présence" | "Courses urgentes" | "Pharmacie" | "Aide au repas";
 
@@ -90,7 +90,25 @@ export const store = {
 };
 
 export function useStore<T>(selector: (s: typeof state) => T): T {
-  return useSyncExternalStore(store.subscribe, () => selector(store.getState()), () => selector(store.getState()));
+  const cache = useRef<{ value: T; has: boolean }>({ value: undefined as unknown as T, has: false });
+  const getSnapshot = () => {
+    const next = selector(store.getState());
+    const prev = cache.current;
+    if (prev.has) {
+      if (Object.is(prev.value, next)) return prev.value;
+      if (
+        Array.isArray(prev.value) &&
+        Array.isArray(next) &&
+        (prev.value as unknown[]).length === (next as unknown[]).length &&
+        (prev.value as unknown[]).every((v, i) => v === (next as unknown[])[i])
+      ) {
+        return prev.value;
+      }
+    }
+    cache.current = { value: next, has: true };
+    return next;
+  };
+  return useSyncExternalStore(store.subscribe, getSnapshot, getSnapshot);
 }
 
 export const randomStudent = () => seedStudents[Math.floor(Math.random() * seedStudents.length)];
