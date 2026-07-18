@@ -1,5 +1,5 @@
 // Simple in-memory store shared across the app for the demo flow.
-import { useSyncExternalStore } from "react";
+import { useRef, useSyncExternalStore } from "react";
 
 export type NeedType = "Compagnie/Présence" | "Courses urgentes" | "Pharmacie" | "Aide au repas";
 
