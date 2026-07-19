@@ -739,3 +739,263 @@ function StudentEnroll({
   );
 }
 
+/* ---------------- ADMIN ---------------- */
+
+const ADMIN_PASSWORD = "admin2026";
+const ADMIN_SESSION_KEY = "sos-admin-auth";
+
+function AdminFlow() {
+  const [authed, setAuthed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return sessionStorage.getItem(ADMIN_SESSION_KEY) === "1";
+  });
+
+  if (!authed) return <AdminLogin onOk={() => {
+    try { sessionStorage.setItem(ADMIN_SESSION_KEY, "1"); } catch {}
+    setAuthed(true);
+  }} />;
+
+  return <AdminDashboard onLogout={() => {
+    try { sessionStorage.removeItem(ADMIN_SESSION_KEY); } catch {}
+    setAuthed(false);
+  }} />;
+}
+
+function AdminLogin({ onOk }: { onOk: () => void }) {
+  const [pwd, setPwd] = useState("");
+  const [err, setErr] = useState(false);
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pwd === ADMIN_PASSWORD) onOk();
+    else setErr(true);
+  };
+  return (
+    <form onSubmit={submit} className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
+      <div className="text-6xl">🛡️</div>
+      <h2 className="text-2xl font-black">Espace administrateur</h2>
+      <p className="text-sm text-muted-foreground">Réservé à l'équipe SOS Étudiants — vérification des candidatures.</p>
+      <input
+        type="password"
+        autoFocus
+        value={pwd}
+        onChange={(e) => { setPwd(e.target.value); setErr(false); }}
+        placeholder="Mot de passe"
+        className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg text-center focus:border-primary outline-none"
+      />
+      {err && <p className="text-sm text-destructive">Mot de passe incorrect</p>}
+      <button type="submit" className="btn-huge bg-primary text-primary-foreground w-full">Se connecter</button>
+      <p className="text-xs text-muted-foreground">Démo : le mot de passe est <b>admin2026</b></p>
+    </form>
+  );
+}
+
+function AdminDashboard({ onLogout }: { onLogout: () => void }) {
+  const apps = useApplications();
+  const [filter, setFilter] = useState<"pending" | "approved" | "rejected" | "all">("pending");
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  const filtered = apps.filter((a) => filter === "all" || a.status === filter);
+  const opened = openId ? apps.find((a) => a.id === openId) : undefined;
+
+  if (opened) return <AdminApplicationDetail app={opened} onBack={() => setOpenId(null)} />;
+
+  const counts = {
+    pending: apps.filter((a) => a.status === "pending").length,
+    approved: apps.filter((a) => a.status === "approved").length,
+    rejected: apps.filter((a) => a.status === "rejected").length,
+  };
+
+  return (
+    <div className="flex-1 flex flex-col px-5 py-5 gap-4">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-xl font-black">Candidatures</h2>
+          <p className="text-xs text-muted-foreground">Vérification et validation des étudiants</p>
+        </div>
+        <button onClick={onLogout} className="text-xs text-muted-foreground underline">Déconnexion</button>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <div className="bg-warning/10 border-2 border-warning/40 rounded-2xl p-3 text-center">
+          <p className="text-2xl font-black">{counts.pending}</p>
+          <p className="text-xs text-muted-foreground">En attente</p>
+        </div>
+        <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-3 text-center">
+          <p className="text-2xl font-black">{counts.approved}</p>
+          <p className="text-xs text-muted-foreground">Validés</p>
+        </div>
+        <div className="bg-destructive/10 border-2 border-destructive/40 rounded-2xl p-3 text-center">
+          <p className="text-2xl font-black">{counts.rejected}</p>
+          <p className="text-xs text-muted-foreground">Refusés</p>
+        </div>
+      </div>
+
+      <div className="flex gap-1 bg-muted p-1 rounded-2xl">
+        {(["pending", "approved", "rejected", "all"] as const).map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`flex-1 py-2 rounded-xl text-xs font-semibold ${filter === f ? "bg-background shadow-sm" : "text-muted-foreground"}`}
+          >
+            {f === "pending" ? "En attente" : f === "approved" ? "Validés" : f === "rejected" ? "Refusés" : "Tous"}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex flex-col gap-3">
+        {filtered.length === 0 && (
+          <p className="text-center text-muted-foreground py-10 text-sm">Aucune candidature.</p>
+        )}
+        {filtered.map((a) => (
+          <button
+            key={a.id}
+            onClick={() => setOpenId(a.id)}
+            className="text-left bg-card rounded-2xl p-4 border-2 border-border hover:border-primary transition-all flex items-center gap-3"
+          >
+            {a.profile.selfie ? (
+              <img src={a.profile.selfie} alt="" className="h-14 w-14 rounded-full object-cover" />
+            ) : (
+              <div className="h-14 w-14 rounded-full bg-muted grid place-items-center text-xl">👤</div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="font-bold truncate">{a.profile.firstName} {a.profile.lastName}</p>
+              <p className="text-xs text-muted-foreground truncate">{a.profile.school} — {a.profile.city}</p>
+            </div>
+            <span className={`text-[10px] font-bold px-2 py-1 rounded-full shrink-0 ${
+              a.status === "pending" ? "bg-warning/20 text-warning-foreground" :
+              a.status === "approved" ? "bg-success/20 text-success" :
+              "bg-destructive/20 text-destructive"
+            }`}>
+              {a.status === "pending" ? "EN ATTENTE" : a.status === "approved" ? "VALIDÉ" : "REFUSÉ"}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AdminApplicationDetail({ app, onBack }: { app: Application; onBack: () => void }) {
+  const [reason, setReason] = useState("");
+  const [showReject, setShowReject] = useState(false);
+
+  const update = (patch: Partial<Application>) => {
+    const list = loadApplications().map((a) => (a.id === app.id ? { ...a, ...patch, reviewedAt: Date.now() } : a));
+    saveApplications(list);
+    onBack();
+  };
+
+  const docs: { k: keyof EnrollProfile["docs"]; label: string; icon: string }[] = [
+    { k: "idCard", label: "Pièce d'identité", icon: "🪪" },
+    { k: "studentCard", label: "Carte étudiante", icon: "🎓" },
+    { k: "criminalRecord", label: "Casier judiciaire (B3)", icon: "📄" },
+    { k: "iban", label: "RIB", icon: "🏦" },
+  ];
+
+  return (
+    <div className="flex-1 flex flex-col px-5 py-5 gap-4">
+      <button onClick={onBack} className="text-sm text-muted-foreground text-left">← Retour</button>
+
+      <div className="bg-card rounded-3xl p-5 border-2 border-border flex flex-col items-center text-center">
+        {app.profile.selfie ? (
+          <img src={app.profile.selfie} alt="" className="h-32 w-32 rounded-full object-cover ring-4 ring-primary/30" />
+        ) : (
+          <div className="h-32 w-32 rounded-full bg-muted grid place-items-center text-4xl">👤</div>
+        )}
+        <p className="text-xl font-black mt-3">{app.profile.firstName} {app.profile.lastName}</p>
+        <p className="text-sm text-muted-foreground">Candidature du {new Date(app.submittedAt).toLocaleDateString("fr-FR")}</p>
+        <span className={`mt-2 text-xs font-bold px-3 py-1 rounded-full ${
+          app.status === "pending" ? "bg-warning/20 text-warning-foreground" :
+          app.status === "approved" ? "bg-success/20 text-success" :
+          "bg-destructive/20 text-destructive"
+        }`}>
+          {app.status === "pending" ? "EN ATTENTE" : app.status === "approved" ? "VALIDÉ" : "REFUSÉ"}
+        </span>
+      </div>
+
+      <div className="bg-card rounded-2xl p-4 border-2 border-border space-y-2 text-sm">
+        <Row label="Email" value={app.profile.email} />
+        <Row label="Téléphone" value={app.profile.phone} />
+        <Row label="École" value={app.profile.school} />
+        <Row label="Ville" value={app.profile.city} />
+        {app.profile.motivation && <Row label="Motivation" value={app.profile.motivation} />}
+      </div>
+
+      <div>
+        <p className="font-bold text-sm mb-2">Documents fournis</p>
+        <div className="flex flex-col gap-2">
+          {docs.map((d) => (
+            <div key={d.k} className={`flex items-center gap-3 p-3 rounded-2xl border-2 ${app.profile.docs[d.k] ? "border-success/40 bg-success/5" : "border-destructive/40 bg-destructive/5"}`}>
+              <span className="text-xl">{d.icon}</span>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm">{d.label}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {app.profile.docs[d.k] ? `✓ ${app.profile.docs[d.k]}` : "❌ Manquant"}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {app.status === "rejected" && app.rejectReason && (
+        <div className="bg-destructive/10 border-2 border-destructive/40 rounded-2xl p-3 text-sm">
+          <p className="font-bold text-destructive">Motif du refus</p>
+          <p className="mt-1">{app.rejectReason}</p>
+        </div>
+      )}
+
+      {app.status === "pending" && !showReject && (
+        <div className="flex flex-col gap-2 mt-2">
+          <button onClick={() => update({ status: "approved" })} className="btn-huge bg-success text-success-foreground">
+            ✅ Valider la candidature
+          </button>
+          <button onClick={() => setShowReject(true)} className="btn-huge bg-destructive text-white">
+            ❌ Refuser
+          </button>
+        </div>
+      )}
+
+      {app.status === "pending" && showReject && (
+        <div className="flex flex-col gap-2 mt-2">
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={3}
+            placeholder="Motif du refus (visible par le candidat)"
+            className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-sm focus:border-primary outline-none resize-none"
+          />
+          <button
+            disabled={!reason.trim()}
+            onClick={() => update({ status: "rejected", rejectReason: reason.trim() })}
+            className="btn-huge bg-destructive text-white disabled:opacity-50"
+          >
+            Confirmer le refus
+          </button>
+          <button onClick={() => setShowReject(false)} className="text-sm text-muted-foreground underline">
+            Annuler
+          </button>
+        </div>
+      )}
+
+      {app.status !== "pending" && (
+        <button
+          onClick={() => update({ status: "pending", rejectReason: undefined })}
+          className="text-sm text-muted-foreground underline mt-2"
+        >
+          Remettre en attente
+        </button>
+      )}
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="font-semibold break-words">{value}</p>
+    </div>
+  );
+}
+
