@@ -333,7 +333,7 @@ function PaymentScreen({ student, onDone, onBack }: { student: string; onDone: (
 
 /* ---------------- STUDENT ---------------- */
 
-type EnrollStatus = "none" | "pending" | "approved";
+type EnrollStatus = "none" | "pending" | "approved" | "rejected";
 type EnrollProfile = {
   firstName: string;
   lastName: string;
