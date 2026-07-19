@@ -164,11 +164,23 @@ function FamilyForm({ onSubmit, onBack }: { onSubmit: () => void; onBack: () => 
 }
 
 function FamilyWait({ request, onDone }: { request: Request | undefined; onDone: () => void }) {
+  const [paid, setPaid] = useState(false);
+  const [showPay, setShowPay] = useState(false);
   if (!request) return null;
   const accepted = request.status === "accepted" && request.student;
 
+  if (accepted && showPay && !paid) {
+    return (
+      <PaymentScreen
+        student={request.student!.firstName}
+        onDone={() => { setPaid(true); setShowPay(false); }}
+        onBack={() => setShowPay(false)}
+      />
+    );
+  }
+
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-8 text-center">
+    <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-6 text-center">
       {!accepted ? (
         <>
           <div className="relative h-32 w-32">
@@ -191,9 +203,21 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
             <p className="text-lg text-warning-foreground mt-1">⭐ {request.student!.rating.toFixed(1)}/5</p>
             <p className="text-sm text-muted-foreground mt-1">Arrivée estimée : 10 min</p>
           </div>
+
+          {!paid ? (
+            <button onClick={() => setShowPay(true)} className="btn-huge bg-primary text-primary-foreground w-full">
+              💳 Procéder au paiement — 15 €
+            </button>
+          ) : (
+            <div className="w-full bg-success/10 border-2 border-success rounded-2xl p-4">
+              <p className="text-lg font-bold text-success">✅ Paiement confirmé</p>
+              <p className="text-sm text-muted-foreground mt-1">Reçu envoyé par SMS</p>
+            </div>
+          )}
+
           <a
             href={`tel:${request.student!.firstName}`}
-            className="btn-huge bg-success text-success-foreground text-center"
+            className="btn-huge bg-success text-success-foreground text-center w-full"
           >
             📞 Appeler l'étudiant
           </a>
@@ -201,6 +225,92 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
         </>
       )}
     </div>
+  );
+}
+
+function PaymentScreen({ student, onDone, onBack }: { student: string; onDone: () => void; onBack: () => void }) {
+  const [method, setMethod] = useState<"card" | "apple" | "paypal">("card");
+  const [processing, setProcessing] = useState(false);
+  const [card, setCard] = useState("");
+  const [exp, setExp] = useState("");
+  const [cvc, setCvc] = useState("");
+
+  const pay = (e: React.FormEvent) => {
+    e.preventDefault();
+    setProcessing(true);
+    setTimeout(() => onDone(), 1500);
+  };
+
+  return (
+    <form onSubmit={pay} className="flex-1 flex flex-col px-5 py-6 gap-5">
+      <button type="button" onClick={onBack} className="text-base text-muted-foreground text-left">← Retour</button>
+      <div>
+        <h2 className="text-2xl font-black">Paiement</h2>
+        <p className="text-base text-muted-foreground mt-1">Mission acceptée par {student}</p>
+      </div>
+
+      <div className="bg-card rounded-2xl p-5 border-2 border-border">
+        <div className="flex justify-between text-base">
+          <span className="text-muted-foreground">Intervention</span>
+          <span className="font-semibold">12,00 €</span>
+        </div>
+        <div className="flex justify-between text-base mt-2">
+          <span className="text-muted-foreground">Frais de service</span>
+          <span className="font-semibold">3,00 €</span>
+        </div>
+        <div className="h-px bg-border my-3" />
+        <div className="flex justify-between text-xl font-black">
+          <span>Total</span>
+          <span>15,00 €</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        {([
+          { v: "card" as const, label: "💳 Carte" },
+          { v: "apple" as const, label: " Pay" },
+          { v: "paypal" as const, label: "PayPal" },
+        ]).map((m) => (
+          <button
+            key={m.v}
+            type="button"
+            onClick={() => setMethod(m.v)}
+            className={`py-3 rounded-2xl border-2 text-sm font-semibold ${
+              method === m.v ? "border-primary bg-accent" : "border-border bg-card"
+            }`}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
+
+      {method === "card" ? (
+        <div className="flex flex-col gap-3">
+          <input
+            value={card}
+            onChange={(e) => setCard(e.target.value)}
+            placeholder="Numéro de carte"
+            inputMode="numeric"
+            required
+            className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <input value={exp} onChange={(e) => setExp(e.target.value)} placeholder="MM/AA" required className="px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none" />
+            <input value={cvc} onChange={(e) => setCvc(e.target.value)} placeholder="CVC" required className="px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none" />
+          </div>
+        </div>
+      ) : (
+        <div className="bg-accent rounded-2xl p-4 text-sm text-center">
+          Vous serez redirigé vers {method === "apple" ? "Apple Pay" : "PayPal"} pour valider.
+        </div>
+      )}
+
+      <div className="flex-1" />
+      <button type="submit" disabled={processing} className="btn-huge bg-success text-success-foreground disabled:opacity-60">
+        {processing ? "Traitement…" : "Payer 15,00 €"}
+      </button>
+      <p className="text-xs text-muted-foreground text-center">🔒 Paiement sécurisé — démo</p>
+    </form>
   );
 }
 
