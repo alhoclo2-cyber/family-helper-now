@@ -537,10 +537,10 @@ function StudentEnroll({
   enroll,
   onChange,
 }: {
-  enroll: { status: EnrollStatus; profile?: EnrollProfile };
-  onChange: (n: { status: EnrollStatus; profile?: EnrollProfile }) => void;
+  enroll: { status: EnrollStatus; profile?: EnrollProfile; appId?: string };
+  onChange: (n: { status: EnrollStatus; profile?: EnrollProfile; appId?: string }) => void;
 }) {
-  const [step, setStep] = useState<"intro" | "form">(enroll.status === "pending" ? "intro" : "intro");
+  const [step, setStep] = useState<"intro" | "form">("intro");
   const [p, setP] = useState<EnrollProfile>(
     enroll.profile ?? {
       firstName: "",
@@ -554,26 +554,49 @@ function StudentEnroll({
     },
   );
 
+  const apps = useApplications();
+  const myApp = enroll.appId ? apps.find((a) => a.id === enroll.appId) : undefined;
+
+  if (enroll.status === "rejected") {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
+        <div className="text-6xl">❌</div>
+        <h2 className="text-2xl font-black">Candidature refusée</h2>
+        <p className="text-base text-muted-foreground">
+          Malheureusement votre dossier n'a pas été retenu.
+        </p>
+        {myApp?.rejectReason && (
+          <div className="w-full bg-destructive/10 border-2 border-destructive/40 rounded-2xl p-4 text-left">
+            <p className="text-sm font-bold text-destructive">Motif</p>
+            <p className="text-sm mt-1">{myApp.rejectReason}</p>
+          </div>
+        )}
+        <button
+          onClick={() => onChange({ status: "none" })}
+          className="btn-huge bg-primary text-primary-foreground"
+        >
+          Refaire une candidature
+        </button>
+      </div>
+    );
+  }
+
   if (enroll.status === "pending") {
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
         <div className="text-6xl">📨</div>
         <h2 className="text-2xl font-black">Dossier envoyé !</h2>
         <p className="text-base text-muted-foreground">
-          Nous vérifions vos documents. Vous recevrez une réponse par email sous 48h.
+          Un administrateur vérifie vos documents. Vous serez notifié dès la validation.
         </p>
         <div className="w-full bg-card border-2 border-border rounded-2xl p-5 text-left">
           <p className="text-sm text-muted-foreground">Candidat</p>
           <p className="text-lg font-bold">{enroll.profile?.firstName} {enroll.profile?.lastName}</p>
           <p className="text-sm text-muted-foreground mt-2">École</p>
           <p className="text-base">{enroll.profile?.school}</p>
+          <p className="text-sm text-muted-foreground mt-2">Statut</p>
+          <p className="text-base font-semibold text-warning-foreground">⏳ En attente de vérification</p>
         </div>
-        <button
-          onClick={() => onChange({ status: "approved", profile: enroll.profile })}
-          className="btn-huge bg-success text-success-foreground"
-        >
-          ✅ Simuler la validation (démo)
-        </button>
         <button
           onClick={() => onChange({ status: "none" })}
           className="text-sm text-muted-foreground underline"
@@ -583,6 +606,7 @@ function StudentEnroll({
       </div>
     );
   }
+
 
   if (step === "intro") {
     return (
