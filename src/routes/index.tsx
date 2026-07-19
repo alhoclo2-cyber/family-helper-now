@@ -585,6 +585,26 @@ function StudentEnroll({
       <textarea placeholder="Pourquoi voulez-vous rejoindre SOS Étudiants ?" value={p.motivation} onChange={(e) => setP({ ...p, motivation: e.target.value })} rows={3} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none resize-none" />
 
       <div className="mt-2">
+        <p className="font-bold mb-2">Photo / Selfie</p>
+        <p className="text-xs text-muted-foreground mb-2">
+          Cette photo sera montrée à la famille pour qu'elle vous reconnaisse à la porte. Visage bien visible, sans lunettes de soleil ni casquette.
+        </p>
+        <label className={`flex items-center gap-4 p-3 rounded-2xl border-2 cursor-pointer ${p.selfie ? "border-success bg-success/5" : "border-border bg-card"}`}>
+          {p.selfie ? (
+            <img src={p.selfie} alt="Selfie" className="h-16 w-16 rounded-full object-cover" />
+          ) : (
+            <span className="h-16 w-16 rounded-full bg-muted grid place-items-center text-2xl">📸</span>
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm">{p.selfie ? "Photo enregistrée" : "Prendre un selfie"}</p>
+            <p className="text-xs text-muted-foreground">{p.selfie ? "Appuyez pour changer" : "Utilise la caméra frontale"}</p>
+          </div>
+          <input type="file" accept="image/*" capture="user" className="hidden" onChange={setSelfie} />
+        </label>
+      </div>
+
+
+      <div className="mt-2">
         <p className="font-bold mb-2">Documents à fournir</p>
         <div className="flex flex-col gap-2">
           {docs.map((d) => (
