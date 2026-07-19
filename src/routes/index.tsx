@@ -198,11 +198,22 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
         <>
           <p className="text-lg font-bold text-success">✅ Un étudiant a accepté !</p>
           <div className="w-full bg-card rounded-3xl p-6 border-2 border-border shadow-sm">
-            <img src={request.student!.photo} alt={request.student!.firstName} className="h-28 w-28 rounded-full mx-auto object-cover" />
+            <img
+              src={request.student!.photo}
+              alt={request.student!.firstName}
+              className="h-40 w-40 rounded-full mx-auto object-cover ring-4 ring-primary/30"
+            />
             <p className="text-2xl font-bold mt-4">{request.student!.firstName}</p>
             <p className="text-lg text-warning-foreground mt-1">⭐ {request.student!.rating.toFixed(1)}/5</p>
             <p className="text-sm text-muted-foreground mt-1">Arrivée estimée : 10 min</p>
+            <div className="mt-4 bg-warning/15 border-2 border-warning rounded-2xl p-3 text-left">
+              <p className="text-sm font-bold">🔒 Vérifiez l'identité</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                N'ouvrez la porte qu'à la personne montrée sur cette photo.
+              </p>
+            </div>
           </div>
+
 
           {!paid ? (
             <button onClick={() => setShowPay(true)} className="btn-huge bg-primary text-primary-foreground w-full">
@@ -325,8 +336,10 @@ type EnrollProfile = {
   school: string;
   city: string;
   motivation: string;
+  selfie?: string;
   docs: { idCard?: string; studentCard?: string; criminalRecord?: string; iban?: string };
 };
+
 
 function loadEnroll(): { status: EnrollStatus; profile?: EnrollProfile } {
   if (typeof window === "undefined") return { status: "none" };
@@ -554,7 +567,16 @@ function StudentEnroll({
   ];
 
   const allDocs = docs.every((d) => p.docs[d.k]);
-  const valid = p.firstName && p.lastName && p.email && p.phone && p.school && p.city && allDocs;
+  const valid = p.firstName && p.lastName && p.email && p.phone && p.school && p.city && p.selfie && allDocs;
+
+  const setSelfie = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => setP({ ...p, selfie: typeof reader.result === "string" ? reader.result : undefined });
+    reader.readAsDataURL(f);
+  };
+
 
   return (
     <form onSubmit={submit} className="flex-1 flex flex-col px-5 py-6 gap-4">
@@ -572,6 +594,26 @@ function StudentEnroll({
       <input required placeholder="École / université" value={p.school} onChange={(e) => setP({ ...p, school: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
       <input required placeholder="Ville" value={p.city} onChange={(e) => setP({ ...p, city: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
       <textarea placeholder="Pourquoi voulez-vous rejoindre SOS Étudiants ?" value={p.motivation} onChange={(e) => setP({ ...p, motivation: e.target.value })} rows={3} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none resize-none" />
+
+      <div className="mt-2">
+        <p className="font-bold mb-2">Photo / Selfie</p>
+        <p className="text-xs text-muted-foreground mb-2">
+          Cette photo sera montrée à la famille pour qu'elle vous reconnaisse à la porte. Visage bien visible, sans lunettes de soleil ni casquette.
+        </p>
+        <label className={`flex items-center gap-4 p-3 rounded-2xl border-2 cursor-pointer ${p.selfie ? "border-success bg-success/5" : "border-border bg-card"}`}>
+          {p.selfie ? (
+            <img src={p.selfie} alt="Selfie" className="h-16 w-16 rounded-full object-cover" />
+          ) : (
+            <span className="h-16 w-16 rounded-full bg-muted grid place-items-center text-2xl">📸</span>
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm">{p.selfie ? "Photo enregistrée" : "Prendre un selfie"}</p>
+            <p className="text-xs text-muted-foreground">{p.selfie ? "Appuyez pour changer" : "Utilise la caméra frontale"}</p>
+          </div>
+          <input type="file" accept="image/*" capture="user" className="hidden" onChange={setSelfie} />
+        </label>
+      </div>
+
 
       <div className="mt-2">
         <p className="font-bold mb-2">Documents à fournir</p>
