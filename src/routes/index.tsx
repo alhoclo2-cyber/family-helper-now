@@ -316,11 +316,42 @@ function PaymentScreen({ student, onDone, onBack }: { student: string; onDone: (
 
 /* ---------------- STUDENT ---------------- */
 
+type EnrollStatus = "none" | "pending" | "approved";
+type EnrollProfile = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  school: string;
+  city: string;
+  motivation: string;
+  docs: { idCard?: string; studentCard?: string; criminalRecord?: string; iban?: string };
+};
+
+function loadEnroll(): { status: EnrollStatus; profile?: EnrollProfile } {
+  if (typeof window === "undefined") return { status: "none" };
+  try {
+    const raw = localStorage.getItem("sos-enroll");
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return { status: "none" };
+}
+
 function StudentFlow() {
+  const [enroll, setEnroll] = useState<{ status: EnrollStatus; profile?: EnrollProfile }>(() => loadEnroll());
   const [online, setOnline] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const requests = useStore((s) => s.requests.filter((r) => r.status === "searching"));
   const active = useStore((s) => (openId ? s.requests.find((r) => r.id === openId) : undefined));
+
+  const saveEnroll = (next: { status: EnrollStatus; profile?: EnrollProfile }) => {
+    setEnroll(next);
+    try { localStorage.setItem("sos-enroll", JSON.stringify(next)); } catch {}
+  };
+
+  if (enroll.status !== "approved") {
+    return <StudentEnroll enroll={enroll} onChange={saveEnroll} />;
+  }
 
   if (active) return <StudentDetail request={active} onBack={() => setOpenId(null)} />;
 
