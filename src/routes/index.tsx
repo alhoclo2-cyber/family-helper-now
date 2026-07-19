@@ -556,7 +556,16 @@ function StudentEnroll({
   ];
 
   const allDocs = docs.every((d) => p.docs[d.k]);
-  const valid = p.firstName && p.lastName && p.email && p.phone && p.school && p.city && allDocs;
+  const valid = p.firstName && p.lastName && p.email && p.phone && p.school && p.city && p.selfie && allDocs;
+
+  const setSelfie = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => setP({ ...p, selfie: typeof reader.result === "string" ? reader.result : undefined });
+    reader.readAsDataURL(f);
+  };
+
 
   return (
     <form onSubmit={submit} className="flex-1 flex flex-col px-5 py-6 gap-4">
