@@ -325,8 +325,10 @@ type EnrollProfile = {
   school: string;
   city: string;
   motivation: string;
+  selfie?: string;
   docs: { idCard?: string; studentCard?: string; criminalRecord?: string; iban?: string };
 };
+
 
 function loadEnroll(): { status: EnrollStatus; profile?: EnrollProfile } {
   if (typeof window === "undefined") return { status: "none" };
