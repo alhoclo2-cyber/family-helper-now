@@ -638,8 +638,18 @@ function StudentEnroll({
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    onChange({ status: "pending", profile: p });
+    const id = `app-${Date.now()}`;
+    const app: Application = {
+      id,
+      submittedAt: Date.now(),
+      status: "pending",
+      profile: p,
+    };
+    const list = loadApplications();
+    saveApplications([app, ...list]);
+    onChange({ status: "pending", profile: p, appId: id });
   };
+
 
   const setDoc = (key: keyof EnrollProfile["docs"]) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
