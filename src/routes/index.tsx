@@ -346,31 +346,88 @@ type EnrollProfile = {
   docs: { idCard?: string; studentCard?: string; criminalRecord?: string; iban?: string };
 };
 
+type Application = {
+  id: string;
+  submittedAt: number;
+  status: "pending" | "approved" | "rejected";
+  reviewedAt?: number;
+  rejectReason?: string;
+  profile: EnrollProfile;
+};
 
-function loadEnroll(): { status: EnrollStatus; profile?: EnrollProfile } {
+const APPS_KEY = "sos-applications";
+const ENROLL_KEY = "sos-enroll";
+
+function loadApplications(): Application[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(APPS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
+function saveApplications(list: Application[]) {
+  try {
+    localStorage.setItem(APPS_KEY, JSON.stringify(list));
+    window.dispatchEvent(new Event("sos-apps-changed"));
+  } catch {}
+}
+function useApplications(): Application[] {
+  const [apps, setApps] = useState<Application[]>(() => loadApplications());
+  useEffect(() => {
+    const refresh = () => setApps(loadApplications());
+    window.addEventListener("storage", refresh);
+    window.addEventListener("sos-apps-changed", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.removeEventListener("storage", refresh);
+      window.removeEventListener("sos-apps-changed", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, []);
+  return apps;
+}
+
+function loadEnroll(): { status: EnrollStatus; profile?: EnrollProfile; appId?: string } {
   if (typeof window === "undefined") return { status: "none" };
   try {
-    const raw = localStorage.getItem("sos-enroll");
+    const raw = localStorage.getItem(ENROLL_KEY);
     if (raw) return JSON.parse(raw);
   } catch {}
   return { status: "none" };
 }
 
 function StudentFlow() {
-  const [enroll, setEnroll] = useState<{ status: EnrollStatus; profile?: EnrollProfile }>(() => loadEnroll());
+  const [enroll, setEnroll] = useState<{ status: EnrollStatus; profile?: EnrollProfile; appId?: string }>(() => loadEnroll());
+  const apps = useApplications();
   const [online, setOnline] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const requests = useStore((s) => s.requests.filter((r) => r.status === "searching"));
   const active = useStore((s) => (openId ? s.requests.find((r) => r.id === openId) : undefined));
 
-  const saveEnroll = (next: { status: EnrollStatus; profile?: EnrollProfile }) => {
+  // Sync enroll state with admin's decision on this candidate
+  useEffect(() => {
+    if (!enroll.appId) return;
+    const app = apps.find((a) => a.id === enroll.appId);
+    if (!app) return;
+    const nextStatus: EnrollStatus =
+      app.status === "approved" ? "approved" : app.status === "rejected" ? "rejected" : "pending";
+    if (nextStatus !== enroll.status) {
+      const next = { ...enroll, status: nextStatus };
+      setEnroll(next);
+      try { localStorage.setItem(ENROLL_KEY, JSON.stringify(next)); } catch {}
+    }
+  }, [apps, enroll]);
+
+  const saveEnroll = (next: { status: EnrollStatus; profile?: EnrollProfile; appId?: string }) => {
     setEnroll(next);
-    try { localStorage.setItem("sos-enroll", JSON.stringify(next)); } catch {}
+    try { localStorage.setItem(ENROLL_KEY, JSON.stringify(next)); } catch {}
   };
 
   if (enroll.status !== "approved") {
     return <StudentEnroll enroll={enroll} onChange={saveEnroll} />;
   }
+
 
   if (active) return <StudentDetail request={active} onBack={() => setOpenId(null)} />;
 
