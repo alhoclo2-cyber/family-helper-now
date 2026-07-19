@@ -198,11 +198,22 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
         <>
           <p className="text-lg font-bold text-success">✅ Un étudiant a accepté !</p>
           <div className="w-full bg-card rounded-3xl p-6 border-2 border-border shadow-sm">
-            <img src={request.student!.photo} alt={request.student!.firstName} className="h-28 w-28 rounded-full mx-auto object-cover" />
+            <img
+              src={request.student!.photo}
+              alt={request.student!.firstName}
+              className="h-40 w-40 rounded-full mx-auto object-cover ring-4 ring-primary/30"
+            />
             <p className="text-2xl font-bold mt-4">{request.student!.firstName}</p>
             <p className="text-lg text-warning-foreground mt-1">⭐ {request.student!.rating.toFixed(1)}/5</p>
             <p className="text-sm text-muted-foreground mt-1">Arrivée estimée : 10 min</p>
+            <div className="mt-4 bg-warning/15 border-2 border-warning rounded-2xl p-3 text-left">
+              <p className="text-sm font-bold">🔒 Vérifiez l'identité</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                N'ouvrez la porte qu'à la personne montrée sur cette photo.
+              </p>
+            </div>
           </div>
+
 
           {!paid ? (
             <button onClick={() => setShowPay(true)} className="btn-huge bg-primary text-primary-foreground w-full">
