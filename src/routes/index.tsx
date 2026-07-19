@@ -454,3 +454,149 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
     </div>
   );
 }
+
+/* ---------------- STUDENT ENROLLMENT ---------------- */
+
+function StudentEnroll({
+  enroll,
+  onChange,
+}: {
+  enroll: { status: EnrollStatus; profile?: EnrollProfile };
+  onChange: (n: { status: EnrollStatus; profile?: EnrollProfile }) => void;
+}) {
+  const [step, setStep] = useState<"intro" | "form">(enroll.status === "pending" ? "intro" : "intro");
+  const [p, setP] = useState<EnrollProfile>(
+    enroll.profile ?? {
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      school: "",
+      city: "",
+      motivation: "",
+      docs: {},
+    },
+  );
+
+  if (enroll.status === "pending") {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
+        <div className="text-6xl">📨</div>
+        <h2 className="text-2xl font-black">Dossier envoyé !</h2>
+        <p className="text-base text-muted-foreground">
+          Nous vérifions vos documents. Vous recevrez une réponse par email sous 48h.
+        </p>
+        <div className="w-full bg-card border-2 border-border rounded-2xl p-5 text-left">
+          <p className="text-sm text-muted-foreground">Candidat</p>
+          <p className="text-lg font-bold">{enroll.profile?.firstName} {enroll.profile?.lastName}</p>
+          <p className="text-sm text-muted-foreground mt-2">École</p>
+          <p className="text-base">{enroll.profile?.school}</p>
+        </div>
+        <button
+          onClick={() => onChange({ status: "approved", profile: enroll.profile })}
+          className="btn-huge bg-success text-success-foreground"
+        >
+          ✅ Simuler la validation (démo)
+        </button>
+        <button
+          onClick={() => onChange({ status: "none" })}
+          className="text-sm text-muted-foreground underline"
+        >
+          Modifier ma candidature
+        </button>
+      </div>
+    );
+  }
+
+  if (step === "intro") {
+    return (
+      <div className="flex-1 flex flex-col px-6 py-8 gap-5">
+        <div className="text-center">
+          <div className="text-5xl mb-2">🎓</div>
+          <h2 className="text-2xl font-black">Devenir étudiant SOS</h2>
+          <p className="text-base text-muted-foreground mt-2">
+            Aidez des seniors près de chez vous et gagnez un revenu complémentaire.
+          </p>
+        </div>
+        <div className="bg-card border-2 border-border rounded-2xl p-5">
+          <p className="font-bold mb-3">Conditions</p>
+          <ul className="space-y-2 text-sm">
+            <li>✓ Être étudiant (18 ans et +)</li>
+            <li>✓ Pièce d'identité valide</li>
+            <li>✓ Carte étudiante en cours</li>
+            <li>✓ Extrait de casier judiciaire (bulletin n°3)</li>
+            <li>✓ RIB pour les paiements</li>
+          </ul>
+        </div>
+        <div className="flex-1" />
+        <button onClick={() => setStep("form")} className="btn-huge bg-primary text-primary-foreground">
+          Commencer ma candidature
+        </button>
+      </div>
+    );
+  }
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onChange({ status: "pending", profile: p });
+  };
+
+  const setDoc = (key: keyof EnrollProfile["docs"]) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) setP({ ...p, docs: { ...p.docs, [key]: f.name } });
+  };
+
+  const docs: { k: keyof EnrollProfile["docs"]; label: string; icon: string }[] = [
+    { k: "idCard", label: "Pièce d'identité", icon: "🪪" },
+    { k: "studentCard", label: "Carte étudiante", icon: "🎓" },
+    { k: "criminalRecord", label: "Casier judiciaire (B3)", icon: "📄" },
+    { k: "iban", label: "RIB", icon: "🏦" },
+  ];
+
+  const allDocs = docs.every((d) => p.docs[d.k]);
+  const valid = p.firstName && p.lastName && p.email && p.phone && p.school && p.city && allDocs;
+
+  return (
+    <form onSubmit={submit} className="flex-1 flex flex-col px-5 py-6 gap-4">
+      <button type="button" onClick={() => setStep("intro")} className="text-base text-muted-foreground text-left">
+        ← Retour
+      </button>
+      <h2 className="text-xl font-black">Ma candidature</h2>
+
+      <div className="grid grid-cols-2 gap-3">
+        <input required placeholder="Prénom" value={p.firstName} onChange={(e) => setP({ ...p, firstName: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
+        <input required placeholder="Nom" value={p.lastName} onChange={(e) => setP({ ...p, lastName: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
+      </div>
+      <input required type="email" placeholder="Email" value={p.email} onChange={(e) => setP({ ...p, email: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
+      <input required type="tel" placeholder="Téléphone" value={p.phone} onChange={(e) => setP({ ...p, phone: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
+      <input required placeholder="École / université" value={p.school} onChange={(e) => setP({ ...p, school: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
+      <input required placeholder="Ville" value={p.city} onChange={(e) => setP({ ...p, city: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
+      <textarea placeholder="Pourquoi voulez-vous rejoindre SOS Étudiants ?" value={p.motivation} onChange={(e) => setP({ ...p, motivation: e.target.value })} rows={3} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none resize-none" />
+
+      <div className="mt-2">
+        <p className="font-bold mb-2">Documents à fournir</p>
+        <div className="flex flex-col gap-2">
+          {docs.map((d) => (
+            <label key={d.k} className={`flex items-center gap-3 p-3 rounded-2xl border-2 cursor-pointer ${p.docs[d.k] ? "border-success bg-success/5" : "border-border bg-card"}`}>
+              <span className="text-2xl">{d.icon}</span>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm">{d.label}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {p.docs[d.k] ? `✓ ${p.docs[d.k]}` : "Aucun fichier"}
+                </p>
+              </div>
+              <span className="text-xs font-bold text-primary">{p.docs[d.k] ? "Modifier" : "Ajouter"}</span>
+              <input type="file" accept="image/*,application/pdf" className="hidden" onChange={setDoc(d.k)} />
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <button type="submit" disabled={!valid} className="btn-huge bg-primary text-primary-foreground disabled:opacity-50 mt-2">
+        Envoyer ma candidature
+      </button>
+      <p className="text-xs text-muted-foreground text-center">🔒 Vos documents sont traités confidentiellement.</p>
+    </form>
+  );
+}
+
