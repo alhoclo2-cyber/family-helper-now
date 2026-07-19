@@ -14,7 +14,7 @@ export const Route = createFileRoute("/")({
   component: App,
 });
 
-type Mode = "family" | "student";
+type Mode = "family" | "student" | "admin";
 
 function App() {
   const [mode, setMode] = useState<Mode>("family");
@@ -23,7 +23,7 @@ function App() {
       <div className="w-full max-w-[440px] min-h-screen flex flex-col bg-background shadow-xl">
         <Header mode={mode} setMode={setMode} />
         <main className="flex-1 flex flex-col">
-          {mode === "family" ? <FamilyFlow /> : <StudentFlow />}
+          {mode === "family" ? <FamilyFlow /> : mode === "student" ? <StudentFlow /> : <AdminFlow />}
         </main>
       </div>
     </div>
@@ -31,6 +31,11 @@ function App() {
 }
 
 function Header({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
+  const tabs: { v: Mode; label: string }[] = [
+    { v: "family", label: "👵 Famille" },
+    { v: "student", label: "🎓 Étudiant" },
+    { v: "admin", label: "🛡️ Admin" },
+  ];
   return (
     <header className="px-5 pt-6 pb-4 border-b border-border">
       <div className="flex items-center gap-2 mb-4">
@@ -40,22 +45,23 @@ function Header({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
           <p className="text-xs text-muted-foreground mt-0.5">Aide d'urgence à proximité</p>
         </div>
       </div>
-      <div className="grid grid-cols-2 rounded-2xl bg-muted p-1">
-        {(["family", "student"] as Mode[]).map((m) => (
+      <div className="grid grid-cols-3 rounded-2xl bg-muted p-1 gap-1">
+        {tabs.map((t) => (
           <button
-            key={m}
-            onClick={() => setMode(m)}
-            className={`py-3 rounded-xl text-base font-semibold transition-all ${
-              mode === m ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
+            key={t.v}
+            onClick={() => setMode(t.v)}
+            className={`py-2.5 rounded-xl text-sm font-semibold transition-all ${
+              mode === t.v ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
             }`}
           >
-            {m === "family" ? "👵 Famille" : "🎓 Étudiant"}
+            {t.label}
           </button>
         ))}
       </div>
     </header>
   );
 }
+
 
 /* ---------------- FAMILY ---------------- */
 
