@@ -62,6 +62,18 @@ function Header({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
   );
 }
 
+function NeedLabel({ need }: { need: NeedType }) {
+  const [first, second] = need.split("/");
+  if (second) {
+    return (
+      <div className="text-base font-semibold leading-tight">
+        <div>{first}</div>
+        <div>{second}</div>
+      </div>
+    );
+  }
+  return <div className="text-base font-semibold leading-tight">{need}</div>;
+}
 
 /* ---------------- FAMILY ---------------- */
 
@@ -112,6 +124,7 @@ function FamilyForm({ onSubmit, onBack }: { onSubmit: () => void; onBack: () => 
     { v: "Courses urgentes", icon: "🛒" },
     { v: "Pharmacie", icon: "💊" },
     { v: "Aide au repas", icon: "🍽️" },
+    { v: "Accompagnement sorties extérieures", icon: "🌳" },
   ];
 
   const submit = (e: React.FormEvent) => {
@@ -137,7 +150,7 @@ function FamilyForm({ onSubmit, onBack }: { onSubmit: () => void; onBack: () => 
               }`}
             >
               <div className="text-3xl mb-1">{n.icon}</div>
-              <div className="text-base font-semibold leading-tight">{n.v}</div>
+              <NeedLabel need={n.v} />
             </button>
           ))}
         </div>
@@ -198,7 +211,7 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
             <p className="text-2xl font-bold">Recherche d'un étudiant à proximité…</p>
             <p className="text-base text-muted-foreground mt-2">Ne quittez pas cet écran.</p>
           </div>
-          <p className="text-sm text-muted-foreground">Besoin : <b>{request.need}</b></p>
+          <p className="text-sm text-muted-foreground">Besoin : <b>{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</b></p>
         </>
       ) : (
         <>
@@ -458,7 +471,7 @@ function StudentFlow() {
               >
                 <div className="flex justify-between items-start gap-3">
                   <div className="min-w-0">
-                    <p className="text-lg font-bold">{r.need}</p>
+                    <p className="text-lg font-bold">{r.need.includes("/") ? r.need.replace("/", " / ") : r.need}</p>
                     <p className="text-base text-muted-foreground mt-1">📍 {r.city}</p>
                   </div>
                   <span className="text-xs bg-primary/10 text-primary font-bold px-2 py-1 rounded-full shrink-0">
@@ -487,7 +500,7 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
       <button onClick={onBack} className="text-base text-muted-foreground text-left">← Retour</button>
       <div className="bg-card rounded-3xl p-6 border-2 border-border">
         <p className="text-sm text-muted-foreground uppercase tracking-wide font-bold">Besoin</p>
-        <p className="text-2xl font-bold mt-1">{request.need}</p>
+        <p className="text-2xl font-bold mt-1">{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</p>
         <p className="text-base text-muted-foreground mt-3">📍 {request.city}</p>
       </div>
 
