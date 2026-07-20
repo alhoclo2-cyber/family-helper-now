@@ -112,6 +112,7 @@ function FamilyForm({ onSubmit, onBack }: { onSubmit: () => void; onBack: () => 
     { v: "Courses urgentes", icon: "🛒" },
     { v: "Pharmacie", icon: "💊" },
     { v: "Aide au repas", icon: "🍽️" },
+    { v: "Accompagnement sorties extérieures", icon: "🌳" },
   ];
 
   const submit = (e: React.FormEvent) => {
@@ -137,7 +138,7 @@ function FamilyForm({ onSubmit, onBack }: { onSubmit: () => void; onBack: () => 
               }`}
             >
               <div className="text-3xl mb-1">{n.icon}</div>
-              <div className="text-base font-semibold leading-tight">{n.v}</div>
+              <NeedLabel need={n.v} />
             </button>
           ))}
         </div>
