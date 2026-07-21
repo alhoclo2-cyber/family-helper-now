@@ -11,6 +11,7 @@ export type Request = {
   phone: string;
   seniorName: string;
   createdAt: number;
+  scheduledAt?: number | null; // null/undefined => ASAP (urgence)
   status: "searching" | "accepted";
   student?: { firstName: string; photo: string; rating: number };
 };
