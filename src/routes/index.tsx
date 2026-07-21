@@ -125,6 +125,8 @@ function FamilyForm({ onSubmit, onBack }: { onSubmit: () => void; onBack: () => 
     { v: "Pharmacie", icon: "💊" },
     { v: "Aide au repas", icon: "🍽️" },
     { v: "Accompagnement sorties extérieures", icon: "🌳" },
+    { v: "Sortir ou nourrir animal de compagnie", icon: "🐕" },
+    { v: "Arroser les plantes", icon: "🪴" },
   ];
 
   const submit = (e: React.FormEvent) => {
