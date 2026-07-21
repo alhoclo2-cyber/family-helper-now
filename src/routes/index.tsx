@@ -536,23 +536,29 @@ function StudentFlow() {
             {requests.length === 0 && (
               <p className="text-muted-foreground text-center py-10">Aucune demande pour le moment.</p>
             )}
-            {requests.map((r) => (
-              <button
-                key={r.id}
-                onClick={() => setOpenId(r.id)}
-                className="text-left bg-card rounded-2xl p-5 border-2 border-border hover:border-primary transition-all"
-              >
-                <div className="flex justify-between items-start gap-3">
-                  <div className="min-w-0">
-                    <p className="text-lg font-bold">{r.need.includes("/") ? r.need.replace("/", " / ") : r.need}</p>
-                    <p className="text-base text-muted-foreground mt-1">📍 {r.city}</p>
+            {requests.map((r) => {
+              const scheduled = !!r.scheduledAt;
+              return (
+                <button
+                  key={r.id}
+                  onClick={() => setOpenId(r.id)}
+                  className="text-left bg-card rounded-2xl p-5 border-2 border-border hover:border-primary transition-all"
+                >
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="min-w-0">
+                      <p className="text-lg font-bold">{r.need.includes("/") ? r.need.replace("/", " / ") : r.need}</p>
+                      <p className="text-base text-muted-foreground mt-1">📍 {r.city}</p>
+                      {scheduled && (
+                        <p className="text-sm mt-2 font-semibold">🗓️ {formatSchedule(r.scheduledAt!)}</p>
+                      )}
+                    </div>
+                    <span className={`text-xs font-bold px-2 py-1 rounded-full shrink-0 ${scheduled ? "bg-accent text-foreground" : "bg-primary/10 text-primary"}`}>
+                      {scheduled ? "RDV" : "URGENT"}
+                    </span>
                   </div>
-                  <span className="text-xs bg-primary/10 text-primary font-bold px-2 py-1 rounded-full shrink-0">
-                    URGENT
-                  </span>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         </>
       ) : (
