@@ -127,10 +127,24 @@ function FamilyFlow() {
   return <FamilyWait request={current} onDone={() => { store.clearCurrent(); setStep("home"); }} />;
 }
 
-function FamilyForm({ onSubmit, onBack }: { onSubmit: () => void; onBack: () => void }) {
+function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; onSubmit: () => void; onBack: () => void }) {
   const [need, setNeed] = useState<NeedType>("Compagnie/Présence");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
+  // default schedule: today + 2h, rounded to next hour
+  const defaultSched = () => {
+    const d = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    d.setMinutes(0, 0, 0);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+  const [when, setWhen] = useState<string>(defaultSched());
+  const minWhen = (() => {
+    const d = new Date(Date.now() + 30 * 60 * 1000);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  })();
+
   const needs: { v: NeedType; icon: string }[] = [
     { v: "Compagnie/Présence", icon: "🤝" },
     { v: "Courses urgentes", icon: "🛒" },
@@ -144,13 +158,17 @@ function FamilyForm({ onSubmit, onBack }: { onSubmit: () => void; onBack: () => 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!address.trim() || !phone.trim()) return;
-    store.createRequest({ need, address, phone });
+    const scheduledAt = mode === "scheduled" ? new Date(when).getTime() : null;
+    store.createRequest({ need, address, phone, scheduledAt });
     onSubmit();
   };
 
   return (
     <form onSubmit={submit} className="flex-1 flex flex-col px-5 py-6 gap-6">
       <button type="button" onClick={onBack} className="text-base text-muted-foreground text-left">← Retour</button>
+      <div className={`rounded-2xl p-3 text-sm font-semibold text-center ${mode === "asap" ? "bg-primary/10 text-primary" : "bg-accent text-foreground"}`}>
+        {mode === "asap" ? "🆘 Urgence — maintenant" : "📅 Prendre un rendez-vous"}
+      </div>
       <div>
         <label className="block text-lg font-bold mb-3">De quoi avez-vous besoin ?</label>
         <div className="grid grid-cols-2 gap-3">
@@ -169,6 +187,18 @@ function FamilyForm({ onSubmit, onBack }: { onSubmit: () => void; onBack: () => 
           ))}
         </div>
       </div>
+      {mode === "scheduled" && (
+        <div>
+          <label className="block text-lg font-bold mb-2">Date et heure</label>
+          <input
+            type="datetime-local"
+            value={when}
+            min={minWhen}
+            onChange={(e) => setWhen(e.target.value)}
+            className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
+          />
+        </div>
+      )}
       <div>
         <label className="block text-lg font-bold mb-2">Adresse</label>
         <input
@@ -190,7 +220,7 @@ function FamilyForm({ onSubmit, onBack }: { onSubmit: () => void; onBack: () => 
       </div>
       <div className="flex-1" />
       <button type="submit" className="btn-huge bg-primary text-primary-foreground">
-        Lancer la recherche
+        {mode === "asap" ? "Lancer la recherche" : "Confirmer le rendez-vous"}
       </button>
     </form>
   );
