@@ -79,38 +79,50 @@ function NeedLabel({ need }: { need: NeedType }) {
 
 function FamilyFlow() {
   const [step, setStep] = useState<"home" | "form" | "wait">("home");
+  const [requestMode, setRequestMode] = useState<"asap" | "scheduled">("asap");
   const currentId = useStore((s) => s.currentRequestId);
   const current = useStore((s) => s.requests.find((r) => r.id === s.currentRequestId));
 
   useEffect(() => {
-    if (step === "wait" && current?.status === "searching" && currentId) {
-      const t = setTimeout(() => store.acceptRequest(currentId, Math.floor(Math.random() * 3)), 3500);
-      return () => clearTimeout(t);
-    }
-  }, [step, current?.status, currentId]);
+    if (step !== "wait" || !currentId || current?.status !== "searching") return;
+    // ASAP => auto-match after a short delay. Scheduled => wait for a student.
+    const isFuture = !!current?.scheduledAt && current.scheduledAt > Date.now() + 60_000;
+    if (isFuture) return;
+    const t = setTimeout(() => store.acceptRequest(currentId, Math.floor(Math.random() * 3)), 3500);
+    return () => clearTimeout(t);
+  }, [step, current?.status, current?.scheduledAt, currentId]);
 
   if (step === "home")
     return (
-      <div className="flex-1 flex flex-col justify-center items-center px-6 py-10 gap-8">
+      <div className="flex-1 flex flex-col justify-center items-center px-6 py-8 gap-6">
         <div className="text-center">
-          <p className="text-lg text-muted-foreground">Besoin d'aide maintenant ?</p>
-          <p className="text-base text-muted-foreground mt-1">Un étudiant proche viendra vous aider.</p>
+          <p className="text-lg text-muted-foreground">Besoin d'aide ?</p>
+          <p className="text-base text-muted-foreground mt-1">Choisissez le moment qui vous convient.</p>
         </div>
         <button
-          onClick={() => setStep("form")}
-          className="btn-huge bg-primary text-primary-foreground hover:brightness-110 min-h-[220px] flex flex-col items-center justify-center gap-3"
+          onClick={() => { setRequestMode("asap"); setStep("form"); }}
+          className="btn-huge bg-primary text-primary-foreground hover:brightness-110 min-h-[180px] w-full flex flex-col items-center justify-center gap-2"
         >
-          <span className="text-6xl">🆘</span>
-          <span>Déclarer une urgence</span>
+          <span className="text-5xl">🆘</span>
+          <span>Urgence — maintenant</span>
+          <span className="text-sm font-normal opacity-90">Un étudiant vient au plus vite</span>
         </button>
-        <p className="text-sm text-muted-foreground text-center max-w-xs">
+        <button
+          onClick={() => { setRequestMode("scheduled"); setStep("form"); }}
+          className="btn-huge bg-accent text-foreground border-2 border-primary min-h-[140px] w-full flex flex-col items-center justify-center gap-2"
+        >
+          <span className="text-4xl">📅</span>
+          <span>Prendre un rendez-vous</span>
+          <span className="text-sm font-normal text-muted-foreground">Planifier pour plus tard</span>
+        </button>
+        <p className="text-xs text-muted-foreground text-center max-w-xs">
           En cas d'urgence vitale, composez le <span className="font-bold text-foreground">15</span> (SAMU).
         </p>
       </div>
     );
 
   if (step === "form")
-    return <FamilyForm onSubmit={() => setStep("wait")} onBack={() => setStep("home")} />;
+    return <FamilyForm mode={requestMode} onSubmit={() => setStep("wait")} onBack={() => setStep("home")} />;
 
   return <FamilyWait request={current} onDone={() => { store.clearCurrent(); setStep("home"); }} />;
 }
