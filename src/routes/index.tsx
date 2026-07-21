@@ -75,6 +75,16 @@ function NeedLabel({ need }: { need: NeedType }) {
   return <div className="text-base font-semibold leading-tight">{need}</div>;
 }
 
+function formatSchedule(ts: number) {
+  return new Date(ts).toLocaleString("fr-FR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 /* ---------------- FAMILY ---------------- */
 
 function FamilyFlow() {
