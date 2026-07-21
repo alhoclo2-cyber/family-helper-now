@@ -581,6 +581,16 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
         <p className="text-sm text-muted-foreground uppercase tracking-wide font-bold">Besoin</p>
         <p className="text-2xl font-bold mt-1">{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</p>
         <p className="text-base text-muted-foreground mt-3">📍 {request.city}</p>
+        {request.scheduledAt ? (
+          <div className="mt-3 bg-accent rounded-xl p-3">
+            <p className="text-xs text-muted-foreground font-bold uppercase">Rendez-vous</p>
+            <p className="text-base font-semibold mt-1">🗓️ {formatSchedule(request.scheduledAt)}</p>
+          </div>
+        ) : (
+          <div className="mt-3 inline-block bg-primary/10 text-primary text-xs font-bold px-2 py-1 rounded-full">
+            🆘 URGENCE — au plus vite
+          </div>
+        )}
       </div>
 
       {!accepted ? (
