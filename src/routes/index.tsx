@@ -75,50 +75,86 @@ function NeedLabel({ need }: { need: NeedType }) {
   return <div className="text-base font-semibold leading-tight">{need}</div>;
 }
 
+function formatSchedule(ts: number) {
+  return new Date(ts).toLocaleString("fr-FR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 /* ---------------- FAMILY ---------------- */
 
 function FamilyFlow() {
   const [step, setStep] = useState<"home" | "form" | "wait">("home");
+  const [requestMode, setRequestMode] = useState<"asap" | "scheduled">("asap");
   const currentId = useStore((s) => s.currentRequestId);
   const current = useStore((s) => s.requests.find((r) => r.id === s.currentRequestId));
 
   useEffect(() => {
-    if (step === "wait" && current?.status === "searching" && currentId) {
-      const t = setTimeout(() => store.acceptRequest(currentId, Math.floor(Math.random() * 3)), 3500);
-      return () => clearTimeout(t);
-    }
-  }, [step, current?.status, currentId]);
+    if (step !== "wait" || !currentId || current?.status !== "searching") return;
+    // ASAP => auto-match after a short delay. Scheduled => wait for a student.
+    const isFuture = !!current?.scheduledAt && current.scheduledAt > Date.now() + 60_000;
+    if (isFuture) return;
+    const t = setTimeout(() => store.acceptRequest(currentId, Math.floor(Math.random() * 3)), 3500);
+    return () => clearTimeout(t);
+  }, [step, current?.status, current?.scheduledAt, currentId]);
 
   if (step === "home")
     return (
-      <div className="flex-1 flex flex-col justify-center items-center px-6 py-10 gap-8">
+      <div className="flex-1 flex flex-col justify-center items-center px-6 py-8 gap-6">
         <div className="text-center">
-          <p className="text-lg text-muted-foreground">Besoin d'aide maintenant ?</p>
-          <p className="text-base text-muted-foreground mt-1">Un étudiant proche viendra vous aider.</p>
+          <p className="text-lg text-muted-foreground">Besoin d'aide ?</p>
+          <p className="text-base text-muted-foreground mt-1">Choisissez le moment qui vous convient.</p>
         </div>
         <button
-          onClick={() => setStep("form")}
-          className="btn-huge bg-primary text-primary-foreground hover:brightness-110 min-h-[220px] flex flex-col items-center justify-center gap-3"
+          onClick={() => { setRequestMode("asap"); setStep("form"); }}
+          className="btn-huge bg-primary text-primary-foreground hover:brightness-110 min-h-[180px] w-full flex flex-col items-center justify-center gap-2"
         >
-          <span className="text-6xl">🆘</span>
-          <span>Déclarer une urgence</span>
+          <span className="text-5xl">🆘</span>
+          <span>Urgence — maintenant</span>
+          <span className="text-sm font-normal opacity-90">Un étudiant vient au plus vite</span>
         </button>
-        <p className="text-sm text-muted-foreground text-center max-w-xs">
+        <button
+          onClick={() => { setRequestMode("scheduled"); setStep("form"); }}
+          className="btn-huge bg-accent text-foreground border-2 border-primary min-h-[140px] w-full flex flex-col items-center justify-center gap-2"
+        >
+          <span className="text-4xl">📅</span>
+          <span>Prendre un rendez-vous</span>
+          <span className="text-sm font-normal text-muted-foreground">Planifier pour plus tard</span>
+        </button>
+        <p className="text-xs text-muted-foreground text-center max-w-xs">
           En cas d'urgence vitale, composez le <span className="font-bold text-foreground">15</span> (SAMU).
         </p>
       </div>
     );
 
   if (step === "form")
-    return <FamilyForm onSubmit={() => setStep("wait")} onBack={() => setStep("home")} />;
+    return <FamilyForm mode={requestMode} onSubmit={() => setStep("wait")} onBack={() => setStep("home")} />;
 
   return <FamilyWait request={current} onDone={() => { store.clearCurrent(); setStep("home"); }} />;
 }
 
-function FamilyForm({ onSubmit, onBack }: { onSubmit: () => void; onBack: () => void }) {
+function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; onSubmit: () => void; onBack: () => void }) {
   const [need, setNeed] = useState<NeedType>("Compagnie/Présence");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
+  // default schedule: today + 2h, rounded to next hour
+  const defaultSched = () => {
+    const d = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    d.setMinutes(0, 0, 0);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+  const [when, setWhen] = useState<string>(defaultSched());
+  const minWhen = (() => {
+    const d = new Date(Date.now() + 30 * 60 * 1000);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  })();
+
   const needs: { v: NeedType; icon: string }[] = [
     { v: "Compagnie/Présence", icon: "🤝" },
     { v: "Courses urgentes", icon: "🛒" },
@@ -132,13 +168,17 @@ function FamilyForm({ onSubmit, onBack }: { onSubmit: () => void; onBack: () => 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!address.trim() || !phone.trim()) return;
-    store.createRequest({ need, address, phone });
+    const scheduledAt = mode === "scheduled" ? new Date(when).getTime() : null;
+    store.createRequest({ need, address, phone, scheduledAt });
     onSubmit();
   };
 
   return (
     <form onSubmit={submit} className="flex-1 flex flex-col px-5 py-6 gap-6">
       <button type="button" onClick={onBack} className="text-base text-muted-foreground text-left">← Retour</button>
+      <div className={`rounded-2xl p-3 text-sm font-semibold text-center ${mode === "asap" ? "bg-primary/10 text-primary" : "bg-accent text-foreground"}`}>
+        {mode === "asap" ? "🆘 Urgence — maintenant" : "📅 Prendre un rendez-vous"}
+      </div>
       <div>
         <label className="block text-lg font-bold mb-3">De quoi avez-vous besoin ?</label>
         <div className="grid grid-cols-2 gap-3">
@@ -157,6 +197,18 @@ function FamilyForm({ onSubmit, onBack }: { onSubmit: () => void; onBack: () => 
           ))}
         </div>
       </div>
+      {mode === "scheduled" && (
+        <div>
+          <label className="block text-lg font-bold mb-2">Date et heure</label>
+          <input
+            type="datetime-local"
+            value={when}
+            min={minWhen}
+            onChange={(e) => setWhen(e.target.value)}
+            className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
+          />
+        </div>
+      )}
       <div>
         <label className="block text-lg font-bold mb-2">Adresse</label>
         <input
@@ -178,7 +230,7 @@ function FamilyForm({ onSubmit, onBack }: { onSubmit: () => void; onBack: () => 
       </div>
       <div className="flex-1" />
       <button type="submit" className="btn-huge bg-primary text-primary-foreground">
-        Lancer la recherche
+        {mode === "asap" ? "Lancer la recherche" : "Confirmer le rendez-vous"}
       </button>
     </form>
   );
@@ -200,21 +252,40 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
     );
   }
 
+  const isFutureSched = !!request.scheduledAt && request.scheduledAt > Date.now() + 60_000;
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-6 text-center">
       {!accepted ? (
-        <>
-          <div className="relative h-32 w-32">
-            <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
-            <div className="absolute inset-4 rounded-full bg-primary/40 animate-pulse" />
-            <div className="absolute inset-10 rounded-full bg-primary grid place-items-center text-3xl">📡</div>
-          </div>
-          <div>
-            <p className="text-2xl font-bold">Recherche d'un étudiant à proximité…</p>
-            <p className="text-base text-muted-foreground mt-2">Ne quittez pas cet écran.</p>
-          </div>
-          <p className="text-sm text-muted-foreground">Besoin : <b>{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</b></p>
-        </>
+        isFutureSched ? (
+          <>
+            <div className="text-6xl">📅</div>
+            <div>
+              <p className="text-2xl font-bold">Rendez-vous enregistré</p>
+              <p className="text-base text-muted-foreground mt-2">Nous cherchons un étudiant pour ce créneau.</p>
+            </div>
+            <div className="w-full bg-card rounded-2xl p-5 border-2 border-border text-left">
+              <p className="text-sm text-muted-foreground">Date et heure</p>
+              <p className="text-lg font-bold">{formatSchedule(request.scheduledAt!)}</p>
+              <p className="text-sm text-muted-foreground mt-3">Besoin</p>
+              <p className="text-base font-semibold">{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</p>
+            </div>
+            <button onClick={onDone} className="text-base text-muted-foreground underline">Retour à l'accueil</button>
+          </>
+        ) : (
+          <>
+            <div className="relative h-32 w-32">
+              <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
+              <div className="absolute inset-4 rounded-full bg-primary/40 animate-pulse" />
+              <div className="absolute inset-10 rounded-full bg-primary grid place-items-center text-3xl">📡</div>
+            </div>
+            <div>
+              <p className="text-2xl font-bold">Recherche d'un étudiant à proximité…</p>
+              <p className="text-base text-muted-foreground mt-2">Ne quittez pas cet écran.</p>
+            </div>
+            <p className="text-sm text-muted-foreground">Besoin : <b>{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</b></p>
+          </>
+        )
       ) : (
         <>
           <p className="text-lg font-bold text-success">✅ Un étudiant a accepté !</p>
@@ -465,23 +536,29 @@ function StudentFlow() {
             {requests.length === 0 && (
               <p className="text-muted-foreground text-center py-10">Aucune demande pour le moment.</p>
             )}
-            {requests.map((r) => (
-              <button
-                key={r.id}
-                onClick={() => setOpenId(r.id)}
-                className="text-left bg-card rounded-2xl p-5 border-2 border-border hover:border-primary transition-all"
-              >
-                <div className="flex justify-between items-start gap-3">
-                  <div className="min-w-0">
-                    <p className="text-lg font-bold">{r.need.includes("/") ? r.need.replace("/", " / ") : r.need}</p>
-                    <p className="text-base text-muted-foreground mt-1">📍 {r.city}</p>
+            {requests.map((r) => {
+              const scheduled = !!r.scheduledAt;
+              return (
+                <button
+                  key={r.id}
+                  onClick={() => setOpenId(r.id)}
+                  className="text-left bg-card rounded-2xl p-5 border-2 border-border hover:border-primary transition-all"
+                >
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="min-w-0">
+                      <p className="text-lg font-bold">{r.need.includes("/") ? r.need.replace("/", " / ") : r.need}</p>
+                      <p className="text-base text-muted-foreground mt-1">📍 {r.city}</p>
+                      {scheduled && (
+                        <p className="text-sm mt-2 font-semibold">🗓️ {formatSchedule(r.scheduledAt!)}</p>
+                      )}
+                    </div>
+                    <span className={`text-xs font-bold px-2 py-1 rounded-full shrink-0 ${scheduled ? "bg-accent text-foreground" : "bg-primary/10 text-primary"}`}>
+                      {scheduled ? "RDV" : "URGENT"}
+                    </span>
                   </div>
-                  <span className="text-xs bg-primary/10 text-primary font-bold px-2 py-1 rounded-full shrink-0">
-                    URGENT
-                  </span>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         </>
       ) : (
@@ -504,6 +581,16 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
         <p className="text-sm text-muted-foreground uppercase tracking-wide font-bold">Besoin</p>
         <p className="text-2xl font-bold mt-1">{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</p>
         <p className="text-base text-muted-foreground mt-3">📍 {request.city}</p>
+        {request.scheduledAt ? (
+          <div className="mt-3 bg-accent rounded-xl p-3">
+            <p className="text-xs text-muted-foreground font-bold uppercase">Rendez-vous</p>
+            <p className="text-base font-semibold mt-1">🗓️ {formatSchedule(request.scheduledAt)}</p>
+          </div>
+        ) : (
+          <div className="mt-3 inline-block bg-primary/10 text-primary text-xs font-bold px-2 py-1 rounded-full">
+            🆘 URGENCE — au plus vite
+          </div>
+        )}
       </div>
 
       {!accepted ? (
