@@ -242,21 +242,40 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
     );
   }
 
+  const isFutureSched = !!request.scheduledAt && request.scheduledAt > Date.now() + 60_000;
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-6 text-center">
       {!accepted ? (
-        <>
-          <div className="relative h-32 w-32">
-            <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
-            <div className="absolute inset-4 rounded-full bg-primary/40 animate-pulse" />
-            <div className="absolute inset-10 rounded-full bg-primary grid place-items-center text-3xl">📡</div>
-          </div>
-          <div>
-            <p className="text-2xl font-bold">Recherche d'un étudiant à proximité…</p>
-            <p className="text-base text-muted-foreground mt-2">Ne quittez pas cet écran.</p>
-          </div>
-          <p className="text-sm text-muted-foreground">Besoin : <b>{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</b></p>
-        </>
+        isFutureSched ? (
+          <>
+            <div className="text-6xl">📅</div>
+            <div>
+              <p className="text-2xl font-bold">Rendez-vous enregistré</p>
+              <p className="text-base text-muted-foreground mt-2">Nous cherchons un étudiant pour ce créneau.</p>
+            </div>
+            <div className="w-full bg-card rounded-2xl p-5 border-2 border-border text-left">
+              <p className="text-sm text-muted-foreground">Date et heure</p>
+              <p className="text-lg font-bold">{formatSchedule(request.scheduledAt!)}</p>
+              <p className="text-sm text-muted-foreground mt-3">Besoin</p>
+              <p className="text-base font-semibold">{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</p>
+            </div>
+            <button onClick={onDone} className="text-base text-muted-foreground underline">Retour à l'accueil</button>
+          </>
+        ) : (
+          <>
+            <div className="relative h-32 w-32">
+              <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
+              <div className="absolute inset-4 rounded-full bg-primary/40 animate-pulse" />
+              <div className="absolute inset-10 rounded-full bg-primary grid place-items-center text-3xl">📡</div>
+            </div>
+            <div>
+              <p className="text-2xl font-bold">Recherche d'un étudiant à proximité…</p>
+              <p className="text-base text-muted-foreground mt-2">Ne quittez pas cet écran.</p>
+            </div>
+            <p className="text-sm text-muted-foreground">Besoin : <b>{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</b></p>
+          </>
+        )
       ) : (
         <>
           <p className="text-lg font-bold text-success">✅ Un étudiant a accepté !</p>
