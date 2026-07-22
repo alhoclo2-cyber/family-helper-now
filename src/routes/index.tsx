@@ -362,7 +362,7 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
   );
 }
 
-function PaymentScreen({ student, onDone, onBack }: { student: string; onDone: () => void; onBack: () => void }) {
+function PaymentScreen({ student, hours, onDone, onBack }: { student: string; hours: number; onDone: () => void; onBack: () => void }) {
   const [method, setMethod] = useState<"card" | "apple" | "paypal">("card");
   const [processing, setProcessing] = useState(false);
   const [card, setCard] = useState("");
