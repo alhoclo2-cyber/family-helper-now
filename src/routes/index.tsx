@@ -141,6 +141,7 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
   const [need, setNeed] = useState<NeedType>("Compagnie/Présence");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
+  const [durationHours, setDurationHours] = useState<number>(1);
   // default schedule: today + 2h, rounded to next hour
   const defaultSched = () => {
     const d = new Date(Date.now() + 2 * 60 * 60 * 1000);
