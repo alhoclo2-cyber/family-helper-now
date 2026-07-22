@@ -199,6 +199,31 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
           ))}
         </div>
       </div>
+      {need === "Compagnie/Présence" && (
+        <div>
+          <label className="block text-lg font-bold mb-2">Durée souhaitée</label>
+          <p className="text-sm text-muted-foreground mb-3">
+            Le tarif de base couvre 1 heure. Ajoutez du temps si besoin.
+          </p>
+          <div className="grid grid-cols-4 gap-2">
+            {[1, 2, 3, 4].map((h) => (
+              <button
+                key={h}
+                type="button"
+                onClick={() => setDurationHours(h)}
+                className={`py-3 rounded-2xl border-2 text-base font-bold transition-all ${
+                  durationHours === h ? "border-primary bg-accent" : "border-border bg-card"
+                }`}
+              >
+                {h}h
+              </button>
+            ))}
+          </div>
+          <p className="text-sm text-muted-foreground mt-2">
+            Estimation : <b>{12 * durationHours + 3},00 €</b> ({durationHours}h × 12€ + 3€ de frais)
+          </p>
+        </div>
+      )}
       {mode === "scheduled" && (
         <div>
           <label className="block text-lg font-bold mb-2">Date et heure</label>
