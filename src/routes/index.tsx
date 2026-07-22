@@ -170,7 +170,8 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
     e.preventDefault();
     if (!address.trim() || !phone.trim()) return;
     const scheduledAt = mode === "scheduled" ? new Date(when).getTime() : null;
-    store.createRequest({ need, address, phone, scheduledAt });
+    const dh = need === "Compagnie/Présence" ? durationHours : 1;
+    store.createRequest({ need, address, phone, scheduledAt, durationHours: dh });
     onSubmit();
   };
 
