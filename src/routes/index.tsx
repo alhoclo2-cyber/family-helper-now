@@ -385,8 +385,8 @@ function PaymentScreen({ student, hours, onDone, onBack }: { student: string; ho
 
       <div className="bg-card rounded-2xl p-5 border-2 border-border">
         <div className="flex justify-between text-base">
-          <span className="text-muted-foreground">Intervention</span>
-          <span className="font-semibold">12,00 €</span>
+          <span className="text-muted-foreground">Intervention ({hours}h × 12€)</span>
+          <span className="font-semibold">{(12 * hours).toFixed(2).replace(".", ",")} €</span>
         </div>
         <div className="flex justify-between text-base mt-2">
           <span className="text-muted-foreground">Frais de service</span>
@@ -395,7 +395,7 @@ function PaymentScreen({ student, hours, onDone, onBack }: { student: string; ho
         <div className="h-px bg-border my-3" />
         <div className="flex justify-between text-xl font-black">
           <span>Total</span>
-          <span>15,00 €</span>
+          <span>{(12 * hours + 3).toFixed(2).replace(".", ",")} €</span>
         </div>
       </div>
 
