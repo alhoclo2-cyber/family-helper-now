@@ -441,7 +441,7 @@ function PaymentScreen({ student, hours, onDone, onBack }: { student: string; ho
 
       <div className="flex-1" />
       <button type="submit" disabled={processing} className="btn-huge bg-success text-success-foreground disabled:opacity-60">
-        {processing ? "Traitement…" : "Payer 15,00 €"}
+        {processing ? "Traitement…" : `Payer ${(12 * hours + 3).toFixed(2).replace(".", ",")} €`}
       </button>
       <p className="text-xs text-muted-foreground text-center">🔒 Paiement sécurisé — démo</p>
     </form>
