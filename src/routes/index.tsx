@@ -141,6 +141,7 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
   const [need, setNeed] = useState<NeedType>("Compagnie/Présence");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
+  const [durationHours, setDurationHours] = useState<number>(1);
   // default schedule: today + 2h, rounded to next hour
   const defaultSched = () => {
     const d = new Date(Date.now() + 2 * 60 * 60 * 1000);
@@ -169,7 +170,8 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
     e.preventDefault();
     if (!address.trim() || !phone.trim()) return;
     const scheduledAt = mode === "scheduled" ? new Date(when).getTime() : null;
-    store.createRequest({ need, address, phone, scheduledAt });
+    const dh = need === "Compagnie/Présence" ? durationHours : 1;
+    store.createRequest({ need, address, phone, scheduledAt, durationHours: dh });
     onSubmit();
   };
 
@@ -197,6 +199,31 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
           ))}
         </div>
       </div>
+      {need === "Compagnie/Présence" && (
+        <div>
+          <label className="block text-lg font-bold mb-2">Durée souhaitée</label>
+          <p className="text-sm text-muted-foreground mb-3">
+            Le tarif de base couvre 1 heure. Ajoutez du temps si besoin.
+          </p>
+          <div className="grid grid-cols-4 gap-2">
+            {[1, 2, 3, 4].map((h) => (
+              <button
+                key={h}
+                type="button"
+                onClick={() => setDurationHours(h)}
+                className={`py-3 rounded-2xl border-2 text-base font-bold transition-all ${
+                  durationHours === h ? "border-primary bg-accent" : "border-border bg-card"
+                }`}
+              >
+                {h}h
+              </button>
+            ))}
+          </div>
+          <p className="text-sm text-muted-foreground mt-2">
+            Estimation : <b>{12 * durationHours + 3},00 €</b> ({durationHours}h × 12€ + 3€ de frais)
+          </p>
+        </div>
+      )}
       {mode === "scheduled" && (
         <div>
           <label className="block text-lg font-bold mb-2">Date et heure</label>
@@ -242,10 +269,14 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
   if (!request) return null;
   const accepted = request.status === "accepted" && request.student;
 
+  const hours = request?.durationHours ?? 1;
+  const total = 12 * hours + 3;
+
   if (accepted && showPay && !paid) {
     return (
       <PaymentScreen
         student={request.student!.firstName}
+        hours={hours}
         onDone={() => { setPaid(true); setShowPay(false); }}
         onBack={() => setShowPay(false)}
       />
@@ -309,7 +340,7 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
 
           {!paid ? (
             <button onClick={() => setShowPay(true)} className="btn-huge bg-primary text-primary-foreground w-full">
-              💳 Procéder au paiement — 15 €
+              💳 Procéder au paiement — {total} €
             </button>
           ) : (
             <div className="w-full bg-success/10 border-2 border-success rounded-2xl p-4">
@@ -331,7 +362,7 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
   );
 }
 
-function PaymentScreen({ student, onDone, onBack }: { student: string; onDone: () => void; onBack: () => void }) {
+function PaymentScreen({ student, hours, onDone, onBack }: { student: string; hours: number; onDone: () => void; onBack: () => void }) {
   const [method, setMethod] = useState<"card" | "apple" | "paypal">("card");
   const [processing, setProcessing] = useState(false);
   const [card, setCard] = useState("");
@@ -354,8 +385,8 @@ function PaymentScreen({ student, onDone, onBack }: { student: string; onDone: (
 
       <div className="bg-card rounded-2xl p-5 border-2 border-border">
         <div className="flex justify-between text-base">
-          <span className="text-muted-foreground">Intervention</span>
-          <span className="font-semibold">12,00 €</span>
+          <span className="text-muted-foreground">Intervention ({hours}h × 12€)</span>
+          <span className="font-semibold">{(12 * hours).toFixed(2).replace(".", ",")} €</span>
         </div>
         <div className="flex justify-between text-base mt-2">
           <span className="text-muted-foreground">Frais de service</span>
@@ -364,7 +395,7 @@ function PaymentScreen({ student, onDone, onBack }: { student: string; onDone: (
         <div className="h-px bg-border my-3" />
         <div className="flex justify-between text-xl font-black">
           <span>Total</span>
-          <span>15,00 €</span>
+          <span>{(12 * hours + 3).toFixed(2).replace(".", ",")} €</span>
         </div>
       </div>
 
@@ -410,7 +441,7 @@ function PaymentScreen({ student, onDone, onBack }: { student: string; onDone: (
 
       <div className="flex-1" />
       <button type="submit" disabled={processing} className="btn-huge bg-success text-success-foreground disabled:opacity-60">
-        {processing ? "Traitement…" : "Payer 15,00 €"}
+        {processing ? "Traitement…" : `Payer ${(12 * hours + 3).toFixed(2).replace(".", ",")} €`}
       </button>
       <p className="text-xs text-muted-foreground text-center">🔒 Paiement sécurisé — démo</p>
     </form>
@@ -548,6 +579,9 @@ function StudentFlow() {
                     <div className="min-w-0">
                       <p className="text-lg font-bold">{r.need.includes("/") ? r.need.replace("/", " / ") : r.need}</p>
                       <p className="text-base text-muted-foreground mt-1">📍 {r.city}</p>
+                      {r.need === "Compagnie/Présence" && r.durationHours && r.durationHours > 1 && (
+                        <p className="text-sm mt-1 font-semibold">⏱️ Durée : {r.durationHours}h</p>
+                      )}
                       {scheduled && (
                         <p className="text-sm mt-2 font-semibold">🗓️ {formatSchedule(r.scheduledAt!)}</p>
                       )}
@@ -580,6 +614,9 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
       <div className="bg-card rounded-3xl p-6 border-2 border-border">
         <p className="text-sm text-muted-foreground uppercase tracking-wide font-bold">Besoin</p>
         <p className="text-2xl font-bold mt-1">{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</p>
+        {request.need === "Compagnie/Présence" && request.durationHours && request.durationHours > 1 && (
+          <p className="text-base font-semibold mt-2">⏱️ Durée demandée : {request.durationHours}h</p>
+        )}
         <p className="text-base text-muted-foreground mt-3">📍 {request.city}</p>
         {request.scheduledAt ? (
           <div className="mt-3 bg-accent rounded-xl p-3">

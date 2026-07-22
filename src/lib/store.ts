@@ -12,6 +12,7 @@ export type Request = {
   seniorName: string;
   createdAt: number;
   scheduledAt?: number | null; // null/undefined => ASAP (urgence)
+  durationHours?: number; // durée demandée (spécifique à Compagnie/Présence)
   status: "searching" | "accepted";
   student?: { firstName: string; photo: string; rating: number };
 };
