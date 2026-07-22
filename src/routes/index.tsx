@@ -614,6 +614,9 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
       <div className="bg-card rounded-3xl p-6 border-2 border-border">
         <p className="text-sm text-muted-foreground uppercase tracking-wide font-bold">Besoin</p>
         <p className="text-2xl font-bold mt-1">{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</p>
+        {request.need === "Compagnie/Présence" && request.durationHours && request.durationHours > 1 && (
+          <p className="text-base font-semibold mt-2">⏱️ Durée demandée : {request.durationHours}h</p>
+        )}
         <p className="text-base text-muted-foreground mt-3">📍 {request.city}</p>
         {request.scheduledAt ? (
           <div className="mt-3 bg-accent rounded-xl p-3">
