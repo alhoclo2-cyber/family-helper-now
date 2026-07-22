@@ -269,10 +269,14 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
   if (!request) return null;
   const accepted = request.status === "accepted" && request.student;
 
+  const hours = request?.durationHours ?? 1;
+  const total = 12 * hours + 3;
+
   if (accepted && showPay && !paid) {
     return (
       <PaymentScreen
         student={request.student!.firstName}
+        hours={hours}
         onDone={() => { setPaid(true); setShowPay(false); }}
         onBack={() => setShowPay(false)}
       />
