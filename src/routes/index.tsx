@@ -170,7 +170,7 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
     e.preventDefault();
     if (!address.trim() || !phone.trim()) return;
     const scheduledAt = mode === "scheduled" ? new Date(when).getTime() : null;
-    const dh = need === "Compagnie/Présence" ? durationHours : 1;
+    const dh = (need === "Compagnie/Présence" || need === "Accompagnement sorties extérieures") ? durationHours : 1;
     store.createRequest({ need, address, phone, scheduledAt, durationHours: dh });
     onSubmit();
   };
@@ -199,7 +199,7 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
           ))}
         </div>
       </div>
-      {need === "Compagnie/Présence" && (
+      {(need === "Compagnie/Présence" || need === "Accompagnement sorties extérieures") && (
         <div>
           <label className="block text-lg font-bold mb-2">Durée souhaitée</label>
           <p className="text-sm text-muted-foreground mb-3">
@@ -579,7 +579,7 @@ function StudentFlow() {
                     <div className="min-w-0">
                       <p className="text-lg font-bold">{r.need.includes("/") ? r.need.replace("/", " / ") : r.need}</p>
                       <p className="text-base text-muted-foreground mt-1">📍 {r.city}</p>
-                      {r.need === "Compagnie/Présence" && r.durationHours && r.durationHours > 1 && (
+                      {(r.need === "Compagnie/Présence" || r.need === "Accompagnement sorties extérieures") && r.durationHours && r.durationHours > 1 && (
                         <p className="text-sm mt-1 font-semibold">⏱️ Durée : {r.durationHours}h</p>
                       )}
                       {scheduled && (
@@ -614,7 +614,7 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
       <div className="bg-card rounded-3xl p-6 border-2 border-border">
         <p className="text-sm text-muted-foreground uppercase tracking-wide font-bold">Besoin</p>
         <p className="text-2xl font-bold mt-1">{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</p>
-        {request.need === "Compagnie/Présence" && request.durationHours && request.durationHours > 1 && (
+        {(request.need === "Compagnie/Présence" || request.need === "Accompagnement sorties extérieures") && request.durationHours && request.durationHours > 1 && (
           <p className="text-base font-semibold mt-2">⏱️ Durée demandée : {request.durationHours}h</p>
         )}
         <p className="text-base text-muted-foreground mt-3">📍 {request.city}</p>
