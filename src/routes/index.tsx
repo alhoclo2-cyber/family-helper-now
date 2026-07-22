@@ -340,7 +340,7 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
 
           {!paid ? (
             <button onClick={() => setShowPay(true)} className="btn-huge bg-primary text-primary-foreground w-full">
-              💳 Procéder au paiement — 15 €
+              💳 Procéder au paiement — {total} €
             </button>
           ) : (
             <div className="w-full bg-success/10 border-2 border-success rounded-2xl p-4">
