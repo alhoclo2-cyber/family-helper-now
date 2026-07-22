@@ -579,7 +579,7 @@ function StudentFlow() {
                     <div className="min-w-0">
                       <p className="text-lg font-bold">{r.need.includes("/") ? r.need.replace("/", " / ") : r.need}</p>
                       <p className="text-base text-muted-foreground mt-1">📍 {r.city}</p>
-                      {r.(need === "Compagnie/Présence" || need === "Accompagnement sorties extérieures") && r.durationHours && r.durationHours > 1 && (
+                      {(r.need === "Compagnie/Présence" || r.need === "Accompagnement sorties extérieures") && r.durationHours && r.durationHours > 1 && (
                         <p className="text-sm mt-1 font-semibold">⏱️ Durée : {r.durationHours}h</p>
                       )}
                       {scheduled && (
