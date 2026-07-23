@@ -85,6 +85,18 @@ function formatSchedule(ts: number) {
   });
 }
 
+const BASE_RATE = 21;
+const SERVICE_FEE = 4.87;
+
+function computePrice(hours: number) {
+  const total = hours <= 1 ? BASE_RATE : BASE_RATE * hours;
+  return { total, serviceFee: SERVICE_FEE, intervention: total - SERVICE_FEE };
+}
+
+function formatPrice(n: number) {
+  return n.toFixed(2).replace(".", ",");
+}
+
 /* ---------------- FAMILY ---------------- */
 
 function FamilyFlow() {
