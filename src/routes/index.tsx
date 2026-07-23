@@ -725,6 +725,13 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
         {(request.need === "Compagnie/Présence" || request.need === "Accompagnement sorties extérieures") && request.durationHours && request.durationHours > 1 && (
           <p className="text-base font-semibold mt-2">⏱️ Durée demandée : {request.durationHours}h</p>
         )}
+        {request.need === "Retrait ou dépôt d'un colis" && (
+          <div className="mt-3 bg-accent rounded-xl p-3">
+            <p className="text-xs text-muted-foreground font-bold uppercase">Colis</p>
+            <p className="text-base font-semibold mt-1">⚖️ Poids : {request.parcelWeight}</p>
+            <p className="text-base font-semibold mt-1">📦 Taille : {request.parcelSize}</p>
+          </div>
+        )}
         <p className="text-base text-muted-foreground mt-3">📍 {request.city}</p>
         {request.scheduledAt ? (
           <div className="mt-3 bg-accent rounded-xl p-3">
