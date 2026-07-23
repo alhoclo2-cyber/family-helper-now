@@ -78,6 +78,13 @@ export const store = {
     emit();
     return id;
   },
+  updateRequest: (id: string, patch: Partial<Omit<Request, "id" | "createdAt" | "status" | "student">>) => {
+    state = {
+      ...state,
+      requests: state.requests.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+    };
+    emit();
+  },
   acceptRequest: (id: string, studentIdx = 0) => {
     state = {
       ...state,
