@@ -244,7 +244,10 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
             ))}
           </div>
           <p className="text-sm text-muted-foreground mt-2">
-            Estimation : <b>{12 * durationHours + 3},00 €</b> ({durationHours}h × 12€ + 3€ de frais)
+            Estimation : <b>{formatPrice(computePrice(durationHours).total)} €</b>
+            {durationHours <= 1
+              ? " (tarif forfaitaire 1h, frais de service 4,87 € inclus)"
+              : ` (${durationHours}h × 21 €, frais de service 4,87 € inclus)`}
           </p>
         </div>
       )}
