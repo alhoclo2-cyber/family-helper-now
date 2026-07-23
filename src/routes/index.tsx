@@ -142,6 +142,8 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
   const [durationHours, setDurationHours] = useState<number>(1);
+  const [parcelWeight, setParcelWeight] = useState<string>("moins de 2 kg");
+  const [parcelSize, setParcelSize] = useState<string>("Petit (enveloppe / boîte à chaussures)");
   // default schedule: today + 2h, rounded to next hour
   const defaultSched = () => {
     const d = new Date(Date.now() + 2 * 60 * 60 * 1000);
@@ -164,6 +166,7 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
     { v: "Accompagnement sorties extérieures", icon: "🌳" },
     { v: "Sortir ou nourrir animal de compagnie", icon: "🐕" },
     { v: "Arroser les plantes", icon: "🪴" },
+    { v: "Retrait ou dépôt d'un colis", icon: "📦" },
   ];
 
   const submit = (e: React.FormEvent) => {
@@ -171,7 +174,16 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
     if (!address.trim() || !phone.trim()) return;
     const scheduledAt = mode === "scheduled" ? new Date(when).getTime() : null;
     const dh = (need === "Compagnie/Présence" || need === "Accompagnement sorties extérieures") ? durationHours : 1;
-    store.createRequest({ need, address, phone, scheduledAt, durationHours: dh });
+    const isParcel = need === "Retrait ou dépôt d'un colis";
+    store.createRequest({
+      need,
+      address,
+      phone,
+      scheduledAt,
+      durationHours: dh,
+      parcelWeight: isParcel ? parcelWeight : undefined,
+      parcelSize: isParcel ? parcelSize : undefined,
+    });
     onSubmit();
   };
 
