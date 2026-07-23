@@ -507,17 +507,19 @@ function PaymentScreen({ student, hours, onDone, onBack }: { student: string; ho
 
       <div className="bg-card rounded-2xl p-5 border-2 border-border">
         <div className="flex justify-between text-base">
-          <span className="text-muted-foreground">Intervention ({hours}h × 12€)</span>
-          <span className="font-semibold">{(12 * hours).toFixed(2).replace(".", ",")} €</span>
+          <span className="text-muted-foreground">
+            Intervention {hours <= 1 ? "(forfait 1h)" : `(${hours}h × 21 €)`}
+          </span>
+          <span className="font-semibold">{formatPrice(intervention)} €</span>
         </div>
         <div className="flex justify-between text-base mt-2">
           <span className="text-muted-foreground">Frais de service</span>
-          <span className="font-semibold">3,00 €</span>
+          <span className="font-semibold">{formatPrice(serviceFee)} €</span>
         </div>
         <div className="h-px bg-border my-3" />
         <div className="flex justify-between text-xl font-black">
           <span>Total</span>
-          <span>{(12 * hours + 3).toFixed(2).replace(".", ",")} €</span>
+          <span>{formatPrice(total)} €</span>
         </div>
       </div>
 
