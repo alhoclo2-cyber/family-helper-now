@@ -348,7 +348,8 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
   const accepted = request.status === "accepted" && request.student;
 
   const hours = request?.durationHours ?? 1;
-  const total = 12 * hours + 3;
+  const { total } = computePrice(hours);
+
 
   if (accepted && showPay && !paid) {
     return (
