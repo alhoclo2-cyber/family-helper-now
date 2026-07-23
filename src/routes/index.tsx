@@ -85,6 +85,18 @@ function formatSchedule(ts: number) {
   });
 }
 
+const BASE_RATE = 21;
+const SERVICE_FEE = 4.87;
+
+function computePrice(hours: number) {
+  const total = hours <= 1 ? BASE_RATE : BASE_RATE * hours;
+  return { total, serviceFee: SERVICE_FEE, intervention: total - SERVICE_FEE };
+}
+
+function formatPrice(n: number) {
+  return n.toFixed(2).replace(".", ",");
+}
+
 /* ---------------- FAMILY ---------------- */
 
 function FamilyFlow() {
@@ -232,7 +244,10 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
             ))}
           </div>
           <p className="text-sm text-muted-foreground mt-2">
-            Estimation : <b>{12 * durationHours + 3},00 €</b> ({durationHours}h × 12€ + 3€ de frais)
+            Estimation : <b>{formatPrice(computePrice(durationHours).total)} €</b>
+            {durationHours <= 1
+              ? " (tarif forfaitaire 1h, frais de service 4,87 € inclus)"
+              : ` (${durationHours}h × 21 €, frais de service 4,87 € inclus)`}
           </p>
         </div>
       )}
@@ -333,7 +348,8 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
   const accepted = request.status === "accepted" && request.student;
 
   const hours = request?.durationHours ?? 1;
-  const total = 12 * hours + 3;
+  const { total } = computePrice(hours);
+
 
   if (accepted && showPay && !paid) {
     return (
@@ -473,6 +489,7 @@ function PaymentScreen({ student, hours, onDone, onBack }: { student: string; ho
   const [card, setCard] = useState("");
   const [exp, setExp] = useState("");
   const [cvc, setCvc] = useState("");
+  const { total, serviceFee, intervention } = computePrice(hours);
 
   const pay = (e: React.FormEvent) => {
     e.preventDefault();
@@ -490,17 +507,19 @@ function PaymentScreen({ student, hours, onDone, onBack }: { student: string; ho
 
       <div className="bg-card rounded-2xl p-5 border-2 border-border">
         <div className="flex justify-between text-base">
-          <span className="text-muted-foreground">Intervention ({hours}h × 12€)</span>
-          <span className="font-semibold">{(12 * hours).toFixed(2).replace(".", ",")} €</span>
+          <span className="text-muted-foreground">
+            Intervention {hours <= 1 ? "(forfait 1h)" : `(${hours}h × 21 €)`}
+          </span>
+          <span className="font-semibold">{formatPrice(intervention)} €</span>
         </div>
         <div className="flex justify-between text-base mt-2">
           <span className="text-muted-foreground">Frais de service</span>
-          <span className="font-semibold">3,00 €</span>
+          <span className="font-semibold">{formatPrice(serviceFee)} €</span>
         </div>
         <div className="h-px bg-border my-3" />
         <div className="flex justify-between text-xl font-black">
           <span>Total</span>
-          <span>{(12 * hours + 3).toFixed(2).replace(".", ",")} €</span>
+          <span>{formatPrice(total)} €</span>
         </div>
       </div>
 
@@ -546,7 +565,7 @@ function PaymentScreen({ student, hours, onDone, onBack }: { student: string; ho
 
       <div className="flex-1" />
       <button type="submit" disabled={processing} className="btn-huge bg-success text-success-foreground disabled:opacity-60">
-        {processing ? "Traitement…" : `Payer ${(12 * hours + 3).toFixed(2).replace(".", ",")} €`}
+        {processing ? "Traitement…" : `Payer ${formatPrice(total)} €`}
       </button>
       <p className="text-xs text-muted-foreground text-center">🔒 Paiement sécurisé — démo</p>
     </form>
