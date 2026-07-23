@@ -236,6 +236,48 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
           </p>
         </div>
       )}
+      {need === "Retrait ou dépôt d'un colis" && (
+        <div className="flex flex-col gap-4">
+          <div>
+            <label className="block text-lg font-bold mb-2">Poids du colis</label>
+            <div className="grid grid-cols-2 gap-2">
+              {["moins de 2 kg", "2 à 5 kg", "5 à 10 kg", "plus de 10 kg"].map((w) => (
+                <button
+                  key={w}
+                  type="button"
+                  onClick={() => setParcelWeight(w)}
+                  className={`py-3 px-3 rounded-2xl border-2 text-sm font-bold transition-all ${
+                    parcelWeight === w ? "border-primary bg-accent" : "border-border bg-card"
+                  }`}
+                >
+                  {w}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-lg font-bold mb-2">Taille du colis</label>
+            <div className="grid grid-cols-1 gap-2">
+              {[
+                "Petit (enveloppe / boîte à chaussures)",
+                "Moyen (carton type micro-ondes)",
+                "Grand (encombrant, à deux mains)",
+              ].map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setParcelSize(s)}
+                  className={`py-3 px-3 rounded-2xl border-2 text-sm font-bold text-left transition-all ${
+                    parcelSize === s ? "border-primary bg-accent" : "border-border bg-card"
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       {mode === "scheduled" && (
         <div>
           <label className="block text-lg font-bold mb-2">Date et heure</label>
