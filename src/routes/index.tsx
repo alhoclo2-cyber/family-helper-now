@@ -320,6 +320,15 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
 function FamilyWait({ request, onDone }: { request: Request | undefined; onDone: () => void }) {
   const [paid, setPaid] = useState(false);
   const [showPay, setShowPay] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const toLocalInput = (ts: number) => {
+    const d = new Date(ts);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+  const [newWhen, setNewWhen] = useState<string>(() =>
+    request?.scheduledAt ? toLocalInput(request.scheduledAt) : "",
+  );
   if (!request) return null;
   const accepted = request.status === "accepted" && request.student;
 
@@ -351,7 +360,49 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
             </div>
             <div className="w-full bg-card rounded-2xl p-5 border-2 border-border text-left">
               <p className="text-sm text-muted-foreground">Date et heure</p>
-              <p className="text-lg font-bold">{formatSchedule(request.scheduledAt!)}</p>
+              {!editing ? (
+                <>
+                  <p className="text-lg font-bold">{formatSchedule(request.scheduledAt!)}</p>
+                  <button
+                    type="button"
+                    onClick={() => { setNewWhen(toLocalInput(request.scheduledAt!)); setEditing(true); }}
+                    className="mt-2 text-sm font-bold text-primary underline"
+                  >
+                    ✏️ Modifier le rendez-vous
+                  </button>
+                </>
+              ) : (
+                <div className="flex flex-col gap-2 mt-1">
+                  <input
+                    type="datetime-local"
+                    value={newWhen}
+                    onChange={(e) => setNewWhen(e.target.value)}
+                    className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditing(false)}
+                      className="py-3 rounded-2xl border-2 border-border bg-card font-bold text-sm"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const ts = new Date(newWhen).getTime();
+                        if (!Number.isNaN(ts)) {
+                          store.updateRequest(request.id, { scheduledAt: ts });
+                          setEditing(false);
+                        }
+                      }}
+                      className="py-3 rounded-2xl bg-primary text-primary-foreground font-bold text-sm"
+                    >
+                      Enregistrer
+                    </button>
+                  </div>
+                </div>
+              )}
               <p className="text-sm text-muted-foreground mt-3">Besoin</p>
               <p className="text-base font-semibold">{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</p>
             </div>
