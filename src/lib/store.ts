@@ -1,7 +1,7 @@
 // Simple in-memory store shared across the app for the demo flow.
 import { useRef, useSyncExternalStore } from "react";
 
-export type NeedType = "Compagnie/Présence" | "Courses urgentes" | "Pharmacie" | "Aide au repas" | "Accompagnement sorties extérieures" | "Sortir ou nourrir animal de compagnie" | "Arroser les plantes";
+export type NeedType = "Compagnie/Présence" | "Courses urgentes" | "Pharmacie" | "Aide au repas" | "Accompagnement sorties extérieures" | "Sortir ou nourrir animal de compagnie" | "Arroser les plantes" | "Retrait ou dépôt d'un colis";
 
 export type Request = {
   id: string;
@@ -13,6 +13,8 @@ export type Request = {
   createdAt: number;
   scheduledAt?: number | null; // null/undefined => ASAP (urgence)
   durationHours?: number; // durée demandée (spécifique à Compagnie/Présence)
+  parcelWeight?: string; // pour "Retrait ou dépôt d'un colis"
+  parcelSize?: string;
   status: "searching" | "accepted";
   student?: { firstName: string; photo: string; rating: number };
 };
