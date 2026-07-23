@@ -142,6 +142,8 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
   const [durationHours, setDurationHours] = useState<number>(1);
+  const [parcelWeight, setParcelWeight] = useState<string>("moins de 2 kg");
+  const [parcelSize, setParcelSize] = useState<string>("Petit (enveloppe / boîte à chaussures)");
   // default schedule: today + 2h, rounded to next hour
   const defaultSched = () => {
     const d = new Date(Date.now() + 2 * 60 * 60 * 1000);
@@ -164,6 +166,7 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
     { v: "Accompagnement sorties extérieures", icon: "🌳" },
     { v: "Sortir ou nourrir animal de compagnie", icon: "🐕" },
     { v: "Arroser les plantes", icon: "🪴" },
+    { v: "Retrait ou dépôt d'un colis", icon: "📦" },
   ];
 
   const submit = (e: React.FormEvent) => {
@@ -171,7 +174,16 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
     if (!address.trim() || !phone.trim()) return;
     const scheduledAt = mode === "scheduled" ? new Date(when).getTime() : null;
     const dh = (need === "Compagnie/Présence" || need === "Accompagnement sorties extérieures") ? durationHours : 1;
-    store.createRequest({ need, address, phone, scheduledAt, durationHours: dh });
+    const isParcel = need === "Retrait ou dépôt d'un colis";
+    store.createRequest({
+      need,
+      address,
+      phone,
+      scheduledAt,
+      durationHours: dh,
+      parcelWeight: isParcel ? parcelWeight : undefined,
+      parcelSize: isParcel ? parcelSize : undefined,
+    });
     onSubmit();
   };
 
@@ -224,6 +236,48 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
           </p>
         </div>
       )}
+      {need === "Retrait ou dépôt d'un colis" && (
+        <div className="flex flex-col gap-4">
+          <div>
+            <label className="block text-lg font-bold mb-2">Poids du colis</label>
+            <div className="grid grid-cols-2 gap-2">
+              {["moins de 2 kg", "2 à 5 kg", "5 à 10 kg", "plus de 10 kg"].map((w) => (
+                <button
+                  key={w}
+                  type="button"
+                  onClick={() => setParcelWeight(w)}
+                  className={`py-3 px-3 rounded-2xl border-2 text-sm font-bold transition-all ${
+                    parcelWeight === w ? "border-primary bg-accent" : "border-border bg-card"
+                  }`}
+                >
+                  {w}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-lg font-bold mb-2">Taille du colis</label>
+            <div className="grid grid-cols-1 gap-2">
+              {[
+                "Petit (enveloppe / boîte à chaussures)",
+                "Moyen (carton type micro-ondes)",
+                "Grand (encombrant, à deux mains)",
+              ].map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setParcelSize(s)}
+                  className={`py-3 px-3 rounded-2xl border-2 text-sm font-bold text-left transition-all ${
+                    parcelSize === s ? "border-primary bg-accent" : "border-border bg-card"
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       {mode === "scheduled" && (
         <div>
           <label className="block text-lg font-bold mb-2">Date et heure</label>
@@ -266,6 +320,15 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
 function FamilyWait({ request, onDone }: { request: Request | undefined; onDone: () => void }) {
   const [paid, setPaid] = useState(false);
   const [showPay, setShowPay] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const toLocalInput = (ts: number) => {
+    const d = new Date(ts);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+  const [newWhen, setNewWhen] = useState<string>(() =>
+    request?.scheduledAt ? toLocalInput(request.scheduledAt) : "",
+  );
   if (!request) return null;
   const accepted = request.status === "accepted" && request.student;
 
@@ -297,7 +360,49 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
             </div>
             <div className="w-full bg-card rounded-2xl p-5 border-2 border-border text-left">
               <p className="text-sm text-muted-foreground">Date et heure</p>
-              <p className="text-lg font-bold">{formatSchedule(request.scheduledAt!)}</p>
+              {!editing ? (
+                <>
+                  <p className="text-lg font-bold">{formatSchedule(request.scheduledAt!)}</p>
+                  <button
+                    type="button"
+                    onClick={() => { setNewWhen(toLocalInput(request.scheduledAt!)); setEditing(true); }}
+                    className="mt-2 text-sm font-bold text-primary underline"
+                  >
+                    ✏️ Modifier le rendez-vous
+                  </button>
+                </>
+              ) : (
+                <div className="flex flex-col gap-2 mt-1">
+                  <input
+                    type="datetime-local"
+                    value={newWhen}
+                    onChange={(e) => setNewWhen(e.target.value)}
+                    className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditing(false)}
+                      className="py-3 rounded-2xl border-2 border-border bg-card font-bold text-sm"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const ts = new Date(newWhen).getTime();
+                        if (!Number.isNaN(ts)) {
+                          store.updateRequest(request.id, { scheduledAt: ts });
+                          setEditing(false);
+                        }
+                      }}
+                      className="py-3 rounded-2xl bg-primary text-primary-foreground font-bold text-sm"
+                    >
+                      Enregistrer
+                    </button>
+                  </div>
+                </div>
+              )}
               <p className="text-sm text-muted-foreground mt-3">Besoin</p>
               <p className="text-base font-semibold">{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</p>
             </div>
@@ -582,6 +687,9 @@ function StudentFlow() {
                       {(r.need === "Compagnie/Présence" || r.need === "Accompagnement sorties extérieures") && r.durationHours && r.durationHours > 1 && (
                         <p className="text-sm mt-1 font-semibold">⏱️ Durée : {r.durationHours}h</p>
                       )}
+                      {r.need === "Retrait ou dépôt d'un colis" && (
+                        <p className="text-sm mt-1 font-semibold">📦 {r.parcelWeight} · {r.parcelSize}</p>
+                      )}
                       {scheduled && (
                         <p className="text-sm mt-2 font-semibold">🗓️ {formatSchedule(r.scheduledAt!)}</p>
                       )}
@@ -616,6 +724,13 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
         <p className="text-2xl font-bold mt-1">{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</p>
         {(request.need === "Compagnie/Présence" || request.need === "Accompagnement sorties extérieures") && request.durationHours && request.durationHours > 1 && (
           <p className="text-base font-semibold mt-2">⏱️ Durée demandée : {request.durationHours}h</p>
+        )}
+        {request.need === "Retrait ou dépôt d'un colis" && (
+          <div className="mt-3 bg-accent rounded-xl p-3">
+            <p className="text-xs text-muted-foreground font-bold uppercase">Colis</p>
+            <p className="text-base font-semibold mt-1">⚖️ Poids : {request.parcelWeight}</p>
+            <p className="text-base font-semibold mt-1">📦 Taille : {request.parcelSize}</p>
+          </div>
         )}
         <p className="text-base text-muted-foreground mt-3">📍 {request.city}</p>
         {request.scheduledAt ? (
