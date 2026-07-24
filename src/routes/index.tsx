@@ -170,23 +170,31 @@ function TaxCreditHint({ total, className = "" }: { total: number; className?: s
 /* ---------------- FAMILY ---------------- */
 
 function FamilyFlow() {
-  const [step, setStep] = useState<"home" | "form" | "wait">("home");
+  const [step, setStep] = useState<"home" | "form" | "wait" | "account">("home");
   const [requestMode, setRequestMode] = useState<"asap" | "scheduled">("asap");
   const currentId = useStore((s) => s.currentRequestId);
   const current = useStore((s) => s.requests.find((r) => r.id === s.currentRequestId));
+  const account = useFamilyAccount();
 
   useEffect(() => {
     if (step !== "wait" || !currentId || current?.status !== "searching") return;
-    // ASAP => auto-match after a short delay. Scheduled => wait for a student.
     const isFuture = !!current?.scheduledAt && current.scheduledAt > Date.now() + 60_000;
     if (isFuture) return;
     const t = setTimeout(() => store.acceptRequest(currentId, Math.floor(Math.random() * 3)), 3500);
     return () => clearTimeout(t);
   }, [step, current?.status, current?.scheduledAt, currentId]);
 
+  if (step === "account") return <FamilyAccountScreen onBack={() => setStep("home")} />;
+
   if (step === "home")
     return (
-      <div className="flex-1 flex flex-col justify-center items-center px-6 py-8 gap-6">
+      <div className="flex-1 flex flex-col justify-center items-center px-6 py-8 gap-5">
+        <button
+          onClick={() => setStep("account")}
+          className="self-end text-sm font-semibold text-primary underline"
+        >
+          {account ? `👤 ${account.fullName.split(" ")[0]}` : "👤 Mon compte"}
+        </button>
         <div className="text-center">
           <p className="text-lg text-muted-foreground">Besoin d'aide ?</p>
           <p className="text-base text-muted-foreground mt-1">Choisissez le moment qui vous convient.</p>
@@ -207,6 +215,13 @@ function FamilyFlow() {
           <span>Prendre un rendez-vous</span>
           <span className="text-sm font-normal text-muted-foreground">Planifier pour plus tard</span>
         </button>
+        <div className="w-full bg-success/10 border-2 border-success/40 rounded-2xl p-4 text-center">
+          <p className="text-sm font-bold text-success">🇫🇷 Services à la personne (SAP)</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Bénéficiez d'un <b className="text-foreground">crédit d'impôt de 50 %</b> sur toutes vos missions.
+            Récapitulatif annuel disponible chaque janvier depuis votre compte.
+          </p>
+        </div>
         <p className="text-xs text-muted-foreground text-center max-w-xs">
           En cas d'urgence vitale, composez le <span className="font-bold text-foreground">15</span> (SAMU).
         </p>
