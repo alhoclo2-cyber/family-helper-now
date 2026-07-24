@@ -1405,3 +1405,214 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
+/* ---------------- FAMILY ACCOUNT SCREEN ---------------- */
+
+function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
+  const account = useFamilyAccount();
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [showYear, setShowYear] = useState<number | null>(null);
+
+  if (!account) {
+    const submit = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!fullName.trim() || !email.trim()) return;
+      saveFamilyAccount({
+        email: email.trim(),
+        fullName: fullName.trim(),
+        createdAt: Date.now(),
+        orders: [],
+      });
+    };
+    return (
+      <form onSubmit={submit} className="flex-1 flex flex-col px-5 py-6 gap-4">
+        <button type="button" onClick={onBack} className="text-base text-muted-foreground text-left">← Retour</button>
+        <div className="text-center">
+          <div className="text-5xl">👤</div>
+          <h2 className="text-2xl font-black mt-2">Créer mon compte</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Retrouvez l'historique de vos missions et votre récapitulatif fiscal annuel.
+          </p>
+        </div>
+        <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-3 text-sm">
+          🇫🇷 <b>Services à la personne (SAP)</b> — <b>50 % de crédit d'impôt</b> sur toutes vos missions.
+        </div>
+        <input
+          required
+          placeholder="Nom et prénom"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          className="px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
+        />
+        <input
+          required
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
+        />
+        <div className="flex-1" />
+        <button type="submit" className="btn-huge bg-primary text-primary-foreground">
+          Créer mon compte
+        </button>
+      </form>
+    );
+  }
+
+  // Aggregate orders by year
+  const byYear = new Map<number, Order[]>();
+  for (const o of account.orders) {
+    const y = new Date(o.date).getFullYear();
+    if (!byYear.has(y)) byYear.set(y, []);
+    byYear.get(y)!.push(o);
+  }
+  const years = Array.from(byYear.keys()).sort((a, b) => b - a);
+
+  if (showYear !== null) {
+    const orders = byYear.get(showYear) ?? [];
+    const totalYear = orders.reduce((s, o) => s + o.total, 0);
+    const creditYear = totalYear * TAX_CREDIT_RATE;
+    return (
+      <div className="flex-1 flex flex-col px-5 py-6 gap-4">
+        <button onClick={() => setShowYear(null)} className="text-base text-muted-foreground text-left">← Retour au compte</button>
+        <div>
+          <h2 className="text-2xl font-black">Récapitulatif fiscal {showYear}</h2>
+          <p className="text-sm text-muted-foreground mt-1">Attestation Services à la Personne</p>
+        </div>
+        <div className="bg-card rounded-2xl p-5 border-2 border-border">
+          <p className="text-sm text-muted-foreground">Titulaire</p>
+          <p className="text-lg font-bold">{account.fullName}</p>
+          <p className="text-xs text-muted-foreground mt-1">{account.email}</p>
+        </div>
+        <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-5">
+          <div className="flex justify-between text-base">
+            <span className="text-muted-foreground">Total dépensé en {showYear}</span>
+            <span className="font-black">{formatPrice(totalYear)} €</span>
+          </div>
+          <div className="flex justify-between text-base mt-2">
+            <span className="text-muted-foreground">Nombre de missions</span>
+            <span className="font-semibold">{orders.length}</span>
+          </div>
+          <div className="h-px bg-success/30 my-3" />
+          <div className="flex justify-between text-lg font-black text-success">
+            <span>💰 Crédit d'impôt (50 %)</span>
+            <span>{formatPrice(creditYear)} €</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Montant à reporter sur votre déclaration de revenus (case 7DB) pour bénéficier du crédit d'impôt SAP.
+          </p>
+        </div>
+        <div>
+          <p className="font-bold mb-2">Détail des missions</p>
+          <div className="flex flex-col gap-2">
+            {orders.map((o) => (
+              <div key={o.id} className="bg-card rounded-xl p-3 border-2 border-border text-sm">
+                <div className="flex justify-between font-semibold">
+                  <span>{o.need}</span>
+                  <span>{formatPrice(o.total)} €</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {new Date(o.date).toLocaleDateString("fr-FR")} · {o.address}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const totalAll = account.orders.reduce((s, o) => s + o.total, 0);
+  const currentYear = new Date().getFullYear();
+
+  return (
+    <div className="flex-1 flex flex-col px-5 py-6 gap-4">
+      <button onClick={onBack} className="text-base text-muted-foreground text-left">← Retour</button>
+      <div className="bg-card rounded-3xl p-5 border-2 border-border flex items-center gap-4">
+        <div className="h-14 w-14 rounded-full bg-primary text-primary-foreground grid place-items-center text-2xl font-black">
+          {account.fullName.slice(0, 1).toUpperCase()}
+        </div>
+        <div className="min-w-0">
+          <p className="text-lg font-bold truncate">{account.fullName}</p>
+          <p className="text-xs text-muted-foreground truncate">{account.email}</p>
+        </div>
+      </div>
+
+      <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-4">
+        <p className="text-sm font-bold text-success">🇫🇷 Services à la personne</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Total dépensé : <b className="text-foreground">{formatPrice(totalAll)} €</b> ·
+          Crédit d'impôt estimé : <b className="text-success">{formatPrice(totalAll * TAX_CREDIT_RATE)} €</b>
+        </p>
+      </div>
+
+      <div>
+        <p className="font-bold mb-2">📊 Récapitulatif fiscal annuel</p>
+        {years.length === 0 ? (
+          <div className="bg-card rounded-2xl p-4 border-2 border-border text-sm text-muted-foreground text-center">
+            Vous n'avez pas encore de commande. Votre récapitulatif {currentYear} sera généré automatiquement en janvier {currentYear + 1}.
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {years.map((y) => {
+              const orders = byYear.get(y)!;
+              const total = orders.reduce((s, o) => s + o.total, 0);
+              return (
+                <button
+                  key={y}
+                  onClick={() => setShowYear(y)}
+                  className="text-left bg-card rounded-2xl p-4 border-2 border-border hover:border-primary"
+                >
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-bold">Année {y}</p>
+                      <p className="text-xs text-muted-foreground">{orders.length} mission(s) · {formatPrice(total)} €</p>
+                    </div>
+                    <span className="text-sm font-bold text-primary">Voir →</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <p className="font-bold mb-2">🗂️ Historique des commandes</p>
+        {account.orders.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-6">Aucune commande pour le moment.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {account.orders.map((o) => (
+              <div key={o.id} className="bg-card rounded-2xl p-4 border-2 border-border">
+                <div className="flex justify-between items-start gap-2">
+                  <div className="min-w-0">
+                    <p className="font-bold">{o.need}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {new Date(o.date).toLocaleString("fr-FR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1 truncate">📍 {o.address}</p>
+                    {o.studentName && <p className="text-xs mt-1">🎓 {o.studentName}</p>}
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-black">{formatPrice(o.total)} €</p>
+                    <p className="text-[11px] text-success">–50 % SAP</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <button
+        onClick={() => { if (confirm("Se déconnecter de votre compte ?")) saveFamilyAccount(null); }}
+        className="text-sm text-muted-foreground underline mt-2"
+      >
+        Se déconnecter
+      </button>
+    </div>
+  );
+}
+
