@@ -87,36 +87,114 @@ function formatSchedule(ts: number) {
 
 const BASE_RATE = 21;
 const SERVICE_FEE = 4.87;
+const TAX_CREDIT_RATE = 0.5; // SAP : crédit d'impôt de 50 %
 
 function computePrice(hours: number) {
   const total = hours <= 1 ? BASE_RATE : BASE_RATE * hours;
-  return { total, serviceFee: SERVICE_FEE, intervention: total - SERVICE_FEE };
+  return {
+    total,
+    serviceFee: SERVICE_FEE,
+    intervention: total - SERVICE_FEE,
+    afterCredit: total * (1 - TAX_CREDIT_RATE),
+    credit: total * TAX_CREDIT_RATE,
+  };
 }
 
 function formatPrice(n: number) {
   return n.toFixed(2).replace(".", ",");
 }
 
+/* ---------------- FAMILY ACCOUNT (SAP) ---------------- */
+
+type Order = {
+  id: string;
+  date: number;
+  need: NeedType;
+  address: string;
+  hours: number;
+  total: number;
+  studentName?: string;
+};
+
+type FamilyAccount = {
+  email: string;
+  fullName: string;
+  createdAt: number;
+  orders: Order[];
+};
+
+const FAMILY_ACCOUNT_KEY = "sos-family-account";
+
+function loadFamilyAccount(): FamilyAccount | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(FAMILY_ACCOUNT_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+function saveFamilyAccount(a: FamilyAccount | null) {
+  try {
+    if (a) localStorage.setItem(FAMILY_ACCOUNT_KEY, JSON.stringify(a));
+    else localStorage.removeItem(FAMILY_ACCOUNT_KEY);
+    window.dispatchEvent(new Event("sos-family-account-changed"));
+  } catch {}
+}
+function useFamilyAccount() {
+  const [acc, setAcc] = useState<FamilyAccount | null>(() => loadFamilyAccount());
+  useEffect(() => {
+    const refresh = () => setAcc(loadFamilyAccount());
+    window.addEventListener("storage", refresh);
+    window.addEventListener("sos-family-account-changed", refresh);
+    return () => {
+      window.removeEventListener("storage", refresh);
+      window.removeEventListener("sos-family-account-changed", refresh);
+    };
+  }, []);
+  return acc;
+}
+function addOrderToAccount(order: Order) {
+  const a = loadFamilyAccount();
+  if (!a) return;
+  saveFamilyAccount({ ...a, orders: [order, ...a.orders] });
+}
+
+function TaxCreditHint({ total, className = "" }: { total: number; className?: string }) {
+  return (
+    <div className={`text-xs text-muted-foreground ${className}`}>
+      💚 Soit <b className="text-success">{formatPrice(total * (1 - TAX_CREDIT_RATE))} €</b> après crédit d'impôt SAP (–50 %)
+    </div>
+  );
+}
+
 /* ---------------- FAMILY ---------------- */
 
 function FamilyFlow() {
-  const [step, setStep] = useState<"home" | "form" | "wait">("home");
+  const [step, setStep] = useState<"home" | "form" | "wait" | "account">("home");
   const [requestMode, setRequestMode] = useState<"asap" | "scheduled">("asap");
   const currentId = useStore((s) => s.currentRequestId);
   const current = useStore((s) => s.requests.find((r) => r.id === s.currentRequestId));
+  const account = useFamilyAccount();
 
   useEffect(() => {
     if (step !== "wait" || !currentId || current?.status !== "searching") return;
-    // ASAP => auto-match after a short delay. Scheduled => wait for a student.
     const isFuture = !!current?.scheduledAt && current.scheduledAt > Date.now() + 60_000;
     if (isFuture) return;
     const t = setTimeout(() => store.acceptRequest(currentId, Math.floor(Math.random() * 3)), 3500);
     return () => clearTimeout(t);
   }, [step, current?.status, current?.scheduledAt, currentId]);
 
+  if (step === "account") return <FamilyAccountScreen onBack={() => setStep("home")} />;
+
   if (step === "home")
     return (
-      <div className="flex-1 flex flex-col justify-center items-center px-6 py-8 gap-6">
+      <div className="flex-1 flex flex-col justify-center items-center px-6 py-8 gap-5">
+        <button
+          onClick={() => setStep("account")}
+          className="self-end text-sm font-semibold text-primary underline"
+        >
+          {account ? `👤 ${account.fullName.split(" ")[0]}` : "👤 Mon compte"}
+        </button>
         <div className="text-center">
           <p className="text-lg text-muted-foreground">Besoin d'aide ?</p>
           <p className="text-base text-muted-foreground mt-1">Choisissez le moment qui vous convient.</p>
@@ -137,6 +215,13 @@ function FamilyFlow() {
           <span>Prendre un rendez-vous</span>
           <span className="text-sm font-normal text-muted-foreground">Planifier pour plus tard</span>
         </button>
+        <div className="w-full bg-success/10 border-2 border-success/40 rounded-2xl p-4 text-center">
+          <p className="text-sm font-bold text-success">🇫🇷 Services à la personne (SAP)</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Bénéficiez d'un <b className="text-foreground">crédit d'impôt de 50 %</b> sur toutes vos missions.
+            Récapitulatif annuel disponible chaque janvier depuis votre compte.
+          </p>
+        </div>
         <p className="text-xs text-muted-foreground text-center max-w-xs">
           En cas d'urgence vitale, composez le <span className="font-bold text-foreground">15</span> (SAMU).
         </p>
@@ -249,6 +334,15 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
               ? " (tarif forfaitaire 1h, frais de service 4,87 € inclus)"
               : ` (${durationHours}h × 21 €, frais de service 4,87 € inclus)`}
           </p>
+          <TaxCreditHint total={computePrice(durationHours).total} className="mt-1" />
+        </div>
+      )}
+      {false && null}
+      {/* separator */}
+      {need !== "Compagnie/Présence" && need !== "Accompagnement sorties extérieures" && need !== "Retrait ou dépôt d'un colis" && (
+        <div className="bg-accent rounded-2xl p-3 text-sm">
+          Tarif : <b>{formatPrice(BASE_RATE)} €</b> (forfait 1h, frais de service 4,87 € inclus)
+          <TaxCreditHint total={BASE_RATE} className="mt-1" />
         </div>
       )}
       {need === "Retrait ou dépôt d'un colis" && (
@@ -356,7 +450,19 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
       <PaymentScreen
         student={request.student!.firstName}
         hours={hours}
-        onDone={() => { setPaid(true); setShowPay(false); }}
+        onDone={() => {
+          addOrderToAccount({
+            id: request.id,
+            date: Date.now(),
+            need: request.need,
+            address: request.address,
+            hours,
+            total,
+            studentName: request.student!.firstName,
+          });
+          setPaid(true);
+          setShowPay(false);
+        }}
         onBack={() => setShowPay(false)}
       />
     );
@@ -460,22 +566,36 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
 
 
           {!paid ? (
-            <button onClick={() => setShowPay(true)} className="btn-huge bg-primary text-primary-foreground w-full">
-              💳 Procéder au paiement — {total} €
-            </button>
+            <>
+              <div className="w-full bg-success/10 border-2 border-success/40 rounded-2xl p-3 text-left">
+                <p className="text-sm font-bold text-success">
+                  💚 Après crédit d'impôt SAP (–50 %) : {formatPrice(computePrice(hours).afterCredit)} €
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Récapitulatif annuel disponible en janvier depuis votre compte.
+                </p>
+              </div>
+              <button onClick={() => setShowPay(true)} className="btn-huge bg-primary text-primary-foreground w-full">
+                💳 Finaliser & payer — {formatPrice(total)} €
+              </button>
+              <p className="text-xs text-muted-foreground">
+                Les coordonnées de l'étudiant seront révélées après paiement.
+              </p>
+            </>
           ) : (
-            <div className="w-full bg-success/10 border-2 border-success rounded-2xl p-4">
-              <p className="text-lg font-bold text-success">✅ Paiement confirmé</p>
-              <p className="text-sm text-muted-foreground mt-1">Reçu envoyé par SMS</p>
-            </div>
+            <>
+              <div className="w-full bg-success/10 border-2 border-success rounded-2xl p-4">
+                <p className="text-lg font-bold text-success">✅ Paiement confirmé</p>
+                <p className="text-sm text-muted-foreground mt-1">Reçu envoyé par SMS · ajouté à votre compte</p>
+              </div>
+              <a
+                href={`tel:${request.phone}`}
+                className="btn-huge bg-success text-success-foreground text-center w-full"
+              >
+                📞 Appeler l'étudiant
+              </a>
+            </>
           )}
-
-          <a
-            href={`tel:${request.student!.firstName}`}
-            className="btn-huge bg-success text-success-foreground text-center w-full"
-          >
-            📞 Appeler l'étudiant
-          </a>
           <button onClick={onDone} className="text-base text-muted-foreground underline">Terminer</button>
         </>
       )}
@@ -518,8 +638,21 @@ function PaymentScreen({ student, hours, onDone, onBack }: { student: string; ho
         </div>
         <div className="h-px bg-border my-3" />
         <div className="flex justify-between text-xl font-black">
-          <span>Total</span>
+          <span>Total à payer</span>
           <span>{formatPrice(total)} €</span>
+        </div>
+        <div className="mt-3 bg-success/10 border-2 border-success/40 rounded-xl p-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Crédit d'impôt SAP (50 %)</span>
+            <span className="font-semibold text-success">– {formatPrice(computePrice(hours).credit)} €</span>
+          </div>
+          <div className="flex justify-between text-base font-black mt-1">
+            <span className="text-success">Coût réel après crédit d'impôt</span>
+            <span className="text-success">{formatPrice(computePrice(hours).afterCredit)} €</span>
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Service à la personne éligible — attestation fiscale envoyée chaque janvier.
+          </p>
         </div>
       </div>
 
@@ -1268,6 +1401,217 @@ function Row({ label, value }: { label: string; value: string }) {
     <div>
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="font-semibold break-words">{value}</p>
+    </div>
+  );
+}
+
+/* ---------------- FAMILY ACCOUNT SCREEN ---------------- */
+
+function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
+  const account = useFamilyAccount();
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [showYear, setShowYear] = useState<number | null>(null);
+
+  if (!account) {
+    const submit = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!fullName.trim() || !email.trim()) return;
+      saveFamilyAccount({
+        email: email.trim(),
+        fullName: fullName.trim(),
+        createdAt: Date.now(),
+        orders: [],
+      });
+    };
+    return (
+      <form onSubmit={submit} className="flex-1 flex flex-col px-5 py-6 gap-4">
+        <button type="button" onClick={onBack} className="text-base text-muted-foreground text-left">← Retour</button>
+        <div className="text-center">
+          <div className="text-5xl">👤</div>
+          <h2 className="text-2xl font-black mt-2">Créer mon compte</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Retrouvez l'historique de vos missions et votre récapitulatif fiscal annuel.
+          </p>
+        </div>
+        <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-3 text-sm">
+          🇫🇷 <b>Services à la personne (SAP)</b> — <b>50 % de crédit d'impôt</b> sur toutes vos missions.
+        </div>
+        <input
+          required
+          placeholder="Nom et prénom"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          className="px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
+        />
+        <input
+          required
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
+        />
+        <div className="flex-1" />
+        <button type="submit" className="btn-huge bg-primary text-primary-foreground">
+          Créer mon compte
+        </button>
+      </form>
+    );
+  }
+
+  // Aggregate orders by year
+  const byYear = new Map<number, Order[]>();
+  for (const o of account.orders) {
+    const y = new Date(o.date).getFullYear();
+    if (!byYear.has(y)) byYear.set(y, []);
+    byYear.get(y)!.push(o);
+  }
+  const years = Array.from(byYear.keys()).sort((a, b) => b - a);
+
+  if (showYear !== null) {
+    const orders = byYear.get(showYear) ?? [];
+    const totalYear = orders.reduce((s, o) => s + o.total, 0);
+    const creditYear = totalYear * TAX_CREDIT_RATE;
+    return (
+      <div className="flex-1 flex flex-col px-5 py-6 gap-4">
+        <button onClick={() => setShowYear(null)} className="text-base text-muted-foreground text-left">← Retour au compte</button>
+        <div>
+          <h2 className="text-2xl font-black">Récapitulatif fiscal {showYear}</h2>
+          <p className="text-sm text-muted-foreground mt-1">Attestation Services à la Personne</p>
+        </div>
+        <div className="bg-card rounded-2xl p-5 border-2 border-border">
+          <p className="text-sm text-muted-foreground">Titulaire</p>
+          <p className="text-lg font-bold">{account.fullName}</p>
+          <p className="text-xs text-muted-foreground mt-1">{account.email}</p>
+        </div>
+        <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-5">
+          <div className="flex justify-between text-base">
+            <span className="text-muted-foreground">Total dépensé en {showYear}</span>
+            <span className="font-black">{formatPrice(totalYear)} €</span>
+          </div>
+          <div className="flex justify-between text-base mt-2">
+            <span className="text-muted-foreground">Nombre de missions</span>
+            <span className="font-semibold">{orders.length}</span>
+          </div>
+          <div className="h-px bg-success/30 my-3" />
+          <div className="flex justify-between text-lg font-black text-success">
+            <span>💰 Crédit d'impôt (50 %)</span>
+            <span>{formatPrice(creditYear)} €</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Montant à reporter sur votre déclaration de revenus (case 7DB) pour bénéficier du crédit d'impôt SAP.
+          </p>
+        </div>
+        <div>
+          <p className="font-bold mb-2">Détail des missions</p>
+          <div className="flex flex-col gap-2">
+            {orders.map((o) => (
+              <div key={o.id} className="bg-card rounded-xl p-3 border-2 border-border text-sm">
+                <div className="flex justify-between font-semibold">
+                  <span>{o.need}</span>
+                  <span>{formatPrice(o.total)} €</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {new Date(o.date).toLocaleDateString("fr-FR")} · {o.address}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const totalAll = account.orders.reduce((s, o) => s + o.total, 0);
+  const currentYear = new Date().getFullYear();
+
+  return (
+    <div className="flex-1 flex flex-col px-5 py-6 gap-4">
+      <button onClick={onBack} className="text-base text-muted-foreground text-left">← Retour</button>
+      <div className="bg-card rounded-3xl p-5 border-2 border-border flex items-center gap-4">
+        <div className="h-14 w-14 rounded-full bg-primary text-primary-foreground grid place-items-center text-2xl font-black">
+          {account.fullName.slice(0, 1).toUpperCase()}
+        </div>
+        <div className="min-w-0">
+          <p className="text-lg font-bold truncate">{account.fullName}</p>
+          <p className="text-xs text-muted-foreground truncate">{account.email}</p>
+        </div>
+      </div>
+
+      <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-4">
+        <p className="text-sm font-bold text-success">🇫🇷 Services à la personne</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Total dépensé : <b className="text-foreground">{formatPrice(totalAll)} €</b> ·
+          Crédit d'impôt estimé : <b className="text-success">{formatPrice(totalAll * TAX_CREDIT_RATE)} €</b>
+        </p>
+      </div>
+
+      <div>
+        <p className="font-bold mb-2">📊 Récapitulatif fiscal annuel</p>
+        {years.length === 0 ? (
+          <div className="bg-card rounded-2xl p-4 border-2 border-border text-sm text-muted-foreground text-center">
+            Vous n'avez pas encore de commande. Votre récapitulatif {currentYear} sera généré automatiquement en janvier {currentYear + 1}.
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {years.map((y) => {
+              const orders = byYear.get(y)!;
+              const total = orders.reduce((s, o) => s + o.total, 0);
+              return (
+                <button
+                  key={y}
+                  onClick={() => setShowYear(y)}
+                  className="text-left bg-card rounded-2xl p-4 border-2 border-border hover:border-primary"
+                >
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-bold">Année {y}</p>
+                      <p className="text-xs text-muted-foreground">{orders.length} mission(s) · {formatPrice(total)} €</p>
+                    </div>
+                    <span className="text-sm font-bold text-primary">Voir →</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <p className="font-bold mb-2">🗂️ Historique des commandes</p>
+        {account.orders.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-6">Aucune commande pour le moment.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {account.orders.map((o) => (
+              <div key={o.id} className="bg-card rounded-2xl p-4 border-2 border-border">
+                <div className="flex justify-between items-start gap-2">
+                  <div className="min-w-0">
+                    <p className="font-bold">{o.need}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {new Date(o.date).toLocaleString("fr-FR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1 truncate">📍 {o.address}</p>
+                    {o.studentName && <p className="text-xs mt-1">🎓 {o.studentName}</p>}
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-black">{formatPrice(o.total)} €</p>
+                    <p className="text-[11px] text-success">–50 % SAP</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <button
+        onClick={() => { if (confirm("Se déconnecter de votre compte ?")) saveFamilyAccount(null); }}
+        className="text-sm text-muted-foreground underline mt-2"
+      >
+        Se déconnecter
+      </button>
     </div>
   );
 }
