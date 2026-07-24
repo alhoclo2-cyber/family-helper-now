@@ -334,6 +334,17 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
               ? " (tarif forfaitaire 1h, frais de service 4,87 € inclus)"
               : ` (${durationHours}h × 21 €, frais de service 4,87 € inclus)`}
           </p>
+          <TaxCreditHint total={computePrice(durationHours).total} className="mt-1" />
+        </div>
+      )}
+      {false && null}
+      {/* separator */}
+      {need !== "Compagnie/Présence" && need !== "Accompagnement sorties extérieures" && need !== "Retrait ou dépôt d'un colis" && (
+        <div className="bg-accent rounded-2xl p-3 text-sm">
+          Tarif : <b>{formatPrice(BASE_RATE)} €</b> (forfait 1h, frais de service 4,87 € inclus)
+          <TaxCreditHint total={BASE_RATE} className="mt-1" />
+        </div>
+      )}
         </div>
       )}
       {need === "Retrait ou dépôt d'un colis" && (
