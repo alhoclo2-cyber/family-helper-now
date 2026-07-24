@@ -638,8 +638,21 @@ function PaymentScreen({ student, hours, onDone, onBack }: { student: string; ho
         </div>
         <div className="h-px bg-border my-3" />
         <div className="flex justify-between text-xl font-black">
-          <span>Total</span>
+          <span>Total à payer</span>
           <span>{formatPrice(total)} €</span>
+        </div>
+        <div className="mt-3 bg-success/10 border-2 border-success/40 rounded-xl p-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Crédit d'impôt SAP (50 %)</span>
+            <span className="font-semibold text-success">– {formatPrice(computePrice(hours).credit)} €</span>
+          </div>
+          <div className="flex justify-between text-base font-black mt-1">
+            <span className="text-success">Coût réel après crédit d'impôt</span>
+            <span className="text-success">{formatPrice(computePrice(hours).afterCredit)} €</span>
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Service à la personne éligible — attestation fiscale envoyée chaque janvier.
+          </p>
         </div>
       </div>
 
