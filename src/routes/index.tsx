@@ -554,22 +554,36 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
 
 
           {!paid ? (
-            <button onClick={() => setShowPay(true)} className="btn-huge bg-primary text-primary-foreground w-full">
-              💳 Procéder au paiement — {total} €
-            </button>
+            <>
+              <div className="w-full bg-success/10 border-2 border-success/40 rounded-2xl p-3 text-left">
+                <p className="text-sm font-bold text-success">
+                  💚 Après crédit d'impôt SAP (–50 %) : {formatPrice(computePrice(hours).afterCredit)} €
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Récapitulatif annuel disponible en janvier depuis votre compte.
+                </p>
+              </div>
+              <button onClick={() => setShowPay(true)} className="btn-huge bg-primary text-primary-foreground w-full">
+                💳 Finaliser & payer — {formatPrice(total)} €
+              </button>
+              <p className="text-xs text-muted-foreground">
+                Les coordonnées de l'étudiant seront révélées après paiement.
+              </p>
+            </>
           ) : (
-            <div className="w-full bg-success/10 border-2 border-success rounded-2xl p-4">
-              <p className="text-lg font-bold text-success">✅ Paiement confirmé</p>
-              <p className="text-sm text-muted-foreground mt-1">Reçu envoyé par SMS</p>
-            </div>
+            <>
+              <div className="w-full bg-success/10 border-2 border-success rounded-2xl p-4">
+                <p className="text-lg font-bold text-success">✅ Paiement confirmé</p>
+                <p className="text-sm text-muted-foreground mt-1">Reçu envoyé par SMS · ajouté à votre compte</p>
+              </div>
+              <a
+                href={`tel:${request.phone}`}
+                className="btn-huge bg-success text-success-foreground text-center w-full"
+              >
+                📞 Appeler l'étudiant
+              </a>
+            </>
           )}
-
-          <a
-            href={`tel:${request.student!.firstName}`}
-            className="btn-huge bg-success text-success-foreground text-center w-full"
-          >
-            📞 Appeler l'étudiant
-          </a>
           <button onClick={onDone} className="text-base text-muted-foreground underline">Terminer</button>
         </>
       )}
