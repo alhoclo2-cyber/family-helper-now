@@ -450,7 +450,19 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
       <PaymentScreen
         student={request.student!.firstName}
         hours={hours}
-        onDone={() => { setPaid(true); setShowPay(false); }}
+        onDone={() => {
+          addOrderToAccount({
+            id: request.id,
+            date: Date.now(),
+            need: request.need,
+            address: request.address,
+            hours,
+            total,
+            studentName: request.student!.firstName,
+          });
+          setPaid(true);
+          setShowPay(false);
+        }}
         onBack={() => setShowPay(false)}
       />
     );
