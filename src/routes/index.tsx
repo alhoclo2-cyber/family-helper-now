@@ -345,8 +345,6 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
           <TaxCreditHint total={BASE_RATE} className="mt-1" />
         </div>
       )}
-        </div>
-      )}
       {need === "Retrait ou dépôt d'un colis" && (
         <div className="flex flex-col gap-4">
           <div>
