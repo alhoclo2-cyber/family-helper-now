@@ -87,14 +87,84 @@ function formatSchedule(ts: number) {
 
 const BASE_RATE = 21;
 const SERVICE_FEE = 4.87;
+const TAX_CREDIT_RATE = 0.5; // SAP : crédit d'impôt de 50 %
 
 function computePrice(hours: number) {
   const total = hours <= 1 ? BASE_RATE : BASE_RATE * hours;
-  return { total, serviceFee: SERVICE_FEE, intervention: total - SERVICE_FEE };
+  return {
+    total,
+    serviceFee: SERVICE_FEE,
+    intervention: total - SERVICE_FEE,
+    afterCredit: total * (1 - TAX_CREDIT_RATE),
+    credit: total * TAX_CREDIT_RATE,
+  };
 }
 
 function formatPrice(n: number) {
   return n.toFixed(2).replace(".", ",");
+}
+
+/* ---------------- FAMILY ACCOUNT (SAP) ---------------- */
+
+type Order = {
+  id: string;
+  date: number;
+  need: NeedType;
+  address: string;
+  hours: number;
+  total: number;
+  studentName?: string;
+};
+
+type FamilyAccount = {
+  email: string;
+  fullName: string;
+  createdAt: number;
+  orders: Order[];
+};
+
+const FAMILY_ACCOUNT_KEY = "sos-family-account";
+
+function loadFamilyAccount(): FamilyAccount | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(FAMILY_ACCOUNT_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+function saveFamilyAccount(a: FamilyAccount | null) {
+  try {
+    if (a) localStorage.setItem(FAMILY_ACCOUNT_KEY, JSON.stringify(a));
+    else localStorage.removeItem(FAMILY_ACCOUNT_KEY);
+    window.dispatchEvent(new Event("sos-family-account-changed"));
+  } catch {}
+}
+function useFamilyAccount() {
+  const [acc, setAcc] = useState<FamilyAccount | null>(() => loadFamilyAccount());
+  useEffect(() => {
+    const refresh = () => setAcc(loadFamilyAccount());
+    window.addEventListener("storage", refresh);
+    window.addEventListener("sos-family-account-changed", refresh);
+    return () => {
+      window.removeEventListener("storage", refresh);
+      window.removeEventListener("sos-family-account-changed", refresh);
+    };
+  }, []);
+  return acc;
+}
+function addOrderToAccount(order: Order) {
+  const a = loadFamilyAccount();
+  if (!a) return;
+  saveFamilyAccount({ ...a, orders: [order, ...a.orders] });
+}
+
+function TaxCreditHint({ total, className = "" }: { total: number; className?: string }) {
+  return (
+    <div className={`text-xs text-muted-foreground ${className}`}>
+      💚 Soit <b className="text-success">{formatPrice(total * (1 - TAX_CREDIT_RATE))} €</b> après crédit d'impôt SAP (–50 %)
+    </div>
+  );
 }
 
 /* ---------------- FAMILY ---------------- */
