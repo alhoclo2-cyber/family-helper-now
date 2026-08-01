@@ -5,10 +5,10 @@ import { store, useStore, randomStudent, type NeedType, type Request } from "@/l
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "SOS Étudiants — Aide d'urgence pour seniors" },
-      { name: "description", content: "Mise en relation d'urgence entre familles seniors et étudiants à proximité." },
-      { property: "og:title", content: "SOS Étudiants" },
-      { property: "og:description", content: "Aide d'urgence à proximité pour les seniors." },
+      { title: "SOS Compagnons — Aide d'urgence pour seniors" },
+      { name: "description", content: "Mise en relation d'urgence entre familles seniors et compagnons étudiants à proximité." },
+      { property: "og:title", content: "SOS Compagnons" },
+      { property: "og:description", content: "Un besoin = Un compagnon = Un tarif unique. Aide d'urgence à proximité pour les seniors." },
     ],
   }),
   component: App,
