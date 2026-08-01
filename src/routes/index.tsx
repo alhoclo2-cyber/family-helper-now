@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { store, useStore, randomStudent, type NeedType, type Request } from "@/lib/store";
+import { CompanionLoyaltyGrid } from "@/components/CompanionLoyaltyGrid";
 
 export const Route = createFileRoute("/")({
   head: () => ({
