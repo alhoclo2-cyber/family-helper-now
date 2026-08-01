@@ -1159,27 +1159,30 @@ function StudentEnroll({
     return (
       <div className="flex-1 flex flex-col px-6 py-8 gap-5">
         <div className="text-center">
-          <div className="text-5xl mb-2">🎓</div>
+          <div className="text-5xl mb-2">🤝</div>
           <h2 className="text-2xl font-black">Devenir Compagnon SOS</h2>
           <p className="text-base text-muted-foreground mt-2">
-            Aidez des seniors près de chez vous et gagnez un revenu complémentaire.
+            Étudiant, salarié, indépendant, retraité ou en recherche d'emploi : aidez des familles près de chez vous
+            et gagnez un revenu complémentaire.
           </p>
         </div>
         <div className="bg-card border-2 border-border rounded-2xl p-5">
           <p className="font-bold mb-3">Conditions</p>
           <ul className="space-y-2 text-sm">
-            <li>✓ Être étudiant (18 ans et +)</li>
+            <li>✓ Être majeur (18 ans et +)</li>
             <li>✓ Pièce d'identité valide</li>
-            <li>✓ Carte étudiante en cours</li>
+            <li>✓ Justificatif de situation (carte étudiante, contrat de travail, attestation Pôle emploi/France Travail, notification de retraite…)</li>
             <li>✓ Extrait de casier judiciaire (bulletin n°3)</li>
             <li>✓ RIB pour les paiements</li>
           </ul>
         </div>
+        <ServiceLimitsNotice />
         <div className="flex-1" />
         <button onClick={() => setStep("form")} className="btn-huge bg-primary text-primary-foreground">
           Commencer ma candidature
         </button>
       </div>
+
     );
   }
 
