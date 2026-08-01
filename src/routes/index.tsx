@@ -299,7 +299,7 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
     e.preventDefault();
     if (!address.trim() || !phone.trim()) return;
     const scheduledAt = mode === "scheduled" ? new Date(when).getTime() : null;
-    const dh = (need === "Compagnie/Présence" || need === "Accompagnement sorties extérieures") ? durationHours : 1;
+    const dh = hasDuration ? durationHours : 1;
     const isParcel = need === "Retrait ou dépôt d'un colis";
     store.createRequest({
       need,
@@ -309,6 +309,10 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
       durationHours: dh,
       parcelWeight: isParcel ? parcelWeight : undefined,
       parcelSize: isParcel ? parcelSize : undefined,
+      childLevel: isHomework ? childLevel : undefined,
+      childrenCount: isChildcare ? childrenCount : undefined,
+      escortDestination: isEscortChild ? escortDestination : undefined,
+      escortDetail: isEscortChild && escortDestination === "Autre" ? escortDetail : undefined,
     });
     onSubmit();
   };
