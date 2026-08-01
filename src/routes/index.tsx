@@ -64,6 +64,15 @@ function Header({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
 }
 
 function NeedLabel({ need }: { need: NeedType }) {
+  const paren = need.match(/^(.*?)\s*\((.*)\)$/);
+  if (paren) {
+    return (
+      <div className="text-base font-semibold leading-tight">
+        <div>{paren[1]}</div>
+        <div className="text-xs font-medium text-muted-foreground">{paren[2]}</div>
+      </div>
+    );
+  }
   const [first, second] = need.split("/");
   if (second) {
     return (
@@ -75,6 +84,23 @@ function NeedLabel({ need }: { need: NeedType }) {
   }
   return <div className="text-base font-semibold leading-tight">{need}</div>;
 }
+
+function ServiceLimitsNotice({ className = "" }: { className?: string }) {
+  return (
+    <div className={`mt-3 rounded-2xl border-2 border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed ${className}`}>
+      <p className="font-bold mb-1">⚠️ Services non autorisés</p>
+      <p>
+        Les compagnons ne peuvent réaliser aucun service relevant d'une compétence médicale ou paramédicale
+        (soins, injections, médicaments administrés, toilette, transferts), d'un apprentissage ou d'un enseignement
+        certifiant (conduite, cours diplômants), d'une profession réglementée (juridique, comptable, financière,
+        travaux du bâtiment, électricité, gaz), ni aucune activité illégale, dangereuse ou discriminatoire
+        (transport de substances interdites, manipulation d'argent liquide, garde d'enfant de moins de 3 ans,
+        port de charges lourdes, intervention sur animaux malades).
+      </p>
+    </div>
+  );
+}
+
 
 function formatSchedule(ts: number) {
   return new Date(ts).toLocaleString("fr-FR", {
