@@ -852,6 +852,7 @@ type EnrollProfile = {
   lastName: string;
   email: string;
   phone: string;
+  situation?: string;
   school: string;
   city: string;
   motivation: string;
@@ -1094,6 +1095,7 @@ function StudentEnroll({
       lastName: "",
       email: "",
       phone: "",
+      situation: "Étudiant(e)",
       school: "",
       city: "",
       motivation: "",
@@ -1139,8 +1141,8 @@ function StudentEnroll({
         <div className="w-full bg-card border-2 border-border rounded-2xl p-5 text-left">
           <p className="text-sm text-muted-foreground">Candidat</p>
           <p className="text-lg font-bold">{enroll.profile?.firstName} {enroll.profile?.lastName}</p>
-          <p className="text-sm text-muted-foreground mt-2">École</p>
-          <p className="text-base">{enroll.profile?.school}</p>
+          <p className="text-sm text-muted-foreground mt-2">Situation</p>
+          <p className="text-base">{enroll.profile?.situation} — {enroll.profile?.school}</p>
           <p className="text-sm text-muted-foreground mt-2">Statut</p>
           <p className="text-base font-semibold text-warning-foreground">⏳ En attente de vérification</p>
         </div>
@@ -1214,7 +1216,7 @@ function StudentEnroll({
   ];
 
   const allDocs = docs.every((d) => p.docs[d.k]);
-  const valid = p.firstName && p.lastName && p.email && p.phone && p.school && p.city && p.selfie && allDocs;
+  const valid = p.firstName && p.lastName && p.email && p.phone && p.situation && p.school && p.city && p.selfie && allDocs;
 
   const setSelfie = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -1238,7 +1240,24 @@ function StudentEnroll({
       </div>
       <input required type="email" placeholder="Email" value={p.email} onChange={(e) => setP({ ...p, email: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
       <input required type="tel" placeholder="Téléphone" value={p.phone} onChange={(e) => setP({ ...p, phone: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
-      <input required placeholder="École / université" value={p.school} onChange={(e) => setP({ ...p, school: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
+      <div>
+        <p className="font-bold mb-2 text-sm">Votre situation</p>
+        <div className="grid grid-cols-2 gap-2">
+          {["Étudiant(e)", "Salarié(e)", "Indépendant(e)", "Retraité(e)", "En recherche d'emploi", "Autre"].map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setP({ ...p, situation: s })}
+              className={`py-3 px-2 rounded-2xl border-2 text-sm font-bold transition-all ${
+                p.situation === s ? "border-primary bg-accent" : "border-border bg-card"
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      </div>
+      <input required placeholder="Établissement / employeur / activité" value={p.school} onChange={(e) => setP({ ...p, school: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
       <input required placeholder="Ville" value={p.city} onChange={(e) => setP({ ...p, city: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
       <textarea placeholder="Pourquoi voulez-vous rejoindre SOS Compagnons ?" value={p.motivation} onChange={(e) => setP({ ...p, motivation: e.target.value })} rows={3} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none resize-none" />
 
@@ -1284,6 +1303,7 @@ function StudentEnroll({
       <button type="submit" disabled={!valid} className="btn-huge bg-primary text-primary-foreground disabled:opacity-50 mt-2">
         Envoyer ma candidature
       </button>
+      <ServiceLimitsNotice />
       <p className="text-xs text-muted-foreground text-center">🔒 Vos documents sont traités confidentiellement.</p>
     </form>
   );
@@ -1466,7 +1486,8 @@ function AdminApplicationDetail({ app, onBack }: { app: Application; onBack: () 
       <div className="bg-card rounded-2xl p-4 border-2 border-border space-y-2 text-sm">
         <Row label="Email" value={app.profile.email} />
         <Row label="Téléphone" value={app.profile.phone} />
-        <Row label="École" value={app.profile.school} />
+        <Row label="Situation" value={app.profile.situation ?? "—"} />
+        <Row label="Établissement / employeur" value={app.profile.school} />
         <Row label="Ville" value={app.profile.city} />
         {app.profile.motivation && <Row label="Motivation" value={app.profile.motivation} />}
       </div>
