@@ -1,14 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { store, useStore, randomStudent, type NeedType, type Request } from "@/lib/store";
+import { CompanionLoyaltyGrid } from "@/components/CompanionLoyaltyGrid";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "SOS Étudiants — Aide d'urgence pour seniors" },
-      { name: "description", content: "Mise en relation d'urgence entre familles seniors et étudiants à proximité." },
-      { property: "og:title", content: "SOS Étudiants" },
-      { property: "og:description", content: "Aide d'urgence à proximité pour les seniors." },
+      { title: "SOS Compagnons — Aide d'urgence pour seniors" },
+      { name: "description", content: "Mise en relation d'urgence entre familles seniors et compagnons étudiants à proximité." },
+      { property: "og:title", content: "SOS Compagnons" },
+      { property: "og:description", content: "Un besoin = Un compagnon = Un tarif unique. Aide d'urgence à proximité pour les seniors." },
     ],
   }),
   component: App,
@@ -41,7 +42,7 @@ function Header({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
       <div className="flex items-center gap-2 mb-4">
         <div className="h-10 w-10 rounded-2xl bg-primary grid place-items-center text-primary-foreground text-xl font-black">S</div>
         <div>
-          <h1 className="text-xl font-black leading-none">SOS Étudiants</h1>
+          <h1 className="text-xl font-black leading-none">SOS Compagnons</h1>
           <p className="text-xs text-muted-foreground mt-0.5">Aide d'urgence à proximité</p>
         </div>
       </div>
@@ -198,6 +199,14 @@ function FamilyFlow() {
         <div className="text-center">
           <p className="text-lg text-muted-foreground">Besoin d'aide ?</p>
           <p className="text-base text-muted-foreground mt-1">Choisissez le moment qui vous convient.</p>
+        </div>
+        <div className="w-full bg-card border-2 border-primary/30 rounded-2xl p-4 text-center">
+          <p className="text-base font-black">Un besoin = Un compagnon = Un tarif unique.</p>
+          <ul className="mt-2 text-sm text-muted-foreground space-y-0.5">
+            <li>0 € de frais de dossier</li>
+            <li>0 € d'abonnement</li>
+            <li>Sans engagement.</li>
+          </ul>
         </div>
         <button
           onClick={() => { setRequestMode("asap"); setStep("form"); }}
@@ -860,6 +869,8 @@ function StudentFlow() {
           Passez en ligne pour voir les demandes d'urgence près de vous.
         </p>
       )}
+
+      <CompanionLoyaltyGrid />
     </div>
   );
 }
@@ -1019,7 +1030,7 @@ function StudentEnroll({
       <div className="flex-1 flex flex-col px-6 py-8 gap-5">
         <div className="text-center">
           <div className="text-5xl mb-2">🎓</div>
-          <h2 className="text-2xl font-black">Devenir étudiant SOS</h2>
+          <h2 className="text-2xl font-black">Devenir Compagnon SOS</h2>
           <p className="text-base text-muted-foreground mt-2">
             Aidez des seniors près de chez vous et gagnez un revenu complémentaire.
           </p>
@@ -1096,7 +1107,7 @@ function StudentEnroll({
       <input required type="tel" placeholder="Téléphone" value={p.phone} onChange={(e) => setP({ ...p, phone: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
       <input required placeholder="École / université" value={p.school} onChange={(e) => setP({ ...p, school: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
       <input required placeholder="Ville" value={p.city} onChange={(e) => setP({ ...p, city: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
-      <textarea placeholder="Pourquoi voulez-vous rejoindre SOS Étudiants ?" value={p.motivation} onChange={(e) => setP({ ...p, motivation: e.target.value })} rows={3} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none resize-none" />
+      <textarea placeholder="Pourquoi voulez-vous rejoindre SOS Compagnons ?" value={p.motivation} onChange={(e) => setP({ ...p, motivation: e.target.value })} rows={3} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none resize-none" />
 
       <div className="mt-2">
         <p className="font-bold mb-2">Photo / Selfie</p>
@@ -1179,7 +1190,7 @@ function AdminLogin({ onOk }: { onOk: () => void }) {
     <form onSubmit={submit} className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
       <div className="text-6xl">🛡️</div>
       <h2 className="text-2xl font-black">Espace administrateur</h2>
-      <p className="text-sm text-muted-foreground">Réservé à l'équipe SOS Étudiants — vérification des candidatures.</p>
+      <p className="text-sm text-muted-foreground">Réservé à l'équipe SOS Compagnons — vérification des candidatures.</p>
       <input
         type="password"
         autoFocus
