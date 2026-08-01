@@ -341,7 +341,89 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
           ))}
         </div>
       </div>
-      {(need === "Compagnie/Présence" || need === "Accompagnement sorties extérieures") && (
+      {isChildNeed && (
+        <div className="flex flex-col gap-4">
+          <div className="bg-accent rounded-2xl p-3 text-sm">
+            👶 Services enfants accessibles <b>à partir de 3 ans</b>.
+          </div>
+          {isHomework && (
+            <div>
+              <label className="block text-lg font-bold mb-2">Niveau scolaire</label>
+              <div className="grid grid-cols-2 gap-2">
+                {["Primaire", "Collège", "Lycée"].map((l) => (
+                  <button
+                    key={l}
+                    type="button"
+                    onClick={() => setChildLevel(l)}
+                    className={`py-3 px-3 rounded-2xl border-2 text-sm font-bold transition-all ${
+                      childLevel === l ? "border-primary bg-accent" : "border-border bg-card"
+                    }`}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {isChildcare && (
+            <div>
+              <label className="block text-lg font-bold mb-2">Nombre d'enfants</label>
+              <div className="grid grid-cols-3 gap-2">
+                {["1 enfant", "2 enfants", "3 enfants et +"].map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setChildrenCount(c)}
+                    className={`py-3 px-2 rounded-2xl border-2 text-sm font-bold transition-all ${
+                      childrenCount === c ? "border-primary bg-accent" : "border-border bg-card"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {isEscortChild && (
+            <div>
+              <label className="block text-lg font-bold mb-2">Accompagner l'enfant…</label>
+              <div className="grid grid-cols-1 gap-2">
+                {[
+                  "À l'école",
+                  "À une activité sportive",
+                  "À une activité artistique",
+                  "Chez un ami",
+                  "Faire un achat",
+                  "Autre",
+                ].map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setEscortDestination(d)}
+                    className={`py-3 px-3 rounded-2xl border-2 text-sm font-bold text-left transition-all ${
+                      escortDestination === d ? "border-primary bg-accent" : "border-border bg-card"
+                    }`}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+              {escortDestination === "Autre" && (
+                <div className="mt-3">
+                  <input
+                    value={escortDetail}
+                    onChange={(e) => setEscortDetail(e.target.value)}
+                    placeholder="Précisez la demande"
+                    className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
+                  />
+                  <ServiceLimitsNotice />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      {hasDuration && (
         <div>
           <label className="block text-lg font-bold mb-2">Durée souhaitée</label>
           <p className="text-sm text-muted-foreground mb-3">
@@ -370,9 +452,7 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
           <TaxCreditHint total={computePrice(durationHours).total} className="mt-1" />
         </div>
       )}
-      {false && null}
-      {/* separator */}
-      {need !== "Compagnie/Présence" && need !== "Accompagnement sorties extérieures" && need !== "Retrait ou dépôt d'un colis" && (
+      {!hasDuration && need !== "Retrait ou dépôt d'un colis" && (
         <div className="bg-accent rounded-2xl p-3 text-sm">
           Tarif : <b>{formatPrice(BASE_RATE)} €</b> (forfait 1h, frais de service 4,87 € inclus)
           <TaxCreditHint total={BASE_RATE} className="mt-1" />
