@@ -264,6 +264,11 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   })();
 
+  const [childLevel, setChildLevel] = useState<string>("Primaire");
+  const [childrenCount, setChildrenCount] = useState<string>("1 enfant");
+  const [escortDestination, setEscortDestination] = useState<string>("À l'école");
+  const [escortDetail, setEscortDetail] = useState<string>("");
+
   const needs: { v: NeedType; icon: string }[] = [
     { v: "Compagnie/Présence", icon: "🤝" },
     { v: "Courses urgentes", icon: "🛒" },
@@ -273,7 +278,22 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
     { v: "Sortir ou nourrir animal de compagnie", icon: "🐕" },
     { v: "Arroser les plantes", icon: "🪴" },
     { v: "Retrait ou dépôt d'un colis", icon: "📦" },
+    { v: "Aide aux devoirs (primaire au lycée)", icon: "📚" },
+    { v: "Garde d'enfants (à partir de 3 ans)", icon: "🧸" },
+    { v: "Accompagner un enfant (à partir de 3 ans)", icon: "🚸" },
   ];
+
+  const isHomework = need === "Aide aux devoirs (primaire au lycée)";
+  const isChildcare = need === "Garde d'enfants (à partir de 3 ans)";
+  const isEscortChild = need === "Accompagner un enfant (à partir de 3 ans)";
+  const isChildNeed = isHomework || isChildcare || isEscortChild;
+  const hasDuration =
+    need === "Compagnie/Présence" ||
+    need === "Accompagnement sorties extérieures" ||
+    isHomework ||
+    isChildcare ||
+    isEscortChild;
+
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
