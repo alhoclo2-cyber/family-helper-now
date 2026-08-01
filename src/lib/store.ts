@@ -1,7 +1,18 @@
 // Simple in-memory store shared across the app for the demo flow.
 import { useRef, useSyncExternalStore } from "react";
 
-export type NeedType = "Compagnie/Présence" | "Courses urgentes" | "Pharmacie" | "Aide au repas" | "Accompagnement sorties extérieures" | "Sortir ou nourrir animal de compagnie" | "Arroser les plantes" | "Retrait ou dépôt d'un colis";
+export type NeedType =
+  | "Compagnie/Présence"
+  | "Courses urgentes"
+  | "Pharmacie"
+  | "Aide au repas"
+  | "Accompagnement sorties extérieures"
+  | "Sortir ou nourrir animal de compagnie"
+  | "Arroser les plantes"
+  | "Retrait ou dépôt d'un colis"
+  | "Aide aux devoirs (primaire au lycée)"
+  | "Garde d'enfants (à partir de 3 ans)"
+  | "Accompagner un enfant (à partir de 3 ans)";
 
 export type Request = {
   id: string;
@@ -15,9 +26,14 @@ export type Request = {
   durationHours?: number; // durée demandée (spécifique à Compagnie/Présence)
   parcelWeight?: string; // pour "Retrait ou dépôt d'un colis"
   parcelSize?: string;
+  childLevel?: string; // niveau scolaire pour l'aide aux devoirs
+  childrenCount?: string; // nombre d'enfants pour la garde
+  escortDestination?: string; // destination pour l'accompagnement d'un enfant
+  escortDetail?: string; // précision libre ("Autre")
   status: "searching" | "accepted";
   student?: { firstName: string; photo: string; rating: number };
 };
+
 
 const seedStudents = [
   { firstName: "Léa", photo: "https://i.pravatar.cc/200?img=47", rating: 4.9 },

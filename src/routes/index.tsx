@@ -7,7 +7,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "SOS Compagnons — Aide d'urgence pour seniors" },
-      { name: "description", content: "Mise en relation d'urgence entre familles seniors et compagnons étudiants à proximité." },
+      { name: "description", content: "Mise en relation d'urgence entre familles seniors et compagnons vérifiés à proximité." },
       { property: "og:title", content: "SOS Compagnons" },
       { property: "og:description", content: "Un besoin = Un compagnon = Un tarif unique. Aide d'urgence à proximité pour les seniors." },
     ],
@@ -34,7 +34,7 @@ function App() {
 function Header({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
   const tabs: { v: Mode; label: string }[] = [
     { v: "family", label: "👵 Famille" },
-    { v: "student", label: "🎓 Étudiant" },
+    { v: "student", label: "🤝 Compagnon" },
     { v: "admin", label: "🛡️ Admin" },
   ];
   return (
@@ -64,6 +64,15 @@ function Header({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
 }
 
 function NeedLabel({ need }: { need: NeedType }) {
+  const paren = need.match(/^(.*?)\s*\((.*)\)$/);
+  if (paren) {
+    return (
+      <div className="text-base font-semibold leading-tight">
+        <div>{paren[1]}</div>
+        <div className="text-xs font-medium text-muted-foreground">{paren[2]}</div>
+      </div>
+    );
+  }
   const [first, second] = need.split("/");
   if (second) {
     return (
@@ -75,6 +84,23 @@ function NeedLabel({ need }: { need: NeedType }) {
   }
   return <div className="text-base font-semibold leading-tight">{need}</div>;
 }
+
+function ServiceLimitsNotice({ className = "" }: { className?: string }) {
+  return (
+    <div className={`mt-3 rounded-2xl border-2 border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed ${className}`}>
+      <p className="font-bold mb-1">⚠️ Services non autorisés</p>
+      <p>
+        Les compagnons ne peuvent réaliser aucun service relevant d'une compétence médicale ou paramédicale
+        (soins, injections, médicaments administrés, toilette, transferts), d'un apprentissage ou d'un enseignement
+        certifiant (conduite, cours diplômants), d'une profession réglementée (juridique, comptable, financière,
+        travaux du bâtiment, électricité, gaz), ni aucune activité illégale, dangereuse ou discriminatoire
+        (transport de substances interdites, manipulation d'argent liquide, garde d'enfant de moins de 3 ans,
+        port de charges lourdes, intervention sur animaux malades).
+      </p>
+    </div>
+  );
+}
+
 
 function formatSchedule(ts: number) {
   return new Date(ts).toLocaleString("fr-FR", {
@@ -214,7 +240,7 @@ function FamilyFlow() {
         >
           <span className="text-5xl">🆘</span>
           <span>Urgence — maintenant</span>
-          <span className="text-sm font-normal opacity-90">Un étudiant vient au plus vite</span>
+          <span className="text-sm font-normal opacity-90">Un compagnon vient au plus vite</span>
         </button>
         <button
           onClick={() => { setRequestMode("scheduled"); setStep("form"); }}
@@ -264,6 +290,11 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   })();
 
+  const [childLevel, setChildLevel] = useState<string>("Primaire");
+  const [childrenCount, setChildrenCount] = useState<string>("1 enfant");
+  const [escortDestination, setEscortDestination] = useState<string>("À l'école");
+  const [escortDetail, setEscortDetail] = useState<string>("");
+
   const needs: { v: NeedType; icon: string }[] = [
     { v: "Compagnie/Présence", icon: "🤝" },
     { v: "Courses urgentes", icon: "🛒" },
@@ -273,13 +304,28 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
     { v: "Sortir ou nourrir animal de compagnie", icon: "🐕" },
     { v: "Arroser les plantes", icon: "🪴" },
     { v: "Retrait ou dépôt d'un colis", icon: "📦" },
+    { v: "Aide aux devoirs (primaire au lycée)", icon: "📚" },
+    { v: "Garde d'enfants (à partir de 3 ans)", icon: "🧸" },
+    { v: "Accompagner un enfant (à partir de 3 ans)", icon: "🚸" },
   ];
+
+  const isHomework = need === "Aide aux devoirs (primaire au lycée)";
+  const isChildcare = need === "Garde d'enfants (à partir de 3 ans)";
+  const isEscortChild = need === "Accompagner un enfant (à partir de 3 ans)";
+  const isChildNeed = isHomework || isChildcare || isEscortChild;
+  const hasDuration =
+    need === "Compagnie/Présence" ||
+    need === "Accompagnement sorties extérieures" ||
+    isHomework ||
+    isChildcare ||
+    isEscortChild;
+
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!address.trim() || !phone.trim()) return;
     const scheduledAt = mode === "scheduled" ? new Date(when).getTime() : null;
-    const dh = (need === "Compagnie/Présence" || need === "Accompagnement sorties extérieures") ? durationHours : 1;
+    const dh = hasDuration ? durationHours : 1;
     const isParcel = need === "Retrait ou dépôt d'un colis";
     store.createRequest({
       need,
@@ -289,6 +335,10 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
       durationHours: dh,
       parcelWeight: isParcel ? parcelWeight : undefined,
       parcelSize: isParcel ? parcelSize : undefined,
+      childLevel: isHomework ? childLevel : undefined,
+      childrenCount: isChildcare ? childrenCount : undefined,
+      escortDestination: isEscortChild ? escortDestination : undefined,
+      escortDetail: isEscortChild && escortDestination === "Autre" ? escortDetail : undefined,
     });
     onSubmit();
   };
@@ -317,7 +367,89 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
           ))}
         </div>
       </div>
-      {(need === "Compagnie/Présence" || need === "Accompagnement sorties extérieures") && (
+      {isChildNeed && (
+        <div className="flex flex-col gap-4">
+          <div className="bg-accent rounded-2xl p-3 text-sm">
+            👶 Services enfants accessibles <b>à partir de 3 ans</b>.
+          </div>
+          {isHomework && (
+            <div>
+              <label className="block text-lg font-bold mb-2">Niveau scolaire</label>
+              <div className="grid grid-cols-2 gap-2">
+                {["Primaire", "Collège", "Lycée"].map((l) => (
+                  <button
+                    key={l}
+                    type="button"
+                    onClick={() => setChildLevel(l)}
+                    className={`py-3 px-3 rounded-2xl border-2 text-sm font-bold transition-all ${
+                      childLevel === l ? "border-primary bg-accent" : "border-border bg-card"
+                    }`}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {isChildcare && (
+            <div>
+              <label className="block text-lg font-bold mb-2">Nombre d'enfants</label>
+              <div className="grid grid-cols-3 gap-2">
+                {["1 enfant", "2 enfants", "3 enfants et +"].map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setChildrenCount(c)}
+                    className={`py-3 px-2 rounded-2xl border-2 text-sm font-bold transition-all ${
+                      childrenCount === c ? "border-primary bg-accent" : "border-border bg-card"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {isEscortChild && (
+            <div>
+              <label className="block text-lg font-bold mb-2">Accompagner l'enfant…</label>
+              <div className="grid grid-cols-1 gap-2">
+                {[
+                  "À l'école",
+                  "À une activité sportive",
+                  "À une activité artistique",
+                  "Chez un ami",
+                  "Faire un achat",
+                  "Autre",
+                ].map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setEscortDestination(d)}
+                    className={`py-3 px-3 rounded-2xl border-2 text-sm font-bold text-left transition-all ${
+                      escortDestination === d ? "border-primary bg-accent" : "border-border bg-card"
+                    }`}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+              {escortDestination === "Autre" && (
+                <div className="mt-3">
+                  <input
+                    value={escortDetail}
+                    onChange={(e) => setEscortDetail(e.target.value)}
+                    placeholder="Précisez la demande"
+                    className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
+                  />
+                  <ServiceLimitsNotice />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      {hasDuration && (
         <div>
           <label className="block text-lg font-bold mb-2">Durée souhaitée</label>
           <p className="text-sm text-muted-foreground mb-3">
@@ -346,9 +478,7 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
           <TaxCreditHint total={computePrice(durationHours).total} className="mt-1" />
         </div>
       )}
-      {false && null}
-      {/* separator */}
-      {need !== "Compagnie/Présence" && need !== "Accompagnement sorties extérieures" && need !== "Retrait ou dépôt d'un colis" && (
+      {!hasDuration && need !== "Retrait ou dépôt d'un colis" && (
         <div className="bg-accent rounded-2xl p-3 text-sm">
           Tarif : <b>{formatPrice(BASE_RATE)} €</b> (forfait 1h, frais de service 4,87 € inclus)
           <TaxCreditHint total={BASE_RATE} className="mt-1" />
@@ -487,7 +617,7 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
             <div className="text-6xl">📅</div>
             <div>
               <p className="text-2xl font-bold">Rendez-vous enregistré</p>
-              <p className="text-base text-muted-foreground mt-2">Nous cherchons un étudiant pour ce créneau.</p>
+              <p className="text-base text-muted-foreground mt-2">Nous cherchons un compagnon pour ce créneau.</p>
             </div>
             <div className="w-full bg-card rounded-2xl p-5 border-2 border-border text-left">
               <p className="text-sm text-muted-foreground">Date et heure</p>
@@ -547,7 +677,7 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
               <div className="absolute inset-10 rounded-full bg-primary grid place-items-center text-3xl">📡</div>
             </div>
             <div>
-              <p className="text-2xl font-bold">Recherche d'un étudiant à proximité…</p>
+              <p className="text-2xl font-bold">Recherche d'un compagnon à proximité…</p>
               <p className="text-base text-muted-foreground mt-2">Ne quittez pas cet écran.</p>
             </div>
             <p className="text-sm text-muted-foreground">Besoin : <b>{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</b></p>
@@ -555,7 +685,7 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
         )
       ) : (
         <>
-          <p className="text-lg font-bold text-success">✅ Un étudiant a accepté !</p>
+          <p className="text-lg font-bold text-success">✅ Un compagnon a accepté !</p>
           <div className="w-full bg-card rounded-3xl p-6 border-2 border-border shadow-sm">
             <img
               src={request.student!.photo}
@@ -588,7 +718,7 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
                 💳 Finaliser & payer — {formatPrice(total)} €
               </button>
               <p className="text-xs text-muted-foreground">
-                Les coordonnées de l'étudiant seront révélées après paiement.
+                Les coordonnées du compagnon seront révélées après paiement.
               </p>
             </>
           ) : (
@@ -601,7 +731,7 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
                 href={`tel:${request.phone}`}
                 className="btn-huge bg-success text-success-foreground text-center w-full"
               >
-                📞 Appeler l'étudiant
+                📞 Appeler le compagnon
               </a>
             </>
           )}
@@ -722,6 +852,7 @@ type EnrollProfile = {
   lastName: string;
   email: string;
   phone: string;
+  situation?: string;
   school: string;
   city: string;
   motivation: string;
@@ -845,8 +976,13 @@ function StudentFlow() {
                     <div className="min-w-0">
                       <p className="text-lg font-bold">{r.need.includes("/") ? r.need.replace("/", " / ") : r.need}</p>
                       <p className="text-base text-muted-foreground mt-1">📍 {r.city}</p>
-                      {(r.need === "Compagnie/Présence" || r.need === "Accompagnement sorties extérieures") && r.durationHours && r.durationHours > 1 && (
+                      {r.durationHours && r.durationHours > 1 && (
                         <p className="text-sm mt-1 font-semibold">⏱️ Durée : {r.durationHours}h</p>
+                      )}
+                      {r.childLevel && <p className="text-sm mt-1 font-semibold">🎒 Niveau : {r.childLevel}</p>}
+                      {r.childrenCount && <p className="text-sm mt-1 font-semibold">🧸 {r.childrenCount}</p>}
+                      {r.escortDestination && (
+                        <p className="text-sm mt-1 font-semibold">🚸 {r.escortDestination}{r.escortDetail ? ` — ${r.escortDetail}` : ""}</p>
                       )}
                       {r.need === "Retrait ou dépôt d'un colis" && (
                         <p className="text-sm mt-1 font-semibold">📦 {r.parcelWeight} · {r.parcelSize}</p>
@@ -885,8 +1021,18 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
       <div className="bg-card rounded-3xl p-6 border-2 border-border">
         <p className="text-sm text-muted-foreground uppercase tracking-wide font-bold">Besoin</p>
         <p className="text-2xl font-bold mt-1">{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</p>
-        {(request.need === "Compagnie/Présence" || request.need === "Accompagnement sorties extérieures") && request.durationHours && request.durationHours > 1 && (
+        {request.durationHours && request.durationHours > 1 && (
           <p className="text-base font-semibold mt-2">⏱️ Durée demandée : {request.durationHours}h</p>
+        )}
+        {(request.childLevel || request.childrenCount || request.escortDestination) && (
+          <div className="mt-3 bg-accent rounded-xl p-3">
+            <p className="text-xs text-muted-foreground font-bold uppercase">Enfant (3 ans et +)</p>
+            {request.childLevel && <p className="text-base font-semibold mt-1">🎒 Niveau : {request.childLevel}</p>}
+            {request.childrenCount && <p className="text-base font-semibold mt-1">🧸 {request.childrenCount}</p>}
+            {request.escortDestination && (
+              <p className="text-base font-semibold mt-1">🚸 {request.escortDestination}{request.escortDetail ? ` — ${request.escortDetail}` : ""}</p>
+            )}
+          </div>
         )}
         {request.need === "Retrait ou dépôt d'un colis" && (
           <div className="mt-3 bg-accent rounded-xl p-3">
@@ -964,6 +1110,7 @@ function StudentEnroll({
       lastName: "",
       email: "",
       phone: "",
+      situation: "Étudiant(e)",
       school: "",
       city: "",
       motivation: "",
@@ -1009,8 +1156,8 @@ function StudentEnroll({
         <div className="w-full bg-card border-2 border-border rounded-2xl p-5 text-left">
           <p className="text-sm text-muted-foreground">Candidat</p>
           <p className="text-lg font-bold">{enroll.profile?.firstName} {enroll.profile?.lastName}</p>
-          <p className="text-sm text-muted-foreground mt-2">École</p>
-          <p className="text-base">{enroll.profile?.school}</p>
+          <p className="text-sm text-muted-foreground mt-2">Situation</p>
+          <p className="text-base">{enroll.profile?.situation} — {enroll.profile?.school}</p>
           <p className="text-sm text-muted-foreground mt-2">Statut</p>
           <p className="text-base font-semibold text-warning-foreground">⏳ En attente de vérification</p>
         </div>
@@ -1029,27 +1176,30 @@ function StudentEnroll({
     return (
       <div className="flex-1 flex flex-col px-6 py-8 gap-5">
         <div className="text-center">
-          <div className="text-5xl mb-2">🎓</div>
+          <div className="text-5xl mb-2">🤝</div>
           <h2 className="text-2xl font-black">Devenir Compagnon SOS</h2>
           <p className="text-base text-muted-foreground mt-2">
-            Aidez des seniors près de chez vous et gagnez un revenu complémentaire.
+            Étudiant, salarié, indépendant, retraité ou en recherche d'emploi : aidez des familles près de chez vous
+            et gagnez un revenu complémentaire.
           </p>
         </div>
         <div className="bg-card border-2 border-border rounded-2xl p-5">
           <p className="font-bold mb-3">Conditions</p>
           <ul className="space-y-2 text-sm">
-            <li>✓ Être étudiant (18 ans et +)</li>
+            <li>✓ Être majeur (18 ans et +)</li>
             <li>✓ Pièce d'identité valide</li>
-            <li>✓ Carte étudiante en cours</li>
+            <li>✓ Justificatif de situation (carte étudiante, contrat de travail, attestation Pôle emploi/France Travail, notification de retraite…)</li>
             <li>✓ Extrait de casier judiciaire (bulletin n°3)</li>
             <li>✓ RIB pour les paiements</li>
           </ul>
         </div>
+        <ServiceLimitsNotice />
         <div className="flex-1" />
         <button onClick={() => setStep("form")} className="btn-huge bg-primary text-primary-foreground">
           Commencer ma candidature
         </button>
       </div>
+
     );
   }
 
@@ -1075,13 +1225,13 @@ function StudentEnroll({
 
   const docs: { k: keyof EnrollProfile["docs"]; label: string; icon: string }[] = [
     { k: "idCard", label: "Pièce d'identité", icon: "🪪" },
-    { k: "studentCard", label: "Carte étudiante", icon: "🎓" },
+    { k: "studentCard", label: "Justificatif de situation (carte étudiante, contrat, attestation…)", icon: "📑" },
     { k: "criminalRecord", label: "Casier judiciaire (B3)", icon: "📄" },
     { k: "iban", label: "RIB", icon: "🏦" },
   ];
 
   const allDocs = docs.every((d) => p.docs[d.k]);
-  const valid = p.firstName && p.lastName && p.email && p.phone && p.school && p.city && p.selfie && allDocs;
+  const valid = p.firstName && p.lastName && p.email && p.phone && p.situation && p.school && p.city && p.selfie && allDocs;
 
   const setSelfie = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -1105,7 +1255,24 @@ function StudentEnroll({
       </div>
       <input required type="email" placeholder="Email" value={p.email} onChange={(e) => setP({ ...p, email: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
       <input required type="tel" placeholder="Téléphone" value={p.phone} onChange={(e) => setP({ ...p, phone: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
-      <input required placeholder="École / université" value={p.school} onChange={(e) => setP({ ...p, school: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
+      <div>
+        <p className="font-bold mb-2 text-sm">Votre situation</p>
+        <div className="grid grid-cols-2 gap-2">
+          {["Étudiant(e)", "Salarié(e)", "Indépendant(e)", "Retraité(e)", "En recherche d'emploi", "Autre"].map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setP({ ...p, situation: s })}
+              className={`py-3 px-2 rounded-2xl border-2 text-sm font-bold transition-all ${
+                p.situation === s ? "border-primary bg-accent" : "border-border bg-card"
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      </div>
+      <input required placeholder="Établissement / employeur / activité" value={p.school} onChange={(e) => setP({ ...p, school: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
       <input required placeholder="Ville" value={p.city} onChange={(e) => setP({ ...p, city: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
       <textarea placeholder="Pourquoi voulez-vous rejoindre SOS Compagnons ?" value={p.motivation} onChange={(e) => setP({ ...p, motivation: e.target.value })} rows={3} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none resize-none" />
 
@@ -1151,6 +1318,7 @@ function StudentEnroll({
       <button type="submit" disabled={!valid} className="btn-huge bg-primary text-primary-foreground disabled:opacity-50 mt-2">
         Envoyer ma candidature
       </button>
+      <ServiceLimitsNotice />
       <p className="text-xs text-muted-foreground text-center">🔒 Vos documents sont traités confidentiellement.</p>
     </form>
   );
@@ -1227,7 +1395,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-xl font-black">Candidatures</h2>
-          <p className="text-xs text-muted-foreground">Vérification et validation des étudiants</p>
+          <p className="text-xs text-muted-foreground">Vérification et validation des compagnons</p>
         </div>
         <button onClick={onLogout} className="text-xs text-muted-foreground underline">Déconnexion</button>
       </div>
@@ -1304,7 +1472,7 @@ function AdminApplicationDetail({ app, onBack }: { app: Application; onBack: () 
 
   const docs: { k: keyof EnrollProfile["docs"]; label: string; icon: string }[] = [
     { k: "idCard", label: "Pièce d'identité", icon: "🪪" },
-    { k: "studentCard", label: "Carte étudiante", icon: "🎓" },
+    { k: "studentCard", label: "Justificatif de situation (carte étudiante, contrat, attestation…)", icon: "📑" },
     { k: "criminalRecord", label: "Casier judiciaire (B3)", icon: "📄" },
     { k: "iban", label: "RIB", icon: "🏦" },
   ];
@@ -1333,7 +1501,8 @@ function AdminApplicationDetail({ app, onBack }: { app: Application; onBack: () 
       <div className="bg-card rounded-2xl p-4 border-2 border-border space-y-2 text-sm">
         <Row label="Email" value={app.profile.email} />
         <Row label="Téléphone" value={app.profile.phone} />
-        <Row label="École" value={app.profile.school} />
+        <Row label="Situation" value={app.profile.situation ?? "—"} />
+        <Row label="Établissement / employeur" value={app.profile.school} />
         <Row label="Ville" value={app.profile.city} />
         {app.profile.motivation && <Row label="Motivation" value={app.profile.motivation} />}
       </div>
