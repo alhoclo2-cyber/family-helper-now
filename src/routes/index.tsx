@@ -7,7 +7,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "SOS Compagnons — Aide d'urgence pour seniors" },
-      { name: "description", content: "Mise en relation d'urgence entre familles seniors et compagnons étudiants à proximité." },
+      { name: "description", content: "Mise en relation d'urgence entre familles seniors et compagnons vérifiés à proximité." },
       { property: "og:title", content: "SOS Compagnons" },
       { property: "og:description", content: "Un besoin = Un compagnon = Un tarif unique. Aide d'urgence à proximité pour les seniors." },
     ],
@@ -34,7 +34,7 @@ function App() {
 function Header({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
   const tabs: { v: Mode; label: string }[] = [
     { v: "family", label: "👵 Famille" },
-    { v: "student", label: "🎓 Étudiant" },
+    { v: "student", label: "🤝 Compagnon" },
     { v: "admin", label: "🛡️ Admin" },
   ];
   return (
@@ -240,7 +240,7 @@ function FamilyFlow() {
         >
           <span className="text-5xl">🆘</span>
           <span>Urgence — maintenant</span>
-          <span className="text-sm font-normal opacity-90">Un étudiant vient au plus vite</span>
+          <span className="text-sm font-normal opacity-90">Un compagnon vient au plus vite</span>
         </button>
         <button
           onClick={() => { setRequestMode("scheduled"); setStep("form"); }}
@@ -617,7 +617,7 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
             <div className="text-6xl">📅</div>
             <div>
               <p className="text-2xl font-bold">Rendez-vous enregistré</p>
-              <p className="text-base text-muted-foreground mt-2">Nous cherchons un étudiant pour ce créneau.</p>
+              <p className="text-base text-muted-foreground mt-2">Nous cherchons un compagnon pour ce créneau.</p>
             </div>
             <div className="w-full bg-card rounded-2xl p-5 border-2 border-border text-left">
               <p className="text-sm text-muted-foreground">Date et heure</p>
@@ -677,7 +677,7 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
               <div className="absolute inset-10 rounded-full bg-primary grid place-items-center text-3xl">📡</div>
             </div>
             <div>
-              <p className="text-2xl font-bold">Recherche d'un étudiant à proximité…</p>
+              <p className="text-2xl font-bold">Recherche d'un compagnon à proximité…</p>
               <p className="text-base text-muted-foreground mt-2">Ne quittez pas cet écran.</p>
             </div>
             <p className="text-sm text-muted-foreground">Besoin : <b>{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</b></p>
@@ -685,7 +685,7 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
         )
       ) : (
         <>
-          <p className="text-lg font-bold text-success">✅ Un étudiant a accepté !</p>
+          <p className="text-lg font-bold text-success">✅ Un compagnon a accepté !</p>
           <div className="w-full bg-card rounded-3xl p-6 border-2 border-border shadow-sm">
             <img
               src={request.student!.photo}
@@ -718,7 +718,7 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
                 💳 Finaliser & payer — {formatPrice(total)} €
               </button>
               <p className="text-xs text-muted-foreground">
-                Les coordonnées de l'étudiant seront révélées après paiement.
+                Les coordonnées du compagnon seront révélées après paiement.
               </p>
             </>
           ) : (
@@ -731,7 +731,7 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
                 href={`tel:${request.phone}`}
                 className="btn-huge bg-success text-success-foreground text-center w-full"
               >
-                📞 Appeler l'étudiant
+                📞 Appeler le compagnon
               </a>
             </>
           )}
@@ -1205,7 +1205,7 @@ function StudentEnroll({
 
   const docs: { k: keyof EnrollProfile["docs"]; label: string; icon: string }[] = [
     { k: "idCard", label: "Pièce d'identité", icon: "🪪" },
-    { k: "studentCard", label: "Carte étudiante", icon: "🎓" },
+    { k: "studentCard", label: "Justificatif de situation (carte étudiante, contrat, attestation…)", icon: "📑" },
     { k: "criminalRecord", label: "Casier judiciaire (B3)", icon: "📄" },
     { k: "iban", label: "RIB", icon: "🏦" },
   ];
@@ -1357,7 +1357,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-xl font-black">Candidatures</h2>
-          <p className="text-xs text-muted-foreground">Vérification et validation des étudiants</p>
+          <p className="text-xs text-muted-foreground">Vérification et validation des compagnons</p>
         </div>
         <button onClick={onLogout} className="text-xs text-muted-foreground underline">Déconnexion</button>
       </div>
@@ -1434,7 +1434,7 @@ function AdminApplicationDetail({ app, onBack }: { app: Application; onBack: () 
 
   const docs: { k: keyof EnrollProfile["docs"]; label: string; icon: string }[] = [
     { k: "idCard", label: "Pièce d'identité", icon: "🪪" },
-    { k: "studentCard", label: "Carte étudiante", icon: "🎓" },
+    { k: "studentCard", label: "Justificatif de situation (carte étudiante, contrat, attestation…)", icon: "📑" },
     { k: "criminalRecord", label: "Casier judiciaire (B3)", icon: "📄" },
     { k: "iban", label: "RIB", icon: "🏦" },
   ];
