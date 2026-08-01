@@ -1027,7 +1027,7 @@ function StudentEnroll({
       <div className="flex-1 flex flex-col px-6 py-8 gap-5">
         <div className="text-center">
           <div className="text-5xl mb-2">🎓</div>
-          <h2 className="text-2xl font-black">Devenir étudiant SOS</h2>
+          <h2 className="text-2xl font-black">Devenir Compagnon SOS</h2>
           <p className="text-base text-muted-foreground mt-2">
             Aidez des seniors près de chez vous et gagnez un revenu complémentaire.
           </p>
@@ -1104,7 +1104,7 @@ function StudentEnroll({
       <input required type="tel" placeholder="Téléphone" value={p.phone} onChange={(e) => setP({ ...p, phone: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
       <input required placeholder="École / université" value={p.school} onChange={(e) => setP({ ...p, school: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
       <input required placeholder="Ville" value={p.city} onChange={(e) => setP({ ...p, city: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
-      <textarea placeholder="Pourquoi voulez-vous rejoindre SOS Étudiants ?" value={p.motivation} onChange={(e) => setP({ ...p, motivation: e.target.value })} rows={3} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none resize-none" />
+      <textarea placeholder="Pourquoi voulez-vous rejoindre SOS Compagnons ?" value={p.motivation} onChange={(e) => setP({ ...p, motivation: e.target.value })} rows={3} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none resize-none" />
 
       <div className="mt-2">
         <p className="font-bold mb-2">Photo / Selfie</p>
@@ -1187,7 +1187,7 @@ function AdminLogin({ onOk }: { onOk: () => void }) {
     <form onSubmit={submit} className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
       <div className="text-6xl">🛡️</div>
       <h2 className="text-2xl font-black">Espace administrateur</h2>
-      <p className="text-sm text-muted-foreground">Réservé à l'équipe SOS Étudiants — vérification des candidatures.</p>
+      <p className="text-sm text-muted-foreground">Réservé à l'équipe SOS Compagnons — vérification des candidatures.</p>
       <input
         type="password"
         autoFocus
