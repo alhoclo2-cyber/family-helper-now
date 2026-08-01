@@ -976,8 +976,13 @@ function StudentFlow() {
                     <div className="min-w-0">
                       <p className="text-lg font-bold">{r.need.includes("/") ? r.need.replace("/", " / ") : r.need}</p>
                       <p className="text-base text-muted-foreground mt-1">📍 {r.city}</p>
-                      {(r.need === "Compagnie/Présence" || r.need === "Accompagnement sorties extérieures") && r.durationHours && r.durationHours > 1 && (
+                      {r.durationHours && r.durationHours > 1 && (
                         <p className="text-sm mt-1 font-semibold">⏱️ Durée : {r.durationHours}h</p>
+                      )}
+                      {r.childLevel && <p className="text-sm mt-1 font-semibold">🎒 Niveau : {r.childLevel}</p>}
+                      {r.childrenCount && <p className="text-sm mt-1 font-semibold">🧸 {r.childrenCount}</p>}
+                      {r.escortDestination && (
+                        <p className="text-sm mt-1 font-semibold">🚸 {r.escortDestination}{r.escortDetail ? ` — ${r.escortDetail}` : ""}</p>
                       )}
                       {r.need === "Retrait ou dépôt d'un colis" && (
                         <p className="text-sm mt-1 font-semibold">📦 {r.parcelWeight} · {r.parcelSize}</p>
@@ -1016,8 +1021,18 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
       <div className="bg-card rounded-3xl p-6 border-2 border-border">
         <p className="text-sm text-muted-foreground uppercase tracking-wide font-bold">Besoin</p>
         <p className="text-2xl font-bold mt-1">{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</p>
-        {(request.need === "Compagnie/Présence" || request.need === "Accompagnement sorties extérieures") && request.durationHours && request.durationHours > 1 && (
+        {request.durationHours && request.durationHours > 1 && (
           <p className="text-base font-semibold mt-2">⏱️ Durée demandée : {request.durationHours}h</p>
+        )}
+        {(request.childLevel || request.childrenCount || request.escortDestination) && (
+          <div className="mt-3 bg-accent rounded-xl p-3">
+            <p className="text-xs text-muted-foreground font-bold uppercase">Enfant (3 ans et +)</p>
+            {request.childLevel && <p className="text-base font-semibold mt-1">🎒 Niveau : {request.childLevel}</p>}
+            {request.childrenCount && <p className="text-base font-semibold mt-1">🧸 {request.childrenCount}</p>}
+            {request.escortDestination && (
+              <p className="text-base font-semibold mt-1">🚸 {request.escortDestination}{request.escortDetail ? ` — ${request.escortDetail}` : ""}</p>
+            )}
+          </div>
         )}
         {request.need === "Retrait ou dépôt d'un colis" && (
           <div className="mt-3 bg-accent rounded-xl p-3">
