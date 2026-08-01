@@ -41,7 +41,7 @@ function Header({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
       <div className="flex items-center gap-2 mb-4">
         <div className="h-10 w-10 rounded-2xl bg-primary grid place-items-center text-primary-foreground text-xl font-black">S</div>
         <div>
-          <h1 className="text-xl font-black leading-none">SOS Étudiants</h1>
+          <h1 className="text-xl font-black leading-none">SOS Compagnons</h1>
           <p className="text-xs text-muted-foreground mt-0.5">Aide d'urgence à proximité</p>
         </div>
       </div>
@@ -198,6 +198,14 @@ function FamilyFlow() {
         <div className="text-center">
           <p className="text-lg text-muted-foreground">Besoin d'aide ?</p>
           <p className="text-base text-muted-foreground mt-1">Choisissez le moment qui vous convient.</p>
+        </div>
+        <div className="w-full bg-card border-2 border-primary/30 rounded-2xl p-4 text-center">
+          <p className="text-base font-black">Un besoin = Un compagnon = Un tarif unique.</p>
+          <ul className="mt-2 text-sm text-muted-foreground space-y-0.5">
+            <li>0 € de frais de dossier</li>
+            <li>0 € d'abonnement</li>
+            <li>Sans engagement.</li>
+          </ul>
         </div>
         <button
           onClick={() => { setRequestMode("asap"); setStep("form"); }}
