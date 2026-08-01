@@ -868,6 +868,8 @@ function StudentFlow() {
           Passez en ligne pour voir les demandes d'urgence près de vous.
         </p>
       )}
+
+      <CompanionLoyaltyGrid />
     </div>
   );
 }
