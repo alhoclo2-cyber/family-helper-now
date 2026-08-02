@@ -33,7 +33,7 @@ function App() {
 
 function Header({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
   const tabs: { v: Mode; label: string }[] = [
-    { v: "family", label: "👵 Famille" },
+    { v: "family", label: "👴👵 👨👩 Famille" },
     { v: "student", label: "🤝 Compagnon" },
     { v: "admin", label: "🛡️ Admin" },
   ];
