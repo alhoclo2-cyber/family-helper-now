@@ -1271,7 +1271,10 @@ function CompanionCancelBlock({ request }: { request: Request }) {
 
 function StudentDetail({ request, onBack }: { request: Request; onBack: () => void }) {
   const accepted = request.status === "accepted";
-  const accept = () => store.acceptRequest(request.id);
+  const strikes = useStrikes();
+  const banned = strikes >= 3;
+  const accept = () => { if (!banned) store.acceptRequest(request.id); };
+
 
   return (
     <div className="flex-1 flex flex-col px-5 py-6 gap-5">
