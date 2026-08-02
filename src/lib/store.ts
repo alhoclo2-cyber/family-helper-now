@@ -32,7 +32,9 @@ export type Request = {
   escortDestination?: string; // destination pour l'accompagnement d'un enfant
   escortDetail?: string; // précision libre ("Autre")
   otherDetail?: string; // précision libre pour le besoin "Autre (à préciser)"
-  status: "searching" | "accepted";
+  status: "searching" | "accepted" | "cancelled";
+  cancelledBy?: "family" | "companion";
+  refunded?: boolean;
   student?: { firstName: string; photo: string; rating: number };
 };
 
