@@ -657,6 +657,22 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
     request?.scheduledAt ? toLocalInput(request.scheduledAt) : "",
   );
   if (!request) return null;
+  if (request.status === "cancelled") {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
+        <div className="text-6xl">🗑️</div>
+        <p className="text-2xl font-black">Rendez-vous annulé</p>
+        <p className="text-base text-muted-foreground">
+          {request.refunded
+            ? "Annulation à plus de 48 h : vous serez intégralement remboursé sous 3 jours ouvrés."
+            : "Annulation à moins de 48 h : conformément aux conditions, le paiement n'est pas remboursé."}
+        </p>
+        <button onClick={onDone} className="btn-huge bg-primary text-primary-foreground w-full">
+          Retour à l'accueil
+        </button>
+      </div>
+    );
+  }
   const accepted = request.status === "accepted" && request.student;
 
   const hours = request?.durationHours ?? 1;
