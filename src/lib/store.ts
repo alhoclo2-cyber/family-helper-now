@@ -114,6 +114,26 @@ export const store = {
     };
     emit();
   },
+  // La famille annule sa demande. Remboursement uniquement si > 48h avant le RDV.
+  cancelRequest: (id: string, refunded: boolean) => {
+    state = {
+      ...state,
+      requests: state.requests.map((r) =>
+        r.id === id ? { ...r, status: "cancelled" as const, cancelledBy: "family" as const, refunded } : r,
+      ),
+    };
+    emit();
+  },
+  // Le compagnon se désiste : la mission repart en recherche d'un autre compagnon.
+  releaseRequest: (id: string) => {
+    state = {
+      ...state,
+      requests: state.requests.map((r) =>
+        r.id === id ? { ...r, status: "searching" as const, student: undefined } : r,
+      ),
+    };
+    emit();
+  },
   clearCurrent: () => {
     state = { ...state, currentRequestId: null };
     emit();
