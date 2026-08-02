@@ -591,6 +591,59 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
   );
 }
 
+const CANCEL_WINDOW_MS = 48 * 60 * 60 * 1000;
+const canFreeCancel = (scheduledAt?: number | null) =>
+  !!scheduledAt && scheduledAt - Date.now() > CANCEL_WINDOW_MS;
+
+function CancelScheduledBlock({ request, paid }: { request: Request; paid: boolean }) {
+  const [confirm, setConfirm] = useState(false);
+  const free = canFreeCancel(request.scheduledAt);
+  return (
+    <div className="w-full text-left">
+      {!confirm ? (
+        <button
+          type="button"
+          onClick={() => setConfirm(true)}
+          className="text-sm font-bold text-destructive underline"
+        >
+          🗑️ Annuler le rendez-vous
+        </button>
+      ) : (
+        <div
+          className={`rounded-2xl border-2 p-4 ${free ? "border-border bg-card" : "border-destructive/50 bg-destructive/10"}`}
+        >
+          <p className="text-sm font-bold">{free ? "Annulation gratuite" : "Annulation tardive"}</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {free
+              ? "Vous annulez plus de 48 h avant le rendez-vous : remboursement intégral sous 3 jours ouvrés."
+              : `Il reste moins de 48 h avant le rendez-vous : ${paid ? "le paiement ne sera pas remboursé." : "le montant réglé ne sera pas remboursé."}`}
+          </p>
+          <div className="grid grid-cols-2 gap-2 mt-3">
+            <button
+              type="button"
+              onClick={() => setConfirm(false)}
+              className="py-3 rounded-2xl border-2 border-border bg-card font-bold text-sm"
+            >
+              Revenir
+            </button>
+            <button
+              type="button"
+              onClick={() => store.cancelRequest(request.id, free)}
+              className="py-3 rounded-2xl bg-destructive text-destructive-foreground font-bold text-sm"
+            >
+              Confirmer l'annulation
+            </button>
+          </div>
+        </div>
+      )}
+      <p className="text-xs text-muted-foreground mt-2">
+        Modification et annulation gratuites jusqu'à 48 h avant le rendez-vous. Passé ce délai, la mission reste due.
+      </p>
+    </div>
+  );
+}
+
+
 function FamilyWait({ request, onDone }: { request: Request | undefined; onDone: () => void }) {
   const [paid, setPaid] = useState(false);
   const [showPay, setShowPay] = useState(false);
