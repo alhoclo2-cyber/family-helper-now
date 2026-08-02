@@ -1342,6 +1342,12 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
             📞 Appeler la famille
           </a>
           <a
+            href={`sms:${request.phone}`}
+            className="btn-huge bg-accent text-foreground border-2 border-primary text-center"
+          >
+            💬 Envoyer un message au client
+          </a>
+          <a
             href={`https://maps.google.com/?q=${encodeURIComponent(request.address)}`}
             target="_blank"
             rel="noreferrer"
@@ -1349,6 +1355,8 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
           >
             🗺️ Itinéraire
           </a>
+          {!!request.scheduledAt && <CompanionCancelBlock request={request} />}
+          <CompanionRulesNotice strikes={strikes} />
         </>
       )}
     </div>
