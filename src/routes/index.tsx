@@ -752,6 +752,7 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
               <p className="text-sm text-muted-foreground mt-3">Besoin</p>
               <p className="text-base font-semibold">{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</p>
             </div>
+            <CancelScheduledBlock request={request} paid={false} />
             <button onClick={onDone} className="text-base text-muted-foreground underline">Retour à l'accueil</button>
           </>
         ) : (
