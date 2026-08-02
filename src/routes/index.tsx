@@ -33,7 +33,7 @@ function App() {
 
 function Header({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
   const tabs: { v: Mode; label: string }[] = [
-    { v: "family", label: "👵 Famille" },
+    { v: "family", label: "👴👵 👨👩 Famille" },
     { v: "student", label: "🤝 Compagnon" },
     { v: "admin", label: "🛡️ Admin" },
   ];
@@ -591,6 +591,59 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
   );
 }
 
+const CANCEL_WINDOW_MS = 48 * 60 * 60 * 1000;
+const canFreeCancel = (scheduledAt?: number | null) =>
+  !!scheduledAt && scheduledAt - Date.now() > CANCEL_WINDOW_MS;
+
+function CancelScheduledBlock({ request, paid }: { request: Request; paid: boolean }) {
+  const [confirm, setConfirm] = useState(false);
+  const free = canFreeCancel(request.scheduledAt);
+  return (
+    <div className="w-full text-left">
+      {!confirm ? (
+        <button
+          type="button"
+          onClick={() => setConfirm(true)}
+          className="text-sm font-bold text-destructive underline"
+        >
+          🗑️ Annuler le rendez-vous
+        </button>
+      ) : (
+        <div
+          className={`rounded-2xl border-2 p-4 ${free ? "border-border bg-card" : "border-destructive/50 bg-destructive/10"}`}
+        >
+          <p className="text-sm font-bold">{free ? "Annulation gratuite" : "Annulation tardive"}</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {free
+              ? "Vous annulez plus de 48 h avant le rendez-vous : remboursement intégral sous 3 jours ouvrés."
+              : `Il reste moins de 48 h avant le rendez-vous : ${paid ? "le paiement ne sera pas remboursé." : "le montant réglé ne sera pas remboursé."}`}
+          </p>
+          <div className="grid grid-cols-2 gap-2 mt-3">
+            <button
+              type="button"
+              onClick={() => setConfirm(false)}
+              className="py-3 rounded-2xl border-2 border-border bg-card font-bold text-sm"
+            >
+              Revenir
+            </button>
+            <button
+              type="button"
+              onClick={() => store.cancelRequest(request.id, free)}
+              className="py-3 rounded-2xl bg-destructive text-destructive-foreground font-bold text-sm"
+            >
+              Confirmer l'annulation
+            </button>
+          </div>
+        </div>
+      )}
+      <p className="text-xs text-muted-foreground mt-2">
+        Modification et annulation gratuites jusqu'à 48 h avant le rendez-vous. Passé ce délai, la mission reste due.
+      </p>
+    </div>
+  );
+}
+
+
 function FamilyWait({ request, onDone }: { request: Request | undefined; onDone: () => void }) {
   const [paid, setPaid] = useState(false);
   const [showPay, setShowPay] = useState(false);
@@ -604,6 +657,22 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
     request?.scheduledAt ? toLocalInput(request.scheduledAt) : "",
   );
   if (!request) return null;
+  if (request.status === "cancelled") {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
+        <div className="text-6xl">🗑️</div>
+        <p className="text-2xl font-black">Rendez-vous annulé</p>
+        <p className="text-base text-muted-foreground">
+          {request.refunded
+            ? "Annulation à plus de 48 h : vous serez intégralement remboursé sous 3 jours ouvrés."
+            : "Annulation à moins de 48 h : conformément aux conditions, le paiement n'est pas remboursé."}
+        </p>
+        <button onClick={onDone} className="btn-huge bg-primary text-primary-foreground w-full">
+          Retour à l'accueil
+        </button>
+      </div>
+    );
+  }
   const accepted = request.status === "accepted" && request.student;
 
   const hours = request?.durationHours ?? 1;
@@ -650,13 +719,19 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
               {!editing ? (
                 <>
                   <p className="text-lg font-bold">{formatSchedule(request.scheduledAt!)}</p>
-                  <button
-                    type="button"
-                    onClick={() => { setNewWhen(toLocalInput(request.scheduledAt!)); setEditing(true); }}
-                    className="mt-2 text-sm font-bold text-primary underline"
-                  >
-                    ✏️ Modifier le rendez-vous
-                  </button>
+                  {canFreeCancel(request.scheduledAt) ? (
+                    <button
+                      type="button"
+                      onClick={() => { setNewWhen(toLocalInput(request.scheduledAt!)); setEditing(true); }}
+                      className="mt-2 text-sm font-bold text-primary underline"
+                    >
+                      ✏️ Modifier le rendez-vous
+                    </button>
+                  ) : (
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      ⏳ Modification impossible : moins de 48 h avant le rendez-vous.
+                    </p>
+                  )}
                 </>
               ) : (
                 <div className="flex flex-col gap-2 mt-1">
@@ -693,6 +768,7 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
               <p className="text-sm text-muted-foreground mt-3">Besoin</p>
               <p className="text-base font-semibold">{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</p>
             </div>
+            <CancelScheduledBlock request={request} paid={false} />
             <button onClick={onDone} className="text-base text-muted-foreground underline">Retour à l'accueil</button>
           </>
         ) : (
@@ -761,6 +837,7 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
               </a>
             </>
           )}
+          {!!request.scheduledAt && <CancelScheduledBlock request={request} paid={paid} />}
           <button onClick={onDone} className="text-base text-muted-foreground underline">Terminer</button>
         </>
       )}
@@ -1053,9 +1130,151 @@ function StudentFlow() {
   );
 }
 
+/* --- Compagnon : annulation d'un RDV & règles de radiation --- */
+
+const STRIKES_KEY = "sos-companion-strikes";
+function loadStrikes(): number {
+  if (typeof window === "undefined") return 0;
+  return Number(localStorage.getItem(STRIKES_KEY) || 0);
+}
+function saveStrikes(n: number) {
+  try {
+    localStorage.setItem(STRIKES_KEY, String(n));
+    window.dispatchEvent(new Event("sos-strikes-changed"));
+  } catch {}
+}
+function useStrikes(): number {
+  const [n, setN] = useState(() => loadStrikes());
+  useEffect(() => {
+    const refresh = () => setN(loadStrikes());
+    window.addEventListener("sos-strikes-changed", refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener("sos-strikes-changed", refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
+  return n;
+}
+
+function CompanionRulesNotice({ strikes }: { strikes: number }) {
+  const banned = strikes >= 3;
+  return (
+    <div
+      className={`rounded-2xl border-2 p-4 text-left ${banned ? "border-destructive bg-destructive/10" : "border-warning bg-warning/10"}`}
+    >
+      <p className="text-sm font-bold">{banned ? "🚫 Compte radié" : "⚠️ Règles d'engagement"}</p>
+      <ul className="text-xs text-muted-foreground mt-2 space-y-1 list-disc pl-4">
+        <li>Annulation possible jusqu'à 48 h avant le rendez-vous, si un autre compagnon est disponible.</li>
+        <li>3 rendez-vous non honorés sans justificatif valable = radiation de l'application.</li>
+        <li>Mauvais comportement, incivilité, vol : radiation immédiate et signalement.</li>
+      </ul>
+      <p className={`text-sm font-bold mt-2 ${banned ? "text-destructive" : ""}`}>
+        {banned
+          ? "Votre compte est radié : vous ne pouvez plus accepter de mission."
+          : `Rendez-vous non honorés : ${strikes}/3`}
+      </p>
+    </div>
+  );
+}
+
+function CompanionCancelBlock({ request }: { request: Request }) {
+  const [confirm, setConfirm] = useState(false);
+  const [done, setDone] = useState<"released" | "strike" | null>(null);
+  const strikes = useStrikes();
+  const inTime = canFreeCancel(request.scheduledAt);
+  // Simulation : un autre compagnon est disponible sur ce créneau.
+  const replacementAvailable = true;
+
+  if (done === "released")
+    return (
+      <div className="rounded-2xl border-2 border-primary bg-accent p-4 text-left">
+        <p className="text-sm font-bold">🔄 Mission libérée</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          La recherche d'un autre compagnon a été relancée. La famille est prévenue par SMS.
+        </p>
+      </div>
+    );
+
+  if (done === "strike")
+    return (
+      <div className="rounded-2xl border-2 border-destructive bg-destructive/10 p-4 text-left">
+        <p className="text-sm font-bold text-destructive">Rendez-vous non honoré enregistré</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Sans justificatif valable, ce désistement compte comme un manquement ({strikes}/3). À 3 manquements,
+          votre compte est radié.
+        </p>
+      </div>
+    );
+
+  return (
+    <div className="text-left">
+      {!confirm ? (
+        <button
+          type="button"
+          onClick={() => setConfirm(true)}
+          className="text-sm font-bold text-destructive underline"
+        >
+          🚫 Je ne peux pas assurer cette mission
+        </button>
+      ) : (
+        <div className="rounded-2xl border-2 border-border bg-card p-4">
+          {inTime && replacementAvailable ? (
+            <>
+              <p className="text-sm font-bold">Annulation possible</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Plus de 48 h avant le rendez-vous et un autre compagnon est disponible : la mission repart en
+                recherche, sans pénalité.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-bold text-destructive">Annulation tardive</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {inTime
+                  ? "Aucun autre compagnon n'est disponible sur ce créneau."
+                  : "Il reste moins de 48 h avant le rendez-vous."}{" "}
+                Sans justificatif valable, ce désistement sera compté comme un rendez-vous non honoré (3 = radiation).
+              </p>
+            </>
+          )}
+          <div className="grid grid-cols-2 gap-2 mt-3">
+            <button
+              type="button"
+              onClick={() => setConfirm(false)}
+              className="py-3 rounded-2xl border-2 border-border bg-card font-bold text-sm"
+            >
+              Je maintiens
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                store.releaseRequest(request.id);
+                if (inTime && replacementAvailable) {
+                  setDone("released");
+                } else {
+                  saveStrikes(loadStrikes() + 1);
+                  setDone("strike");
+                }
+              }}
+              className="py-3 rounded-2xl bg-destructive text-destructive-foreground font-bold text-sm"
+            >
+              Confirmer
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 function StudentDetail({ request, onBack }: { request: Request; onBack: () => void }) {
   const accepted = request.status === "accepted";
-  const accept = () => store.acceptRequest(request.id);
+  const strikes = useStrikes();
+  const banned = strikes >= 3;
+  const accept = () => { if (!banned) store.acceptRequest(request.id); };
+
 
   return (
     <div className="flex-1 flex flex-col px-5 py-6 gap-5">
@@ -1104,9 +1323,14 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
           <div className="bg-accent rounded-2xl p-4 text-sm">
             L'adresse exacte et le téléphone seront révélés après acceptation.
           </div>
+          <CompanionRulesNotice strikes={strikes} />
           <div className="flex-1" />
-          <button onClick={accept} className="btn-huge bg-success text-success-foreground">
-            ✅ Accepter la mission
+          <button
+            onClick={accept}
+            disabled={banned}
+            className="btn-huge bg-success text-success-foreground disabled:opacity-50"
+          >
+            {banned ? "🚫 Compte radié" : "✅ Accepter la mission"}
           </button>
         </>
       ) : (
@@ -1126,6 +1350,12 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
             📞 Appeler la famille
           </a>
           <a
+            href={`sms:${request.phone}`}
+            className="btn-huge bg-accent text-foreground border-2 border-primary text-center"
+          >
+            💬 Envoyer un message au client
+          </a>
+          <a
             href={`https://maps.google.com/?q=${encodeURIComponent(request.address)}`}
             target="_blank"
             rel="noreferrer"
@@ -1133,6 +1363,8 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
           >
             🗺️ Itinéraire
           </a>
+          {!!request.scheduledAt && <CompanionCancelBlock request={request} />}
+          <CompanionRulesNotice strikes={strikes} />
         </>
       )}
     </div>

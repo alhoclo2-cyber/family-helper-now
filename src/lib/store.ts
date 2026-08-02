@@ -32,7 +32,9 @@ export type Request = {
   escortDestination?: string; // destination pour l'accompagnement d'un enfant
   escortDetail?: string; // précision libre ("Autre")
   otherDetail?: string; // précision libre pour le besoin "Autre (à préciser)"
-  status: "searching" | "accepted";
+  status: "searching" | "accepted" | "cancelled";
+  cancelledBy?: "family" | "companion";
+  refunded?: boolean;
   student?: { firstName: string; photo: string; rating: number };
 };
 
@@ -108,6 +110,26 @@ export const store = {
       ...state,
       requests: state.requests.map((r) =>
         r.id === id ? { ...r, status: "accepted", student: seedStudents[studentIdx % seedStudents.length] } : r,
+      ),
+    };
+    emit();
+  },
+  // La famille annule sa demande. Remboursement uniquement si > 48h avant le RDV.
+  cancelRequest: (id: string, refunded: boolean) => {
+    state = {
+      ...state,
+      requests: state.requests.map((r) =>
+        r.id === id ? { ...r, status: "cancelled" as const, cancelledBy: "family" as const, refunded } : r,
+      ),
+    };
+    emit();
+  },
+  // Le compagnon se désiste : la mission repart en recherche d'un autre compagnon.
+  releaseRequest: (id: string) => {
+    state = {
+      ...state,
+      requests: state.requests.map((r) =>
+        r.id === id ? { ...r, status: "searching" as const, student: undefined } : r,
       ),
     };
     emit();
