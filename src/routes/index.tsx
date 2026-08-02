@@ -1323,9 +1323,14 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
           <div className="bg-accent rounded-2xl p-4 text-sm">
             L'adresse exacte et le téléphone seront révélés après acceptation.
           </div>
+          <CompanionRulesNotice strikes={strikes} />
           <div className="flex-1" />
-          <button onClick={accept} className="btn-huge bg-success text-success-foreground">
-            ✅ Accepter la mission
+          <button
+            onClick={accept}
+            disabled={banned}
+            className="btn-huge bg-success text-success-foreground disabled:opacity-50"
+          >
+            {banned ? "🚫 Compte radié" : "✅ Accepter la mission"}
           </button>
         </>
       ) : (
