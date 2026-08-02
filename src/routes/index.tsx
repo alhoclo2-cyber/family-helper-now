@@ -703,13 +703,19 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
               {!editing ? (
                 <>
                   <p className="text-lg font-bold">{formatSchedule(request.scheduledAt!)}</p>
-                  <button
-                    type="button"
-                    onClick={() => { setNewWhen(toLocalInput(request.scheduledAt!)); setEditing(true); }}
-                    className="mt-2 text-sm font-bold text-primary underline"
-                  >
-                    ✏️ Modifier le rendez-vous
-                  </button>
+                  {canFreeCancel(request.scheduledAt) ? (
+                    <button
+                      type="button"
+                      onClick={() => { setNewWhen(toLocalInput(request.scheduledAt!)); setEditing(true); }}
+                      className="mt-2 text-sm font-bold text-primary underline"
+                    >
+                      ✏️ Modifier le rendez-vous
+                    </button>
+                  ) : (
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      ⏳ Modification impossible : moins de 48 h avant le rendez-vous.
+                    </p>
+                  )}
                 </>
               ) : (
                 <div className="flex flex-col gap-2 mt-1">
