@@ -112,9 +112,9 @@ function formatSchedule(ts: number) {
   });
 }
 
-const BASE_RATE = 21;
+const BASE_RATE = 26; // tarif horaire TTC — paiement en CESU préfinancé
 const SERVICE_FEE = 4.87;
-const TAX_CREDIT_RATE = 0.5; // SAP : crédit d'impôt de 50 %
+const TAX_CREDIT_RATE = 0.5; // SAP : crédit d'impôt de 50 % (avance immédiate)
 
 function computePrice(hours: number) {
   const total = hours <= 1 ? BASE_RATE : BASE_RATE * hours;
@@ -124,6 +124,7 @@ function computePrice(hours: number) {
     intervention: total - SERVICE_FEE,
     afterCredit: total * (1 - TAX_CREDIT_RATE),
     credit: total * TAX_CREDIT_RATE,
+    dueNow: total * (1 - TAX_CREDIT_RATE), // le client ne règle que 50 % à la commande
   };
 }
 
@@ -189,7 +190,7 @@ function addOrderToAccount(order: Order) {
 function TaxCreditHint({ total, className = "" }: { total: number; className?: string }) {
   return (
     <div className={`text-xs text-muted-foreground ${className}`}>
-      💚 Soit <b className="text-success">{formatPrice(total * (1 - TAX_CREDIT_RATE))} €</b> après crédit d'impôt SAP (–50 %)
+      💚 Vous ne payez que <b className="text-success">{formatPrice(total * (1 - TAX_CREDIT_RATE))} €</b> à la commande (crédit d'impôt SAP –50 % déduit immédiatement)
     </div>
   );
 }
@@ -294,6 +295,7 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
   const [childrenCount, setChildrenCount] = useState<string>("1 enfant");
   const [escortDestination, setEscortDestination] = useState<string>("À l'école");
   const [escortDetail, setEscortDetail] = useState<string>("");
+  const [otherDetail, setOtherDetail] = useState<string>("");
 
   const needs: { v: NeedType; icon: string }[] = [
     { v: "Compagnie/Présence", icon: "🤝" },
@@ -307,7 +309,10 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
     { v: "Aide aux devoirs (primaire au lycée)", icon: "📚" },
     { v: "Garde d'enfants (à partir de 3 ans)", icon: "🧸" },
     { v: "Accompagner un enfant (à partir de 3 ans)", icon: "🚸" },
+    { v: "Autre (à préciser)", icon: "✏️" },
   ];
+
+  const isOther = need === "Autre (à préciser)";
 
   const isHomework = need === "Aide aux devoirs (primaire au lycée)";
   const isChildcare = need === "Garde d'enfants (à partir de 3 ans)";
@@ -318,12 +323,14 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
     need === "Accompagnement sorties extérieures" ||
     isHomework ||
     isChildcare ||
-    isEscortChild;
+    isEscortChild ||
+    need === "Autre (à préciser)";
 
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!address.trim() || !phone.trim()) return;
+    if (need === "Autre (à préciser)" && !otherDetail.trim()) return;
     const scheduledAt = mode === "scheduled" ? new Date(when).getTime() : null;
     const dh = hasDuration ? durationHours : 1;
     const isParcel = need === "Retrait ou dépôt d'un colis";
@@ -339,6 +346,7 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
       childrenCount: isChildcare ? childrenCount : undefined,
       escortDestination: isEscortChild ? escortDestination : undefined,
       escortDetail: isEscortChild && escortDestination === "Autre" ? escortDetail : undefined,
+      otherDetail: isOther ? otherDetail : undefined,
     });
     onSubmit();
   };
@@ -367,6 +375,24 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
           ))}
         </div>
       </div>
+      {isOther && (
+        <div>
+          <label className="block text-lg font-bold mb-2">Précisez votre besoin</label>
+          <textarea
+            value={otherDetail}
+            onChange={(e) => setOtherDetail(e.target.value)}
+            placeholder="Décrivez en quelques mots le service souhaité"
+            rows={3}
+            required
+            className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
+          />
+          <p className="text-xs text-muted-foreground mt-2">
+            Le besoin doit tenir dans le cadre d'une mission d'entraide du quotidien, réalisable par une personne
+            non professionnelle, en toute sécurité.
+          </p>
+          <ServiceLimitsNotice />
+        </div>
+      )}
       {isChildNeed && (
         <div className="flex flex-col gap-4">
           <div className="bg-accent rounded-2xl p-3 text-sm">
@@ -473,7 +499,7 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
             Estimation : <b>{formatPrice(computePrice(durationHours).total)} €</b>
             {durationHours <= 1
               ? " (tarif forfaitaire 1h, frais de service 4,87 € inclus)"
-              : ` (${durationHours}h × 21 €, frais de service 4,87 € inclus)`}
+              : ` (${durationHours}h × 26 €, frais de service 4,87 € inclus)`}
           </p>
           <TaxCreditHint total={computePrice(durationHours).total} className="mt-1" />
         </div>
@@ -708,14 +734,14 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
             <>
               <div className="w-full bg-success/10 border-2 border-success/40 rounded-2xl p-3 text-left">
                 <p className="text-sm font-bold text-success">
-                  💚 Après crédit d'impôt SAP (–50 %) : {formatPrice(computePrice(hours).afterCredit)} €
+                  💚 Mission {formatPrice(total)} € — vous ne réglez que {formatPrice(computePrice(hours).dueNow)} € (crédit d'impôt SAP –50 % déduit)
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Récapitulatif annuel disponible en janvier depuis votre compte.
                 </p>
               </div>
               <button onClick={() => setShowPay(true)} className="btn-huge bg-primary text-primary-foreground w-full">
-                💳 Finaliser & payer — {formatPrice(total)} €
+                💳 Finaliser & payer — {formatPrice(computePrice(hours).dueNow)} €
               </button>
               <p className="text-xs text-muted-foreground">
                 Les coordonnées du compagnon seront révélées après paiement.
@@ -767,7 +793,7 @@ function PaymentScreen({ student, hours, onDone, onBack }: { student: string; ho
       <div className="bg-card rounded-2xl p-5 border-2 border-border">
         <div className="flex justify-between text-base">
           <span className="text-muted-foreground">
-            Intervention {hours <= 1 ? "(forfait 1h)" : `(${hours}h × 21 €)`}
+            Intervention {hours <= 1 ? "(forfait 1h)" : `(${hours}h × 26 €)`}
           </span>
           <span className="font-semibold">{formatPrice(intervention)} €</span>
         </div>
@@ -776,21 +802,23 @@ function PaymentScreen({ student, hours, onDone, onBack }: { student: string; ho
           <span className="font-semibold">{formatPrice(serviceFee)} €</span>
         </div>
         <div className="h-px bg-border my-3" />
-        <div className="flex justify-between text-xl font-black">
-          <span>Total à payer</span>
+        <div className="flex justify-between text-base font-bold">
+          <span>Coût total de la mission</span>
           <span>{formatPrice(total)} €</span>
         </div>
-        <div className="mt-3 bg-success/10 border-2 border-success/40 rounded-xl p-3">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Crédit d'impôt SAP (50 %)</span>
-            <span className="font-semibold text-success">– {formatPrice(computePrice(hours).credit)} €</span>
-          </div>
-          <div className="flex justify-between text-base font-black mt-1">
-            <span className="text-success">Coût réel après crédit d'impôt</span>
-            <span className="text-success">{formatPrice(computePrice(hours).afterCredit)} €</span>
+        <div className="flex justify-between text-sm mt-2">
+          <span className="text-muted-foreground">Crédit d'impôt SAP (50 %) déduit immédiatement</span>
+          <span className="font-semibold text-success">– {formatPrice(computePrice(hours).credit)} €</span>
+        </div>
+        <div className="h-px bg-border my-3" />
+        <div className="mt-1 bg-success/10 border-2 border-success/40 rounded-xl p-3">
+          <div className="flex justify-between text-xl font-black">
+            <span className="text-success">À payer aujourd'hui</span>
+            <span className="text-success">{formatPrice(computePrice(hours).dueNow)} €</span>
           </div>
           <p className="text-[11px] text-muted-foreground mt-1">
-            Service à la personne éligible — attestation fiscale envoyée chaque janvier.
+            Paiement en CESU préfinancé — vous ne réglez que 50 % du montant à la commande. Attestation fiscale
+            envoyée chaque janvier.
           </p>
         </div>
       </div>
@@ -902,7 +930,7 @@ function useApplications(): Application[] {
   return apps;
 }
 
-function loadEnroll(): { status: EnrollStatus; profile?: EnrollProfile; appId?: string } {
+function loadEnroll(): { status: EnrollStatus; profile?: EnrollProfile; appId?: string; demo?: boolean } {
   if (typeof window === "undefined") return { status: "none" };
   try {
     const raw = localStorage.getItem(ENROLL_KEY);
@@ -912,7 +940,7 @@ function loadEnroll(): { status: EnrollStatus; profile?: EnrollProfile; appId?: 
 }
 
 function StudentFlow() {
-  const [enroll, setEnroll] = useState<{ status: EnrollStatus; profile?: EnrollProfile; appId?: string }>(() => loadEnroll());
+  const [enroll, setEnroll] = useState<{ status: EnrollStatus; profile?: EnrollProfile; appId?: string; demo?: boolean }>(() => loadEnroll());
   const apps = useApplications();
   const [online, setOnline] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -921,7 +949,7 @@ function StudentFlow() {
 
   // Sync enroll state with admin's decision on this candidate
   useEffect(() => {
-    if (!enroll.appId) return;
+    if (!enroll.appId || enroll.demo) return;
     const app = apps.find((a) => a.id === enroll.appId);
     if (!app) return;
     const nextStatus: EnrollStatus =
@@ -933,7 +961,7 @@ function StudentFlow() {
     }
   }, [apps, enroll]);
 
-  const saveEnroll = (next: { status: EnrollStatus; profile?: EnrollProfile; appId?: string }) => {
+  const saveEnroll = (next: { status: EnrollStatus; profile?: EnrollProfile; appId?: string; demo?: boolean }) => {
     setEnroll(next);
     try { localStorage.setItem(ENROLL_KEY, JSON.stringify(next)); } catch {}
   };
@@ -947,6 +975,17 @@ function StudentFlow() {
 
   return (
     <div className="flex-1 flex flex-col px-5 py-6 gap-5">
+      {enroll.demo && (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border-2 border-primary/40 bg-accent p-3">
+          <p className="text-sm font-bold">👁️ Mode démo — espace Compagnon validé</p>
+          <button
+            onClick={() => saveEnroll({ status: "none" })}
+            className="text-sm font-bold text-primary underline shrink-0"
+          >
+            Quitter
+          </button>
+        </div>
+      )}
       <button
         onClick={() => setOnline((v) => !v)}
         className={`btn-huge ${online ? "bg-success text-success-foreground" : "bg-muted text-foreground"}`}
@@ -981,6 +1020,9 @@ function StudentFlow() {
                       )}
                       {r.childLevel && <p className="text-sm mt-1 font-semibold">🎒 Niveau : {r.childLevel}</p>}
                       {r.childrenCount && <p className="text-sm mt-1 font-semibold">🧸 {r.childrenCount}</p>}
+                      {r.otherDetail && (
+                        <p className="text-sm mt-1 font-semibold">✏️ {r.otherDetail}</p>
+                      )}
                       {r.escortDestination && (
                         <p className="text-sm mt-1 font-semibold">🚸 {r.escortDestination}{r.escortDetail ? ` — ${r.escortDetail}` : ""}</p>
                       )}
@@ -1024,11 +1066,14 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
         {request.durationHours && request.durationHours > 1 && (
           <p className="text-base font-semibold mt-2">⏱️ Durée demandée : {request.durationHours}h</p>
         )}
-        {(request.childLevel || request.childrenCount || request.escortDestination) && (
+        {(request.childLevel || request.childrenCount || request.escortDestination || request.otherDetail) && (
           <div className="mt-3 bg-accent rounded-xl p-3">
             <p className="text-xs text-muted-foreground font-bold uppercase">Enfant (3 ans et +)</p>
             {request.childLevel && <p className="text-base font-semibold mt-1">🎒 Niveau : {request.childLevel}</p>}
             {request.childrenCount && <p className="text-base font-semibold mt-1">🧸 {request.childrenCount}</p>}
+            {request.otherDetail && (
+              <p className="text-base font-semibold mt-1">✏️ {request.otherDetail}</p>
+            )}
             {request.escortDestination && (
               <p className="text-base font-semibold mt-1">🚸 {request.escortDestination}{request.escortDetail ? ` — ${request.escortDetail}` : ""}</p>
             )}
@@ -1100,8 +1145,8 @@ function StudentEnroll({
   enroll,
   onChange,
 }: {
-  enroll: { status: EnrollStatus; profile?: EnrollProfile; appId?: string };
-  onChange: (n: { status: EnrollStatus; profile?: EnrollProfile; appId?: string }) => void;
+  enroll: { status: EnrollStatus; profile?: EnrollProfile; appId?: string; demo?: boolean };
+  onChange: (n: { status: EnrollStatus; profile?: EnrollProfile; appId?: string; demo?: boolean }) => void;
 }) {
   const [step, setStep] = useState<"intro" | "form">("intro");
   const [p, setP] = useState<EnrollProfile>(
@@ -1197,6 +1242,29 @@ function StudentEnroll({
         <div className="flex-1" />
         <button onClick={() => setStep("form")} className="btn-huge bg-primary text-primary-foreground">
           Commencer ma candidature
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            onChange({
+              status: "approved",
+              demo: true,
+              profile: {
+                firstName: "Démo",
+                lastName: "Compagnon",
+                email: "demo@sos-compagnons.fr",
+                phone: "06 00 00 00 00",
+                situation: "Étudiant(e)",
+                school: "Démonstration",
+                city: "Paris",
+                motivation: "Aperçu de l'espace Compagnon",
+                docs: {},
+              },
+            })
+          }
+          className="py-4 rounded-2xl border-2 border-primary text-primary font-bold text-base"
+        >
+          👁️ Aperçu de l'espace Compagnon (démo)
         </button>
       </div>
 

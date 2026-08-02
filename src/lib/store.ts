@@ -12,7 +12,8 @@ export type NeedType =
   | "Retrait ou dépôt d'un colis"
   | "Aide aux devoirs (primaire au lycée)"
   | "Garde d'enfants (à partir de 3 ans)"
-  | "Accompagner un enfant (à partir de 3 ans)";
+  | "Accompagner un enfant (à partir de 3 ans)"
+  | "Autre (à préciser)";
 
 export type Request = {
   id: string;
@@ -30,6 +31,7 @@ export type Request = {
   childrenCount?: string; // nombre d'enfants pour la garde
   escortDestination?: string; // destination pour l'accompagnement d'un enfant
   escortDetail?: string; // précision libre ("Autre")
+  otherDetail?: string; // précision libre pour le besoin "Autre (à préciser)"
   status: "searching" | "accepted";
   student?: { firstName: string; photo: string; rating: number };
 };
