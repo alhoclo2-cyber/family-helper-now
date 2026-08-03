@@ -1212,11 +1212,31 @@ function CompanionRulesNotice({ strikes }: { strikes: number }) {
     <div
       className={`rounded-2xl border-2 p-4 text-left ${banned ? "border-destructive bg-destructive/10" : "border-warning bg-warning/10"}`}
     >
-      <p className="text-sm font-bold">{banned ? "🚫 Compte radié" : "⚠️ Règles d'engagement"}</p>
-      <ul className="text-xs text-muted-foreground mt-2 space-y-1 list-disc pl-4">
+      <p className="text-sm font-bold">{banned ? "🚫 Compte radié" : "⚠️ Charte d'engagement du compagnon"}</p>
+      <p className="text-xs font-semibold mt-2">Avant la mission</p>
+      <ul className="text-xs text-muted-foreground mt-1 space-y-1 list-disc pl-4">
+        <li>N'acceptez que les missions que vous pouvez réellement assurer.</li>
         <li>Annulation possible jusqu'à 48 h avant le rendez-vous, si un autre compagnon est disponible.</li>
-        <li>3 rendez-vous non honorés sans justificatif valable = radiation de l'application.</li>
-        <li>Mauvais comportement, incivilité, vol : radiation immédiate et signalement.</li>
+        <li>Moins de 48 h : uniquement sur justificatif valable (maladie, accident, cas de force majeure).</li>
+        <li>Prévenez la famille par appel ou SMS dès qu'un imprévu survient.</li>
+      </ul>
+      <p className="text-xs font-semibold mt-2">Pendant la mission</p>
+      <ul className="text-xs text-muted-foreground mt-1 space-y-1 list-disc pl-4">
+        <li>Ponctualité : arrivez à l'heure, présentez-vous et montrez votre photo de profil.</li>
+        <li>Respect, politesse et discrétion : ce qui se passe chez la famille reste confidentiel (RGPD).</li>
+        <li>Restez dans le cadre du service demandé : aucun acte médical, paramédical ou d'apprentissage.</li>
+        <li>Aucun paiement en direct, aucun cadeau, aucune clé conservée, aucune opération bancaire.</li>
+        <li>Aucun alcool, aucune substance, aucun tabac au domicile ; téléphone en usage limité.</li>
+        <li>Enfants (3 ans et +) : ne jamais laisser l'enfant seul, ne le confier qu'à l'adulte désigné.</li>
+      </ul>
+      <p className="text-xs font-semibold mt-2">Sanctions</p>
+      <ul className="text-xs text-muted-foreground mt-1 space-y-1 list-disc pl-4">
+        <li>1er manquement : avertissement. 2e : suspension temporaire des missions.</li>
+        <li>3 rendez-vous non honorés sans justificatif valable = radiation définitive.</li>
+        <li>
+          Radiation immédiate et signalement : vol, incivilité, violence, maltraitance, état d'ébriété, fausse
+          identité, mise en relation hors application.
+        </li>
       </ul>
       <p className={`text-sm font-bold mt-2 ${banned ? "text-destructive" : ""}`}>
         {banned
