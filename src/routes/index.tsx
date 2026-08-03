@@ -495,16 +495,14 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
           </div>
           <p className="text-sm text-muted-foreground mt-2">
             Estimation : <b>{formatPrice(computePrice(durationHours).total)} €</b>
-            {durationHours <= 1
-              ? " (tarif forfaitaire 1h, frais de service 4,87 € inclus)"
-              : ` (${durationHours}h × 26 €, frais de service 4,87 € inclus)`}
+            {durationHours <= 1 ? " (tarif forfaitaire 1h, tout compris)" : ` (${durationHours}h × 26 €, tout compris)`}
           </p>
           <TaxCreditHint total={computePrice(durationHours).total} className="mt-1" />
         </div>
       )}
       {!hasDuration && need !== "Retrait ou dépôt d'un colis" && (
         <div className="bg-accent rounded-2xl p-3 text-sm">
-          Tarif : <b>{formatPrice(BASE_RATE)} €</b> (forfait 1h, frais de service 4,87 € inclus)
+          Tarif : <b>{formatPrice(BASE_RATE)} €</b> (forfait 1h, tout compris)
           <TaxCreditHint total={BASE_RATE} className="mt-1" />
         </div>
       )}
