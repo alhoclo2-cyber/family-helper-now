@@ -599,6 +599,16 @@ const CANCEL_WINDOW_MS = 48 * 60 * 60 * 1000;
 const canFreeCancel = (scheduledAt?: number | null) =>
   !!scheduledAt && scheduledAt - Date.now() > CANCEL_WINDOW_MS;
 
+// Simulation de disponibilité des compagnons sur un nouveau créneau.
+// Aucun compagnon entre 21 h et 7 h, ni à moins de 48 h ; sinon 1 créneau sur 4 est complet.
+function companionAvailableAt(ts: number) {
+  if (Number.isNaN(ts)) return false;
+  if (ts - Date.now() <= CANCEL_WINDOW_MS) return false;
+  const h = new Date(ts).getHours();
+  if (h < 7 || h >= 21) return false;
+  return Math.floor(ts / 60_000) % 4 !== 0;
+}
+
 function CancelScheduledBlock({ request, paid }: { request: Request; paid: boolean }) {
   const [confirm, setConfirm] = useState(false);
   const free = canFreeCancel(request.scheduledAt);
