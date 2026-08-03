@@ -1984,7 +1984,8 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
           </p>
         </div>
         <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-3 text-sm">
-          🇫🇷 <b>Services à la personne (SAP)</b> — <b>50 % de crédit d'impôt</b> sur toutes vos missions.
+          💳 <b>CESU préfinancé</b> — crédit d'impôt SAP de 50 % déduit immédiatement : vous ne réglez que la moitié
+          du tarif, et retrouvez votre attestation fiscale annuelle ici.
         </div>
         <input
           required
