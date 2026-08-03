@@ -651,7 +651,8 @@ function CancelScheduledBlock({ request, paid }: { request: Request; paid: boole
         </div>
       )}
       <p className="text-xs text-muted-foreground mt-2">
-        Modification et annulation gratuites jusqu'à 48 h avant le rendez-vous. Passé ce délai, la mission reste due.
+        Annulation gratuite jusqu'à 48 h avant le rendez-vous. Modification possible dans le même délai, sous réserve
+        qu'un compagnon soit disponible sur le nouveau créneau. Passé 48 h, la mission reste due.
       </p>
     </div>
   );
