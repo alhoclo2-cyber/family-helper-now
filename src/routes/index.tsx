@@ -849,7 +849,7 @@ function PaymentScreen({ student, hours, onDone, onBack }: { student: string; ho
   const [card, setCard] = useState("");
   const [exp, setExp] = useState("");
   const [cvc, setCvc] = useState("");
-  const { total, serviceFee, intervention } = computePrice(hours);
+  const { total, intervention } = computePrice(hours);
 
   const pay = (e: React.FormEvent) => {
     e.preventDefault();
