@@ -652,6 +652,7 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
   const [paid, setPaid] = useState(false);
   const [showPay, setShowPay] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [reschedule, setReschedule] = useState<"idle" | "checking" | "refused" | "confirmed">("idle");
   const toLocalInput = (ts: number) => {
     const d = new Date(ts);
     const pad = (n: number) => String(n).padStart(2, "0");
