@@ -113,15 +113,13 @@ function formatSchedule(ts: number) {
 }
 
 const BASE_RATE = 26; // tarif horaire TTC — paiement en CESU préfinancé
-const SERVICE_FEE = 4.87;
 const TAX_CREDIT_RATE = 0.5; // SAP : crédit d'impôt de 50 % (avance immédiate)
 
 function computePrice(hours: number) {
   const total = hours <= 1 ? BASE_RATE : BASE_RATE * hours;
   return {
     total,
-    serviceFee: SERVICE_FEE,
-    intervention: total - SERVICE_FEE,
+    intervention: total,
     afterCredit: total * (1 - TAX_CREDIT_RATE),
     credit: total * TAX_CREDIT_RATE,
     dueNow: total * (1 - TAX_CREDIT_RATE), // le client ne règle que 50 % à la commande
