@@ -753,31 +753,62 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
                   <input
                     type="datetime-local"
                     value={newWhen}
-                    onChange={(e) => setNewWhen(e.target.value)}
+                    onChange={(e) => { setNewWhen(e.target.value); setReschedule("idle"); }}
+                    disabled={reschedule === "checking"}
                     className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
                   />
+                  {reschedule === "checking" && (
+                    <p className="text-sm font-semibold text-primary">
+                      🔎 Recherche d'un compagnon disponible sur ce créneau…
+                    </p>
+                  )}
+                  {reschedule === "refused" && (
+                    <div className="rounded-2xl border-2 border-destructive/50 bg-destructive/10 p-3">
+                      <p className="text-sm font-bold text-destructive">Modification refusée</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Aucun compagnon n'est disponible sur ce nouveau créneau. Votre rendez-vous initial est
+                        maintenu. Essayez un autre horaire (entre 7 h et 21 h, à plus de 48 h).
+                      </p>
+                    </div>
+                  )}
+                  {reschedule === "confirmed" && (
+                    <p className="text-sm font-bold text-success">
+                      ✅ Modification acceptée : un compagnon est disponible sur ce créneau.
+                    </p>
+                  )}
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={() => setEditing(false)}
+                      onClick={() => { setEditing(false); setReschedule("idle"); }}
                       className="py-3 rounded-2xl border-2 border-border bg-card font-bold text-sm"
                     >
                       Annuler
                     </button>
                     <button
                       type="button"
+                      disabled={reschedule === "checking"}
                       onClick={() => {
                         const ts = new Date(newWhen).getTime();
-                        if (!Number.isNaN(ts)) {
-                          store.updateRequest(request.id, { scheduledAt: ts });
-                          setEditing(false);
-                        }
+                        if (Number.isNaN(ts)) return;
+                        setReschedule("checking");
+                        setTimeout(() => {
+                          if (companionAvailableAt(ts)) {
+                            store.updateRequest(request.id, { scheduledAt: ts });
+                            setReschedule("confirmed");
+                            setTimeout(() => { setEditing(false); setReschedule("idle"); }, 1400);
+                          } else {
+                            setReschedule("refused");
+                          }
+                        }, 1500);
                       }}
-                      className="py-3 rounded-2xl bg-primary text-primary-foreground font-bold text-sm"
+                      className="py-3 rounded-2xl bg-primary text-primary-foreground font-bold text-sm disabled:opacity-60"
                     >
-                      Enregistrer
+                      {reschedule === "checking" ? "Vérification…" : "Vérifier & enregistrer"}
                     </button>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    La modification n'est validée que si un compagnon est disponible sur le nouveau créneau.
+                  </p>
                 </div>
               )}
               <p className="text-sm text-muted-foreground mt-3">Besoin</p>
