@@ -113,15 +113,13 @@ function formatSchedule(ts: number) {
 }
 
 const BASE_RATE = 26; // tarif horaire TTC — paiement en CESU préfinancé
-const SERVICE_FEE = 4.87;
 const TAX_CREDIT_RATE = 0.5; // SAP : crédit d'impôt de 50 % (avance immédiate)
 
 function computePrice(hours: number) {
   const total = hours <= 1 ? BASE_RATE : BASE_RATE * hours;
   return {
     total,
-    serviceFee: SERVICE_FEE,
-    intervention: total - SERVICE_FEE,
+    intervention: total,
     afterCredit: total * (1 - TAX_CREDIT_RATE),
     credit: total * TAX_CREDIT_RATE,
     dueNow: total * (1 - TAX_CREDIT_RATE), // le client ne règle que 50 % à la commande
@@ -251,12 +249,20 @@ function FamilyFlow() {
           <span>Prendre un rendez-vous</span>
           <span className="text-sm font-normal text-muted-foreground">Planifier pour plus tard</span>
         </button>
-        <div className="w-full bg-success/10 border-2 border-success/40 rounded-2xl p-4 text-center">
-          <p className="text-sm font-bold text-success">🇫🇷 Services à la personne (SAP)</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Bénéficiez d'un <b className="text-foreground">crédit d'impôt de 50 %</b> sur toutes vos missions.
-            Récapitulatif annuel disponible chaque janvier depuis votre compte.
-          </p>
+        <div className="w-full bg-success/10 border-2 border-success/40 rounded-2xl p-4 text-left">
+          <p className="text-sm font-bold text-success text-center">💳 Paiement en CESU préfinancé</p>
+          <ul className="text-xs text-muted-foreground mt-2 space-y-1 list-disc pl-4">
+            <li>
+              Service à la personne (SAP) : le <b className="text-foreground">crédit d'impôt de 50 %</b> est déduit
+              immédiatement.
+            </li>
+            <li>
+              Vous ne réglez que <b className="text-foreground">la moitié du tarif</b> à la commande, rien à avancer
+              ni à réclamer ensuite.
+            </li>
+            <li>Le compagnon est déclaré en CESU : zéro démarche administrative pour vous.</li>
+            <li>Attestation fiscale annuelle disponible chaque janvier depuis votre compte.</li>
+          </ul>
         </div>
         <p className="text-xs text-muted-foreground text-center max-w-xs">
           En cas d'urgence vitale, composez le <span className="font-bold text-foreground">15</span> (SAMU).
@@ -497,16 +503,14 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
           </div>
           <p className="text-sm text-muted-foreground mt-2">
             Estimation : <b>{formatPrice(computePrice(durationHours).total)} €</b>
-            {durationHours <= 1
-              ? " (tarif forfaitaire 1h, frais de service 4,87 € inclus)"
-              : ` (${durationHours}h × 26 €, frais de service 4,87 € inclus)`}
+            {durationHours <= 1 ? " (tarif forfaitaire 1h, tout compris)" : ` (${durationHours}h × 26 €, tout compris)`}
           </p>
           <TaxCreditHint total={computePrice(durationHours).total} className="mt-1" />
         </div>
       )}
       {!hasDuration && need !== "Retrait ou dépôt d'un colis" && (
         <div className="bg-accent rounded-2xl p-3 text-sm">
-          Tarif : <b>{formatPrice(BASE_RATE)} €</b> (forfait 1h, frais de service 4,87 € inclus)
+          Tarif : <b>{formatPrice(BASE_RATE)} €</b> (forfait 1h, tout compris)
           <TaxCreditHint total={BASE_RATE} className="mt-1" />
         </div>
       )}
@@ -595,6 +599,16 @@ const CANCEL_WINDOW_MS = 48 * 60 * 60 * 1000;
 const canFreeCancel = (scheduledAt?: number | null) =>
   !!scheduledAt && scheduledAt - Date.now() > CANCEL_WINDOW_MS;
 
+// Simulation de disponibilité des compagnons sur un nouveau créneau.
+// Aucun compagnon entre 21 h et 7 h, ni à moins de 48 h ; sinon 1 créneau sur 4 est complet.
+function companionAvailableAt(ts: number) {
+  if (Number.isNaN(ts)) return false;
+  if (ts - Date.now() <= CANCEL_WINDOW_MS) return false;
+  const h = new Date(ts).getHours();
+  if (h < 7 || h >= 21) return false;
+  return Math.floor(ts / 60_000) % 4 !== 0;
+}
+
 function CancelScheduledBlock({ request, paid }: { request: Request; paid: boolean }) {
   const [confirm, setConfirm] = useState(false);
   const free = canFreeCancel(request.scheduledAt);
@@ -637,7 +651,8 @@ function CancelScheduledBlock({ request, paid }: { request: Request; paid: boole
         </div>
       )}
       <p className="text-xs text-muted-foreground mt-2">
-        Modification et annulation gratuites jusqu'à 48 h avant le rendez-vous. Passé ce délai, la mission reste due.
+        Annulation gratuite jusqu'à 48 h avant le rendez-vous. Modification possible dans le même délai, sous réserve
+        qu'un compagnon soit disponible sur le nouveau créneau. Passé 48 h, la mission reste due.
       </p>
     </div>
   );
@@ -648,6 +663,7 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
   const [paid, setPaid] = useState(false);
   const [showPay, setShowPay] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [reschedule, setReschedule] = useState<"idle" | "checking" | "refused" | "confirmed">("idle");
   const toLocalInput = (ts: number) => {
     const d = new Date(ts);
     const pad = (n: number) => String(n).padStart(2, "0");
@@ -738,31 +754,62 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
                   <input
                     type="datetime-local"
                     value={newWhen}
-                    onChange={(e) => setNewWhen(e.target.value)}
+                    onChange={(e) => { setNewWhen(e.target.value); setReschedule("idle"); }}
+                    disabled={reschedule === "checking"}
                     className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
                   />
+                  {reschedule === "checking" && (
+                    <p className="text-sm font-semibold text-primary">
+                      🔎 Recherche d'un compagnon disponible sur ce créneau…
+                    </p>
+                  )}
+                  {reschedule === "refused" && (
+                    <div className="rounded-2xl border-2 border-destructive/50 bg-destructive/10 p-3">
+                      <p className="text-sm font-bold text-destructive">Modification refusée</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Aucun compagnon n'est disponible sur ce nouveau créneau. Votre rendez-vous initial est
+                        maintenu. Essayez un autre horaire (entre 7 h et 21 h, à plus de 48 h).
+                      </p>
+                    </div>
+                  )}
+                  {reschedule === "confirmed" && (
+                    <p className="text-sm font-bold text-success">
+                      ✅ Modification acceptée : un compagnon est disponible sur ce créneau.
+                    </p>
+                  )}
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={() => setEditing(false)}
+                      onClick={() => { setEditing(false); setReschedule("idle"); }}
                       className="py-3 rounded-2xl border-2 border-border bg-card font-bold text-sm"
                     >
                       Annuler
                     </button>
                     <button
                       type="button"
+                      disabled={reschedule === "checking"}
                       onClick={() => {
                         const ts = new Date(newWhen).getTime();
-                        if (!Number.isNaN(ts)) {
-                          store.updateRequest(request.id, { scheduledAt: ts });
-                          setEditing(false);
-                        }
+                        if (Number.isNaN(ts)) return;
+                        setReschedule("checking");
+                        setTimeout(() => {
+                          if (companionAvailableAt(ts)) {
+                            store.updateRequest(request.id, { scheduledAt: ts });
+                            setReschedule("confirmed");
+                            setTimeout(() => { setEditing(false); setReschedule("idle"); }, 1400);
+                          } else {
+                            setReschedule("refused");
+                          }
+                        }, 1500);
                       }}
-                      className="py-3 rounded-2xl bg-primary text-primary-foreground font-bold text-sm"
+                      className="py-3 rounded-2xl bg-primary text-primary-foreground font-bold text-sm disabled:opacity-60"
                     >
-                      Enregistrer
+                      {reschedule === "checking" ? "Vérification…" : "Vérifier & enregistrer"}
                     </button>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    La modification n'est validée que si un compagnon est disponible sur le nouveau créneau.
+                  </p>
                 </div>
               )}
               <p className="text-sm text-muted-foreground mt-3">Besoin</p>
@@ -783,6 +830,13 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
               <p className="text-base text-muted-foreground mt-2">Ne quittez pas cet écran.</p>
             </div>
             <p className="text-sm text-muted-foreground">Besoin : <b>{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</b></p>
+            <div className="w-full rounded-2xl border-2 border-border bg-card p-3 text-left">
+              <p className="text-sm font-bold">🆘 Demande d'urgence</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Une demande SOS ne peut être ni modifiée ni annulée : un compagnon est déjà en route de recherche.
+                Pour un besoin planifiable, utilisez « Prendre un rendez-vous ».
+              </p>
+            </div>
           </>
         )
       ) : (
@@ -851,7 +905,7 @@ function PaymentScreen({ student, hours, onDone, onBack }: { student: string; ho
   const [card, setCard] = useState("");
   const [exp, setExp] = useState("");
   const [cvc, setCvc] = useState("");
-  const { total, serviceFee, intervention } = computePrice(hours);
+  const { total, intervention } = computePrice(hours);
 
   const pay = (e: React.FormEvent) => {
     e.preventDefault();
@@ -873,10 +927,6 @@ function PaymentScreen({ student, hours, onDone, onBack }: { student: string; ho
             Intervention {hours <= 1 ? "(forfait 1h)" : `(${hours}h × 26 €)`}
           </span>
           <span className="font-semibold">{formatPrice(intervention)} €</span>
-        </div>
-        <div className="flex justify-between text-base mt-2">
-          <span className="text-muted-foreground">Frais de service</span>
-          <span className="font-semibold">{formatPrice(serviceFee)} €</span>
         </div>
         <div className="h-px bg-border my-3" />
         <div className="flex justify-between text-base font-bold">
@@ -1163,11 +1213,31 @@ function CompanionRulesNotice({ strikes }: { strikes: number }) {
     <div
       className={`rounded-2xl border-2 p-4 text-left ${banned ? "border-destructive bg-destructive/10" : "border-warning bg-warning/10"}`}
     >
-      <p className="text-sm font-bold">{banned ? "🚫 Compte radié" : "⚠️ Règles d'engagement"}</p>
-      <ul className="text-xs text-muted-foreground mt-2 space-y-1 list-disc pl-4">
+      <p className="text-sm font-bold">{banned ? "🚫 Compte radié" : "⚠️ Charte d'engagement du compagnon"}</p>
+      <p className="text-xs font-semibold mt-2">Avant la mission</p>
+      <ul className="text-xs text-muted-foreground mt-1 space-y-1 list-disc pl-4">
+        <li>N'acceptez que les missions que vous pouvez réellement assurer.</li>
         <li>Annulation possible jusqu'à 48 h avant le rendez-vous, si un autre compagnon est disponible.</li>
-        <li>3 rendez-vous non honorés sans justificatif valable = radiation de l'application.</li>
-        <li>Mauvais comportement, incivilité, vol : radiation immédiate et signalement.</li>
+        <li>Moins de 48 h : uniquement sur justificatif valable (maladie, accident, cas de force majeure).</li>
+        <li>Prévenez la famille par appel ou SMS dès qu'un imprévu survient.</li>
+      </ul>
+      <p className="text-xs font-semibold mt-2">Pendant la mission</p>
+      <ul className="text-xs text-muted-foreground mt-1 space-y-1 list-disc pl-4">
+        <li>Ponctualité : arrivez à l'heure, présentez-vous et montrez votre photo de profil.</li>
+        <li>Respect, politesse et discrétion : ce qui se passe chez la famille reste confidentiel (RGPD).</li>
+        <li>Restez dans le cadre du service demandé : aucun acte médical, paramédical ou d'apprentissage.</li>
+        <li>Aucun paiement en direct, aucun cadeau, aucune clé conservée, aucune opération bancaire.</li>
+        <li>Aucun alcool, aucune substance, aucun tabac au domicile ; téléphone en usage limité.</li>
+        <li>Enfants (3 ans et +) : ne jamais laisser l'enfant seul, ne le confier qu'à l'adulte désigné.</li>
+      </ul>
+      <p className="text-xs font-semibold mt-2">Sanctions</p>
+      <ul className="text-xs text-muted-foreground mt-1 space-y-1 list-disc pl-4">
+        <li>1er manquement : avertissement. 2e : suspension temporaire des missions.</li>
+        <li>3 rendez-vous non honorés sans justificatif valable = radiation définitive.</li>
+        <li>
+          Radiation immédiate et signalement : vol, incivilité, violence, maltraitance, état d'ébriété, fausse
+          identité, mise en relation hors application.
+        </li>
       </ul>
       <p className={`text-sm font-bold mt-2 ${banned ? "text-destructive" : ""}`}>
         {banned
@@ -1915,7 +1985,8 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
           </p>
         </div>
         <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-3 text-sm">
-          🇫🇷 <b>Services à la personne (SAP)</b> — <b>50 % de crédit d'impôt</b> sur toutes vos missions.
+          💳 <b>CESU préfinancé</b> — crédit d'impôt SAP de 50 % déduit immédiatement : vous ne réglez que la moitié
+          du tarif, et retrouvez votre attestation fiscale annuelle ici.
         </div>
         <input
           required
