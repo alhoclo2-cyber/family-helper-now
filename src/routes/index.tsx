@@ -872,10 +872,6 @@ function PaymentScreen({ student, hours, onDone, onBack }: { student: string; ho
           </span>
           <span className="font-semibold">{formatPrice(intervention)} €</span>
         </div>
-        <div className="flex justify-between text-base mt-2">
-          <span className="text-muted-foreground">Frais de service</span>
-          <span className="font-semibold">{formatPrice(serviceFee)} €</span>
-        </div>
         <div className="h-px bg-border my-3" />
         <div className="flex justify-between text-base font-bold">
           <span>Coût total de la mission</span>
