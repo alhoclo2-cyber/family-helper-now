@@ -829,6 +829,13 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
               <p className="text-base text-muted-foreground mt-2">Ne quittez pas cet écran.</p>
             </div>
             <p className="text-sm text-muted-foreground">Besoin : <b>{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</b></p>
+            <div className="w-full rounded-2xl border-2 border-border bg-card p-3 text-left">
+              <p className="text-sm font-bold">🆘 Demande d'urgence</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Une demande SOS ne peut être ni modifiée ni annulée : un compagnon est déjà en route de recherche.
+                Pour un besoin planifiable, utilisez « Prendre un rendez-vous ».
+              </p>
+            </div>
           </>
         )
       ) : (
