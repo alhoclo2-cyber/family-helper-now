@@ -249,12 +249,20 @@ function FamilyFlow() {
           <span>Prendre un rendez-vous</span>
           <span className="text-sm font-normal text-muted-foreground">Planifier pour plus tard</span>
         </button>
-        <div className="w-full bg-success/10 border-2 border-success/40 rounded-2xl p-4 text-center">
-          <p className="text-sm font-bold text-success">🇫🇷 Services à la personne (SAP)</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Bénéficiez d'un <b className="text-foreground">crédit d'impôt de 50 %</b> sur toutes vos missions.
-            Récapitulatif annuel disponible chaque janvier depuis votre compte.
-          </p>
+        <div className="w-full bg-success/10 border-2 border-success/40 rounded-2xl p-4 text-left">
+          <p className="text-sm font-bold text-success text-center">💳 Paiement en CESU préfinancé</p>
+          <ul className="text-xs text-muted-foreground mt-2 space-y-1 list-disc pl-4">
+            <li>
+              Service à la personne (SAP) : le <b className="text-foreground">crédit d'impôt de 50 %</b> est déduit
+              immédiatement.
+            </li>
+            <li>
+              Vous ne réglez que <b className="text-foreground">la moitié du tarif</b> à la commande, rien à avancer
+              ni à réclamer ensuite.
+            </li>
+            <li>Le compagnon est déclaré en CESU : zéro démarche administrative pour vous.</li>
+            <li>Attestation fiscale annuelle disponible chaque janvier depuis votre compte.</li>
+          </ul>
         </div>
         <p className="text-xs text-muted-foreground text-center max-w-xs">
           En cas d'urgence vitale, composez le <span className="font-bold text-foreground">15</span> (SAMU).
