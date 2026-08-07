@@ -1150,7 +1150,7 @@ function StudentFlow() {
                   <div className="flex justify-between items-start gap-3">
                     <div className="min-w-0">
                       <p className="text-lg font-bold">{r.need.includes("/") ? r.need.replace("/", " / ") : r.need}</p>
-                      <p className="text-base text-muted-foreground mt-1">📍 {r.city}</p>
+                      <p className="text-base text-muted-foreground mt-1">📍 {maskAddress(r.address)}</p>
                       {r.durationHours && r.durationHours > 1 && (
                         <p className="text-sm mt-1 font-semibold">⏱️ Durée : {r.durationHours}h</p>
                       )}
