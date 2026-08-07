@@ -1406,7 +1406,8 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
       {!accepted ? (
         <>
           <div className="bg-accent rounded-2xl p-4 text-sm">
-            L'adresse exacte et le téléphone seront révélés après acceptation.
+            Vous voyez la rue et la ville. Le <b>numéro exact</b> et le <b>téléphone de la famille</b> seront
+            révélés dès que vous aurez accepté la mission.
           </div>
           <CompanionRulesNotice strikes={strikes} />
           <div className="flex-1" />
