@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { store, useStore, randomStudent, type NeedType, type Request } from "@/lib/store";
 import { CompanionLoyaltyGrid } from "@/components/CompanionLoyaltyGrid";
+import { CharterPanel, CharterSignatureBlock } from "@/components/CompanionCharter";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -167,8 +168,9 @@ function saveFamilyAccount(a: FamilyAccount | null) {
   } catch {}
 }
 function useFamilyAccount() {
-  const [acc, setAcc] = useState<FamilyAccount | null>(() => loadFamilyAccount());
+  const [acc, setAcc] = useState<FamilyAccount | null>(null);
   useEffect(() => {
+    setAcc(loadFamilyAccount());
     const refresh = () => setAcc(loadFamilyAccount());
     window.addEventListener("storage", refresh);
     window.addEventListener("sos-family-account-changed", refresh);
@@ -264,6 +266,7 @@ function FamilyFlow() {
             <li>Attestation fiscale annuelle disponible chaque janvier depuis votre compte.</li>
           </ul>
         </div>
+        <CharterPanel label="📜 La charte de nos compagnons" />
         <p className="text-xs text-muted-foreground text-center max-w-xs">
           En cas d'urgence vitale, composez le <span className="font-bold text-foreground">15</span> (SAMU).
         </p>
@@ -609,22 +612,95 @@ function companionAvailableAt(ts: number) {
   return Math.floor(ts / 60_000) % 4 !== 0;
 }
 
-function CancelScheduledBlock({ request, paid }: { request: Request; paid: boolean }) {
+// Masque le numéro de rue : "12 rue des Lilas, 75014 Paris" -> "rue des Lilas, 75014 Paris"
+function maskAddress(address: string) {
+  const [street, ...rest] = address.split(",");
+  const masked = street.replace(/^\s*\d+\s*(bis|ter|quater)?\s*/i, "").trim();
+  return [masked, ...rest.map((r) => r.trim())].filter(Boolean).join(", ");
+}
+
+function toLocalInput(ts: number) {
+  const d = new Date(ts);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// Bloc unique : modifier OU annuler un rendez-vous (fenêtre de 48 h).
+function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolean }) {
   const [confirm, setConfirm] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [reschedule, setReschedule] = useState<"idle" | "checking" | "refused" | "confirmed">("idle");
+  const [newWhen, setNewWhen] = useState<string>(() =>
+    request.scheduledAt ? toLocalInput(request.scheduledAt) : "",
+  );
   const free = canFreeCancel(request.scheduledAt);
   return (
     <div className="w-full text-left">
-      {!confirm ? (
-        <button
-          type="button"
-          onClick={() => setConfirm(true)}
-          className="text-sm font-bold text-destructive underline"
-        >
-          🗑️ Annuler le rendez-vous
-        </button>
-      ) : (
+      <p className="text-sm font-bold">Gérer mon rendez-vous</p>
+      {editing ? (
+        <div className="flex flex-col gap-2 mt-2 rounded-2xl border-2 border-border bg-card p-4">
+          <p className="text-sm font-bold">✏️ Nouveau créneau</p>
+          <input
+            type="datetime-local"
+            value={newWhen}
+            onChange={(e) => { setNewWhen(e.target.value); setReschedule("idle"); }}
+            disabled={reschedule === "checking"}
+            className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
+          />
+          {reschedule === "checking" && (
+            <p className="text-sm font-semibold text-primary">🔎 Recherche d'un compagnon disponible sur ce créneau…</p>
+          )}
+          {reschedule === "refused" && (
+            <div className="rounded-2xl border-2 border-destructive/50 bg-destructive/10 p-3">
+              <p className="text-sm font-bold text-destructive">Modification refusée</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Aucun compagnon n'est disponible sur ce nouveau créneau. Votre rendez-vous initial est maintenu.
+                Essayez un autre horaire (entre 7 h et 21 h, à plus de 48 h).
+              </p>
+            </div>
+          )}
+          {reschedule === "confirmed" && (
+            <p className="text-sm font-bold text-success">
+              ✅ Modification acceptée : un compagnon est disponible sur ce créneau.
+            </p>
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => { setEditing(false); setReschedule("idle"); }}
+              className="py-3 rounded-2xl border-2 border-border bg-card font-bold text-sm"
+            >
+              Revenir
+            </button>
+            <button
+              type="button"
+              disabled={reschedule === "checking"}
+              onClick={() => {
+                const ts = new Date(newWhen).getTime();
+                if (Number.isNaN(ts)) return;
+                setReschedule("checking");
+                setTimeout(() => {
+                  if (companionAvailableAt(ts)) {
+                    store.updateRequest(request.id, { scheduledAt: ts });
+                    setReschedule("confirmed");
+                    setTimeout(() => { setEditing(false); setReschedule("idle"); }, 1400);
+                  } else {
+                    setReschedule("refused");
+                  }
+                }, 1500);
+              }}
+              className="py-3 rounded-2xl bg-primary text-primary-foreground font-bold text-sm disabled:opacity-60"
+            >
+              {reschedule === "checking" ? "Vérification…" : "Vérifier & enregistrer"}
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            La modification n'est validée que si un compagnon est disponible sur le nouveau créneau.
+          </p>
+        </div>
+      ) : confirm ? (
         <div
-          className={`rounded-2xl border-2 p-4 ${free ? "border-border bg-card" : "border-destructive/50 bg-destructive/10"}`}
+          className={`rounded-2xl border-2 p-4 mt-2 ${free ? "border-border bg-card" : "border-destructive/50 bg-destructive/10"}`}
         >
           <p className="text-sm font-bold">{free ? "Annulation gratuite" : "Annulation tardive"}</p>
           <p className="text-sm text-muted-foreground mt-1">
@@ -649,10 +725,33 @@ function CancelScheduledBlock({ request, paid }: { request: Request; paid: boole
             </button>
           </div>
         </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          <button
+            type="button"
+            disabled={!free}
+            onClick={() => { setNewWhen(request.scheduledAt ? toLocalInput(request.scheduledAt) : ""); setEditing(true); }}
+            className="py-4 rounded-2xl border-2 border-primary text-primary font-bold text-sm disabled:opacity-40"
+          >
+            ✏️ Modifier le RDV
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirm(true)}
+            className="py-4 rounded-2xl border-2 border-destructive text-destructive font-bold text-sm"
+          >
+            🗑️ Annuler le RDV
+          </button>
+        </div>
+      )}
+      {!free && !editing && (
+        <p className="text-xs text-muted-foreground mt-2">
+          ⏳ Moins de 48 h avant le rendez-vous : la modification n'est plus possible.
+        </p>
       )}
       <p className="text-xs text-muted-foreground mt-2">
-        Annulation gratuite jusqu'à 48 h avant le rendez-vous. Modification possible dans le même délai, sous réserve
-        qu'un compagnon soit disponible sur le nouveau créneau. Passé 48 h, la mission reste due.
+        Modification et annulation gratuites jusqu'à 48 h avant le rendez-vous, sous réserve qu'un compagnon soit
+        disponible sur le nouveau créneau. Passé 48 h, la mission reste due.
       </p>
     </div>
   );
@@ -662,16 +761,6 @@ function CancelScheduledBlock({ request, paid }: { request: Request; paid: boole
 function FamilyWait({ request, onDone }: { request: Request | undefined; onDone: () => void }) {
   const [paid, setPaid] = useState(false);
   const [showPay, setShowPay] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const [reschedule, setReschedule] = useState<"idle" | "checking" | "refused" | "confirmed">("idle");
-  const toLocalInput = (ts: number) => {
-    const d = new Date(ts);
-    const pad = (n: number) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  };
-  const [newWhen, setNewWhen] = useState<string>(() =>
-    request?.scheduledAt ? toLocalInput(request.scheduledAt) : "",
-  );
   if (!request) return null;
   if (request.status === "cancelled") {
     return (
@@ -732,90 +821,11 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
             </div>
             <div className="w-full bg-card rounded-2xl p-5 border-2 border-border text-left">
               <p className="text-sm text-muted-foreground">Date et heure</p>
-              {!editing ? (
-                <>
-                  <p className="text-lg font-bold">{formatSchedule(request.scheduledAt!)}</p>
-                  {canFreeCancel(request.scheduledAt) ? (
-                    <button
-                      type="button"
-                      onClick={() => { setNewWhen(toLocalInput(request.scheduledAt!)); setEditing(true); }}
-                      className="mt-2 text-sm font-bold text-primary underline"
-                    >
-                      ✏️ Modifier le rendez-vous
-                    </button>
-                  ) : (
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      ⏳ Modification impossible : moins de 48 h avant le rendez-vous.
-                    </p>
-                  )}
-                </>
-              ) : (
-                <div className="flex flex-col gap-2 mt-1">
-                  <input
-                    type="datetime-local"
-                    value={newWhen}
-                    onChange={(e) => { setNewWhen(e.target.value); setReschedule("idle"); }}
-                    disabled={reschedule === "checking"}
-                    className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
-                  />
-                  {reschedule === "checking" && (
-                    <p className="text-sm font-semibold text-primary">
-                      🔎 Recherche d'un compagnon disponible sur ce créneau…
-                    </p>
-                  )}
-                  {reschedule === "refused" && (
-                    <div className="rounded-2xl border-2 border-destructive/50 bg-destructive/10 p-3">
-                      <p className="text-sm font-bold text-destructive">Modification refusée</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Aucun compagnon n'est disponible sur ce nouveau créneau. Votre rendez-vous initial est
-                        maintenu. Essayez un autre horaire (entre 7 h et 21 h, à plus de 48 h).
-                      </p>
-                    </div>
-                  )}
-                  {reschedule === "confirmed" && (
-                    <p className="text-sm font-bold text-success">
-                      ✅ Modification acceptée : un compagnon est disponible sur ce créneau.
-                    </p>
-                  )}
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => { setEditing(false); setReschedule("idle"); }}
-                      className="py-3 rounded-2xl border-2 border-border bg-card font-bold text-sm"
-                    >
-                      Annuler
-                    </button>
-                    <button
-                      type="button"
-                      disabled={reschedule === "checking"}
-                      onClick={() => {
-                        const ts = new Date(newWhen).getTime();
-                        if (Number.isNaN(ts)) return;
-                        setReschedule("checking");
-                        setTimeout(() => {
-                          if (companionAvailableAt(ts)) {
-                            store.updateRequest(request.id, { scheduledAt: ts });
-                            setReschedule("confirmed");
-                            setTimeout(() => { setEditing(false); setReschedule("idle"); }, 1400);
-                          } else {
-                            setReschedule("refused");
-                          }
-                        }, 1500);
-                      }}
-                      className="py-3 rounded-2xl bg-primary text-primary-foreground font-bold text-sm disabled:opacity-60"
-                    >
-                      {reschedule === "checking" ? "Vérification…" : "Vérifier & enregistrer"}
-                    </button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    La modification n'est validée que si un compagnon est disponible sur le nouveau créneau.
-                  </p>
-                </div>
-              )}
+              <p className="text-lg font-bold">{formatSchedule(request.scheduledAt!)}</p>
               <p className="text-sm text-muted-foreground mt-3">Besoin</p>
               <p className="text-base font-semibold">{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</p>
             </div>
-            <CancelScheduledBlock request={request} paid={false} />
+            <ScheduleManageBlock request={request} paid={false} />
             <button onClick={onDone} className="text-base text-muted-foreground underline">Retour à l'accueil</button>
           </>
         ) : (
@@ -891,7 +901,7 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
               </a>
             </>
           )}
-          {!!request.scheduledAt && <CancelScheduledBlock request={request} paid={paid} />}
+          {!!request.scheduledAt && <ScheduleManageBlock request={request} paid={paid} />}
           <button onClick={onDone} className="text-base text-muted-foreground underline">Terminer</button>
         </>
       )}
@@ -1073,6 +1083,7 @@ function StudentFlow() {
   const [openId, setOpenId] = useState<string | null>(null);
   const requests = useStore((s) => s.requests.filter((r) => r.status === "searching"));
   const active = useStore((s) => (openId ? s.requests.find((r) => r.id === openId) : undefined));
+  const strikes = useStrikes();
 
   // Sync enroll state with admin's decision on this candidate
   useEffect(() => {
@@ -1141,7 +1152,7 @@ function StudentFlow() {
                   <div className="flex justify-between items-start gap-3">
                     <div className="min-w-0">
                       <p className="text-lg font-bold">{r.need.includes("/") ? r.need.replace("/", " / ") : r.need}</p>
-                      <p className="text-base text-muted-foreground mt-1">📍 {r.city}</p>
+                      <p className="text-base text-muted-foreground mt-1">📍 {maskAddress(r.address)}</p>
                       {r.durationHours && r.durationHours > 1 && (
                         <p className="text-sm mt-1 font-semibold">⏱️ Durée : {r.durationHours}h</p>
                       )}
@@ -1175,6 +1186,10 @@ function StudentFlow() {
         </p>
       )}
 
+      <CharterSignatureBlock
+        defaultName={[enroll.profile?.firstName, enroll.profile?.lastName].filter(Boolean).join(" ")}
+      />
+      <CompanionRulesNotice strikes={strikes} />
       <CompanionLoyaltyGrid />
     </div>
   );
@@ -1194,9 +1209,10 @@ function saveStrikes(n: number) {
   } catch {}
 }
 function useStrikes(): number {
-  const [n, setN] = useState(() => loadStrikes());
+  const [n, setN] = useState(0);
   useEffect(() => {
     const refresh = () => setN(loadStrikes());
+    refresh();
     window.addEventListener("sos-strikes-changed", refresh);
     window.addEventListener("storage", refresh);
     return () => {
@@ -1207,8 +1223,18 @@ function useStrikes(): number {
   return n;
 }
 
+const BLAMES_KEY = "sos-companion-blames";
+function useBlames(): number {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    setN(Number(localStorage.getItem(BLAMES_KEY) || 0));
+  }, []);
+  return n;
+}
+
 function CompanionRulesNotice({ strikes }: { strikes: number }) {
-  const banned = strikes >= 3;
+  const blames = useBlames();
+  const banned = strikes >= 3 || blames >= 3;
   return (
     <div
       className={`rounded-2xl border-2 p-4 text-left ${banned ? "border-destructive bg-destructive/10" : "border-warning bg-warning/10"}`}
@@ -1230,20 +1256,47 @@ function CompanionRulesNotice({ strikes }: { strikes: number }) {
         <li>Aucun alcool, aucune substance, aucun tabac au domicile ; téléphone en usage limité.</li>
         <li>Enfants (3 ans et +) : ne jamais laisser l'enfant seul, ne le confier qu'à l'adulte désigné.</li>
       </ul>
-      <p className="text-xs font-semibold mt-2">Sanctions</p>
+      <p className="text-xs font-semibold mt-2">Sanctions et pénalités</p>
       <ul className="text-xs text-muted-foreground mt-1 space-y-1 list-disc pl-4">
-        <li>1er manquement : avertissement. 2e : suspension temporaire des missions.</li>
-        <li>3 rendez-vous non honorés sans justificatif valable = radiation définitive.</li>
         <li>
-          Radiation immédiate et signalement : vol, incivilité, violence, maltraitance, état d'ébriété, fausse
-          identité, mise en relation hors application.
+          <b className="text-foreground">Plainte justifiée d'un client</b> (impolitesse, retard répété, incivilité,
+          négligence, non-respect du service demandé) : <b className="text-foreground">1 blâme</b>.
         </li>
+        <li>
+          <b className="text-foreground">3 blâmes = radiation définitive</b> de l'application. Chaque blâme est
+          notifié avec le motif ; vous disposez de 7 jours pour le contester.
+        </li>
+        <li>
+          <b className="text-foreground">3 rendez-vous non honorés</b> sans justificatif valable ={" "}
+          <b className="text-foreground">radiation définitive</b>.
+        </li>
+        <li>
+          <b className="text-foreground">Irrespect de la charte du compagnon : radiation immédiate</b>, sans préavis.
+        </li>
+        <li>
+          Radiation immédiate et signalement aux autorités : vol, violence, maltraitance, propos discriminatoires,
+          état d'ébriété, fausse identité, paiement en direct ou mise en relation hors application.
+        </li>
+        <li>Toute mission non réglée en cas de radiation reste due au compagnon pour le travail déjà effectué.</li>
       </ul>
+      <div className="grid grid-cols-2 gap-2 mt-3">
+        <div className="rounded-xl bg-card border-2 border-border p-2 text-center">
+          <p className="text-xs text-muted-foreground">RDV non honorés</p>
+          <p className="text-lg font-black">{strikes}/3</p>
+        </div>
+        <div className="rounded-xl bg-card border-2 border-border p-2 text-center">
+          <p className="text-xs text-muted-foreground">Blâmes clients</p>
+          <p className="text-lg font-black">{blames}/3</p>
+        </div>
+      </div>
       <p className={`text-sm font-bold mt-2 ${banned ? "text-destructive" : ""}`}>
         {banned
           ? "Votre compte est radié : vous ne pouvez plus accepter de mission."
-          : `Rendez-vous non honorés : ${strikes}/3`}
+          : "Compte en règle — merci de votre sérieux."}
       </p>
+      <div className="mt-3">
+        <CharterPanel />
+      </div>
     </div>
   );
 }
@@ -1376,6 +1429,12 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
           </div>
         )}
         <p className="text-base text-muted-foreground mt-3">📍 {request.city}</p>
+        {!accepted && (
+          <>
+            <p className="text-base font-semibold mt-1">🛣️ {maskAddress(request.address)}</p>
+            <p className="text-xs text-muted-foreground mt-1">Numéro de rue masqué jusqu'à l'acceptation.</p>
+          </>
+        )}
         {request.scheduledAt ? (
           <div className="mt-3 bg-accent rounded-xl p-3">
             <p className="text-xs text-muted-foreground font-bold uppercase">Rendez-vous</p>
@@ -1391,7 +1450,8 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
       {!accepted ? (
         <>
           <div className="bg-accent rounded-2xl p-4 text-sm">
-            L'adresse exacte et le téléphone seront révélés après acceptation.
+            Vous voyez la rue et la ville. Le <b>numéro exact</b> et le <b>téléphone de la famille</b> seront
+            révélés dès que vous aurez accepté la mission.
           </div>
           <CompanionRulesNotice strikes={strikes} />
           <div className="flex-1" />
