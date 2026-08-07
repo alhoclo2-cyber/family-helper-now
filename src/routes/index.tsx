@@ -1385,6 +1385,8 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
           </div>
         )}
         <p className="text-base text-muted-foreground mt-3">📍 {request.city}</p>
+        <p className="text-base font-semibold mt-1">🛣️ {maskAddress(request.address)}</p>
+        <p className="text-xs text-muted-foreground mt-1">Numéro de rue masqué jusqu'à l'acceptation.</p>
         {request.scheduledAt ? (
           <div className="mt-3 bg-accent rounded-xl p-3">
             <p className="text-xs text-muted-foreground font-bold uppercase">Rendez-vous</p>
