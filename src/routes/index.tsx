@@ -1216,8 +1216,18 @@ function useStrikes(): number {
   return n;
 }
 
+const BLAMES_KEY = "sos-companion-blames";
+function useBlames(): number {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    setN(Number(localStorage.getItem(BLAMES_KEY) || 0));
+  }, []);
+  return n;
+}
+
 function CompanionRulesNotice({ strikes }: { strikes: number }) {
-  const banned = strikes >= 3;
+  const blames = useBlames();
+  const banned = strikes >= 3 || blames >= 3;
   return (
     <div
       className={`rounded-2xl border-2 p-4 text-left ${banned ? "border-destructive bg-destructive/10" : "border-warning bg-warning/10"}`}
