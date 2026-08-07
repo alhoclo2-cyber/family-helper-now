@@ -611,22 +611,95 @@ function companionAvailableAt(ts: number) {
   return Math.floor(ts / 60_000) % 4 !== 0;
 }
 
-function CancelScheduledBlock({ request, paid }: { request: Request; paid: boolean }) {
+// Masque le numéro de rue : "12 rue des Lilas, 75014 Paris" -> "rue des Lilas, 75014 Paris"
+function maskAddress(address: string) {
+  const [street, ...rest] = address.split(",");
+  const masked = street.replace(/^\s*\d+\s*(bis|ter|quater)?\s*/i, "").trim();
+  return [masked, ...rest.map((r) => r.trim())].filter(Boolean).join(", ");
+}
+
+function toLocalInput(ts: number) {
+  const d = new Date(ts);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// Bloc unique : modifier OU annuler un rendez-vous (fenêtre de 48 h).
+function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolean }) {
   const [confirm, setConfirm] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [reschedule, setReschedule] = useState<"idle" | "checking" | "refused" | "confirmed">("idle");
+  const [newWhen, setNewWhen] = useState<string>(() =>
+    request.scheduledAt ? toLocalInput(request.scheduledAt) : "",
+  );
   const free = canFreeCancel(request.scheduledAt);
   return (
     <div className="w-full text-left">
-      {!confirm ? (
-        <button
-          type="button"
-          onClick={() => setConfirm(true)}
-          className="text-sm font-bold text-destructive underline"
-        >
-          🗑️ Annuler le rendez-vous
-        </button>
-      ) : (
+      <p className="text-sm font-bold">Gérer mon rendez-vous</p>
+      {editing ? (
+        <div className="flex flex-col gap-2 mt-2 rounded-2xl border-2 border-border bg-card p-4">
+          <p className="text-sm font-bold">✏️ Nouveau créneau</p>
+          <input
+            type="datetime-local"
+            value={newWhen}
+            onChange={(e) => { setNewWhen(e.target.value); setReschedule("idle"); }}
+            disabled={reschedule === "checking"}
+            className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
+          />
+          {reschedule === "checking" && (
+            <p className="text-sm font-semibold text-primary">🔎 Recherche d'un compagnon disponible sur ce créneau…</p>
+          )}
+          {reschedule === "refused" && (
+            <div className="rounded-2xl border-2 border-destructive/50 bg-destructive/10 p-3">
+              <p className="text-sm font-bold text-destructive">Modification refusée</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Aucun compagnon n'est disponible sur ce nouveau créneau. Votre rendez-vous initial est maintenu.
+                Essayez un autre horaire (entre 7 h et 21 h, à plus de 48 h).
+              </p>
+            </div>
+          )}
+          {reschedule === "confirmed" && (
+            <p className="text-sm font-bold text-success">
+              ✅ Modification acceptée : un compagnon est disponible sur ce créneau.
+            </p>
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => { setEditing(false); setReschedule("idle"); }}
+              className="py-3 rounded-2xl border-2 border-border bg-card font-bold text-sm"
+            >
+              Revenir
+            </button>
+            <button
+              type="button"
+              disabled={reschedule === "checking"}
+              onClick={() => {
+                const ts = new Date(newWhen).getTime();
+                if (Number.isNaN(ts)) return;
+                setReschedule("checking");
+                setTimeout(() => {
+                  if (companionAvailableAt(ts)) {
+                    store.updateRequest(request.id, { scheduledAt: ts });
+                    setReschedule("confirmed");
+                    setTimeout(() => { setEditing(false); setReschedule("idle"); }, 1400);
+                  } else {
+                    setReschedule("refused");
+                  }
+                }, 1500);
+              }}
+              className="py-3 rounded-2xl bg-primary text-primary-foreground font-bold text-sm disabled:opacity-60"
+            >
+              {reschedule === "checking" ? "Vérification…" : "Vérifier & enregistrer"}
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            La modification n'est validée que si un compagnon est disponible sur le nouveau créneau.
+          </p>
+        </div>
+      ) : confirm ? (
         <div
-          className={`rounded-2xl border-2 p-4 ${free ? "border-border bg-card" : "border-destructive/50 bg-destructive/10"}`}
+          className={`rounded-2xl border-2 p-4 mt-2 ${free ? "border-border bg-card" : "border-destructive/50 bg-destructive/10"}`}
         >
           <p className="text-sm font-bold">{free ? "Annulation gratuite" : "Annulation tardive"}</p>
           <p className="text-sm text-muted-foreground mt-1">
@@ -651,10 +724,33 @@ function CancelScheduledBlock({ request, paid }: { request: Request; paid: boole
             </button>
           </div>
         </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          <button
+            type="button"
+            disabled={!free}
+            onClick={() => { setNewWhen(request.scheduledAt ? toLocalInput(request.scheduledAt) : ""); setEditing(true); }}
+            className="py-4 rounded-2xl border-2 border-primary text-primary font-bold text-sm disabled:opacity-40"
+          >
+            ✏️ Modifier le RDV
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirm(true)}
+            className="py-4 rounded-2xl border-2 border-destructive text-destructive font-bold text-sm"
+          >
+            🗑️ Annuler le RDV
+          </button>
+        </div>
+      )}
+      {!free && !editing && (
+        <p className="text-xs text-muted-foreground mt-2">
+          ⏳ Moins de 48 h avant le rendez-vous : la modification n'est plus possible.
+        </p>
       )}
       <p className="text-xs text-muted-foreground mt-2">
-        Annulation gratuite jusqu'à 48 h avant le rendez-vous. Modification possible dans le même délai, sous réserve
-        qu'un compagnon soit disponible sur le nouveau créneau. Passé 48 h, la mission reste due.
+        Modification et annulation gratuites jusqu'à 48 h avant le rendez-vous, sous réserve qu'un compagnon soit
+        disponible sur le nouveau créneau. Passé 48 h, la mission reste due.
       </p>
     </div>
   );
