@@ -761,7 +761,6 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
   const [paid, setPaid] = useState(false);
   const [showPay, setShowPay] = useState(false);
   if (!request) return null;
-  if (!request) return null;
   if (request.status === "cancelled") {
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
