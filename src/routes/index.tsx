@@ -1082,6 +1082,7 @@ function StudentFlow() {
   const [openId, setOpenId] = useState<string | null>(null);
   const requests = useStore((s) => s.requests.filter((r) => r.status === "searching"));
   const active = useStore((s) => (openId ? s.requests.find((r) => r.id === openId) : undefined));
+  const strikes = useStrikes();
 
   // Sync enroll state with admin's decision on this candidate
   useEffect(() => {
