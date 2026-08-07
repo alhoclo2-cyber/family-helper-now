@@ -168,8 +168,9 @@ function saveFamilyAccount(a: FamilyAccount | null) {
   } catch {}
 }
 function useFamilyAccount() {
-  const [acc, setAcc] = useState<FamilyAccount | null>(() => loadFamilyAccount());
+  const [acc, setAcc] = useState<FamilyAccount | null>(null);
   useEffect(() => {
+    setAcc(loadFamilyAccount());
     const refresh = () => setAcc(loadFamilyAccount());
     window.addEventListener("storage", refresh);
     window.addEventListener("sos-family-account-changed", refresh);
