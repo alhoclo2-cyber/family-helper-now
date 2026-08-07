@@ -1239,20 +1239,47 @@ function CompanionRulesNotice({ strikes }: { strikes: number }) {
         <li>Aucun alcool, aucune substance, aucun tabac au domicile ; téléphone en usage limité.</li>
         <li>Enfants (3 ans et +) : ne jamais laisser l'enfant seul, ne le confier qu'à l'adulte désigné.</li>
       </ul>
-      <p className="text-xs font-semibold mt-2">Sanctions</p>
+      <p className="text-xs font-semibold mt-2">Sanctions et pénalités</p>
       <ul className="text-xs text-muted-foreground mt-1 space-y-1 list-disc pl-4">
-        <li>1er manquement : avertissement. 2e : suspension temporaire des missions.</li>
-        <li>3 rendez-vous non honorés sans justificatif valable = radiation définitive.</li>
         <li>
-          Radiation immédiate et signalement : vol, incivilité, violence, maltraitance, état d'ébriété, fausse
-          identité, mise en relation hors application.
+          <b className="text-foreground">Plainte justifiée d'un client</b> (impolitesse, retard répété, incivilité,
+          négligence, non-respect du service demandé) : <b className="text-foreground">1 blâme</b>.
         </li>
+        <li>
+          <b className="text-foreground">3 blâmes = radiation définitive</b> de l'application. Chaque blâme est
+          notifié avec le motif ; vous disposez de 7 jours pour le contester.
+        </li>
+        <li>
+          <b className="text-foreground">3 rendez-vous non honorés</b> sans justificatif valable ={" "}
+          <b className="text-foreground">radiation définitive</b>.
+        </li>
+        <li>
+          <b className="text-foreground">Irrespect de la charte du compagnon : radiation immédiate</b>, sans préavis.
+        </li>
+        <li>
+          Radiation immédiate et signalement aux autorités : vol, violence, maltraitance, propos discriminatoires,
+          état d'ébriété, fausse identité, paiement en direct ou mise en relation hors application.
+        </li>
+        <li>Toute mission non réglée en cas de radiation reste due au compagnon pour le travail déjà effectué.</li>
       </ul>
+      <div className="grid grid-cols-2 gap-2 mt-3">
+        <div className="rounded-xl bg-card border-2 border-border p-2 text-center">
+          <p className="text-xs text-muted-foreground">RDV non honorés</p>
+          <p className="text-lg font-black">{strikes}/3</p>
+        </div>
+        <div className="rounded-xl bg-card border-2 border-border p-2 text-center">
+          <p className="text-xs text-muted-foreground">Blâmes clients</p>
+          <p className="text-lg font-black">{blames}/3</p>
+        </div>
+      </div>
       <p className={`text-sm font-bold mt-2 ${banned ? "text-destructive" : ""}`}>
         {banned
           ? "Votre compte est radié : vous ne pouvez plus accepter de mission."
-          : `Rendez-vous non honorés : ${strikes}/3`}
+          : "Compte en règle — merci de votre sérieux."}
       </p>
+      <div className="mt-3">
+        <CharterPanel />
+      </div>
     </div>
   );
 }
