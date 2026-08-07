@@ -910,7 +910,7 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
               </a>
             </>
           )}
-          {!!request.scheduledAt && <CancelScheduledBlock request={request} paid={paid} />}
+          {!!request.scheduledAt && <ScheduleManageBlock request={request} paid={paid} />}
           <button onClick={onDone} className="text-base text-muted-foreground underline">Terminer</button>
         </>
       )}
