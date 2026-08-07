@@ -1209,9 +1209,10 @@ function saveStrikes(n: number) {
   } catch {}
 }
 function useStrikes(): number {
-  const [n, setN] = useState(() => loadStrikes());
+  const [n, setN] = useState(0);
   useEffect(() => {
     const refresh = () => setN(loadStrikes());
+    refresh();
     window.addEventListener("sos-strikes-changed", refresh);
     window.addEventListener("storage", refresh);
     return () => {
