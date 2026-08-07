@@ -760,16 +760,7 @@ function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolea
 function FamilyWait({ request, onDone }: { request: Request | undefined; onDone: () => void }) {
   const [paid, setPaid] = useState(false);
   const [showPay, setShowPay] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const [reschedule, setReschedule] = useState<"idle" | "checking" | "refused" | "confirmed">("idle");
-  const toLocalInput = (ts: number) => {
-    const d = new Date(ts);
-    const pad = (n: number) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  };
-  const [newWhen, setNewWhen] = useState<string>(() =>
-    request?.scheduledAt ? toLocalInput(request.scheduledAt) : "",
-  );
+  if (!request) return null;
   if (!request) return null;
   if (request.status === "cancelled") {
     return (
