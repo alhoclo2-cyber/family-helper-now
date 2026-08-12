@@ -1270,7 +1270,14 @@ function StudentFlow() {
                       {r.durationHours && r.durationHours > 1 && (
                         <p className="text-sm mt-1 font-semibold">⏱️ Durée : {r.durationHours}h</p>
                       )}
-                      {r.childLevel && <p className="text-sm mt-1 font-semibold">🎒 Niveau : {r.childLevel}</p>}
+                      {r.childAge && <p className="text-sm mt-1 font-semibold">🎂 Enfant : {r.childAge} ans</p>}
+                      {r.childLevel && (
+                        <p className="text-sm mt-1 font-semibold">
+                          🎒 Niveau : {r.childLevel}{r.childClass ? ` — ${r.childClass}` : ""}
+                        </p>
+                      )}
+                      {r.extraInfo && <p className="text-sm mt-1 text-muted-foreground">📝 {r.extraInfo}</p>}
+
                       {r.childrenCount && <p className="text-sm mt-1 font-semibold">🧸 {r.childrenCount}</p>}
                       {r.otherDetail && (
                         <p className="text-sm mt-1 font-semibold">✏️ {r.otherDetail}</p>
