@@ -1352,7 +1352,7 @@ function CompanionRulesNotice({ strikes }: { strikes: number }) {
     <div
       className={`rounded-2xl border-2 p-4 text-left ${banned ? "border-destructive bg-destructive/10" : "border-warning bg-warning/10"}`}
     >
-      <p className="text-sm font-bold">{banned ? "🚫 Compte radié" : "⚠️ Charte d'engagement du compagnon"}</p>
+      <p className="text-sm font-bold">{banned ? "🚫 Compte radié" : "⚠️ Règles d'engagement du compagnon (CGU)"}</p>
       <p className="text-xs font-semibold mt-2">Avant la mission</p>
       <ul className="text-xs text-muted-foreground mt-1 space-y-1 list-disc pl-4">
         <li>N'acceptez que les missions que vous pouvez réellement assurer.</li>
