@@ -1300,9 +1300,8 @@ function StudentFlow() {
         </p>
       )}
 
-      <CharterSignatureBlock
-        defaultName={[enroll.profile?.firstName, enroll.profile?.lastName].filter(Boolean).join(" ")}
-      />
+      <CguPanel />
+
       <CompanionRulesNotice strikes={strikes} />
       <CompanionLoyaltyGrid />
     </div>
