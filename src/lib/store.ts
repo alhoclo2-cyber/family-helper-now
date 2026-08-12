@@ -28,10 +28,14 @@ export type Request = {
   parcelWeight?: string; // pour "Retrait ou dépôt d'un colis"
   parcelSize?: string;
   childLevel?: string; // niveau scolaire pour l'aide aux devoirs
+  childClass?: string; // classe précise (CP, 5e, Terminale…)
+  childAge?: string; // âge de l'enfant (services enfants, 3 ans minimum)
   childrenCount?: string; // nombre d'enfants pour la garde
   escortDestination?: string; // destination pour l'accompagnement d'un enfant
   escortDetail?: string; // précision libre ("Autre")
   otherDetail?: string; // précision libre pour le besoin "Autre (à préciser)"
+  extraInfo?: string; // informations complémentaires libres (tous services)
+  continuityCertified?: boolean; // services extérieurs : continuité de l'aide à domicile
   status: "searching" | "accepted" | "cancelled";
   cancelledBy?: "family" | "companion";
   refunded?: boolean;

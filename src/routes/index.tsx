@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { store, useStore, randomStudent, type NeedType, type Request } from "@/lib/store";
 import { CompanionLoyaltyGrid } from "@/components/CompanionLoyaltyGrid";
-import { CharterPanel, CharterSignatureBlock } from "@/components/CompanionCharter";
+import { CguAcceptBlock, CguPanel } from "@/components/Cgu";
+import { CesuRecurrenceModal } from "@/components/CesuRecurrence";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -266,7 +267,7 @@ function FamilyFlow() {
             <li>Attestation fiscale annuelle disponible chaque janvier depuis votre compte.</li>
           </ul>
         </div>
-        <CharterPanel label="📜 La charte de nos compagnons" />
+        <CguPanel />
         <p className="text-xs text-muted-foreground text-center max-w-xs">
           En cas d'urgence vitale, composez le <span className="font-bold text-foreground">15</span> (SAMU).
         </p>
@@ -301,10 +302,18 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
   })();
 
   const [childLevel, setChildLevel] = useState<string>("Primaire");
+  const [childClass, setChildClass] = useState<string>("");
+  const [childAge, setChildAge] = useState<string>("");
   const [childrenCount, setChildrenCount] = useState<string>("1 enfant");
   const [escortDestination, setEscortDestination] = useState<string>("À l'école");
   const [escortDetail, setEscortDetail] = useState<string>("");
   const [otherDetail, setOtherDetail] = useState<string>("");
+  const [extraInfo, setExtraInfo] = useState<string>("");
+  const [continuity, setContinuity] = useState(false);
+  const [cguOk, setCguOk] = useState(false);
+  const [testRecurrence, setTestRecurrence] = useState(false);
+  const [showCesuAlert, setShowCesuAlert] = useState(false);
+  const [companionName, setCompanionName] = useState("Léa");
 
   const needs: { v: NeedType; icon: string }[] = [
     { v: "Compagnie/Présence", icon: "🤝" },
@@ -335,11 +344,10 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
     isEscortChild ||
     need === "Autre (à préciser)";
 
+  const isOutdoor =
+    need === "Retrait ou dépôt d'un colis" || need === "Pharmacie" || need === "Courses urgentes";
 
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!address.trim() || !phone.trim()) return;
-    if (need === "Autre (à préciser)" && !otherDetail.trim()) return;
+  const createAndGo = () => {
     const scheduledAt = mode === "scheduled" ? new Date(when).getTime() : null;
     const dh = hasDuration ? durationHours : 1;
     const isParcel = need === "Retrait ou dépôt d'un colis";
@@ -352,13 +360,32 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
       parcelWeight: isParcel ? parcelWeight : undefined,
       parcelSize: isParcel ? parcelSize : undefined,
       childLevel: isHomework ? childLevel : undefined,
+      childClass: isHomework && childClass.trim() ? childClass.trim() : undefined,
+      childAge: isChildNeed && childAge.trim() ? childAge.trim() : undefined,
       childrenCount: isChildcare ? childrenCount : undefined,
       escortDestination: isEscortChild ? escortDestination : undefined,
       escortDetail: isEscortChild && escortDestination === "Autre" ? escortDetail : undefined,
       otherDetail: isOther ? otherDetail : undefined,
+      extraInfo: extraInfo.trim() || undefined,
+      continuityCertified: isOutdoor ? continuity : undefined,
     });
     onSubmit();
   };
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!address.trim() || !phone.trim()) return;
+    if (need === "Autre (à préciser)" && !otherDetail.trim()) return;
+    if (isOutdoor && !continuity) return;
+    if (isChildNeed && (!childAge.trim() || Number(childAge) < 3)) return;
+    if (!cguOk) return;
+    if (testRecurrence) {
+      setShowCesuAlert(true);
+      return;
+    }
+    createAndGo();
+  };
+
 
   return (
     <form onSubmit={submit} className="flex-1 flex flex-col px-5 py-6 gap-6">
@@ -407,6 +434,24 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
           <div className="bg-accent rounded-2xl p-3 text-sm">
             👶 Services enfants accessibles <b>à partir de 3 ans</b>.
           </div>
+          <div>
+            <label className="block text-lg font-bold mb-2">Âge de l'enfant</label>
+            <input
+              type="number"
+              min={3}
+              max={17}
+              required
+              value={childAge}
+              onChange={(e) => setChildAge(e.target.value)}
+              placeholder="Ex. 6"
+              className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
+            />
+            {childAge && Number(childAge) < 3 && (
+              <p className="text-sm text-destructive mt-2">
+                Les missions avec enfant sont réservées aux enfants de 3 ans et plus.
+              </p>
+            )}
+          </div>
           {isHomework && (
             <div>
               <label className="block text-lg font-bold mb-2">Niveau scolaire</label>
@@ -424,8 +469,29 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
                   </button>
                 ))}
               </div>
+              <label className="block text-lg font-bold mt-4 mb-2">Classe de l'enfant</label>
+              <div className="grid grid-cols-3 gap-2">
+                {(childLevel === "Primaire"
+                  ? ["CP", "CE1", "CE2", "CM1", "CM2"]
+                  : childLevel === "Collège"
+                    ? ["6e", "5e", "4e", "3e"]
+                    : ["Seconde", "Première", "Terminale"]
+                ).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setChildClass(c)}
+                    className={`py-3 px-2 rounded-2xl border-2 text-sm font-bold transition-all ${
+                      childClass === c ? "border-primary bg-accent" : "border-border bg-card"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
+
           {isChildcare && (
             <div>
               <label className="block text-lg font-bold mb-2">Nombre d'enfants</label>
@@ -590,13 +656,61 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
           className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
         />
       </div>
-      <div className="flex-1" />
-      <button type="submit" className="btn-huge bg-primary text-primary-foreground">
-        {mode === "asap" ? "Lancer la recherche" : "Confirmer le rendez-vous"}
+      <div>
+        <label className="block text-lg font-bold mb-2">Informations complémentaires</label>
+        <textarea
+          value={extraInfo}
+          onChange={(e) => setExtraInfo(e.target.value)}
+          rows={3}
+          placeholder="Précisions utiles au compagnon : code d'entrée, étage, préférences, matériel à prévoir…"
+          className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
+        />
+      </div>
+      {isOutdoor && (
+        <label className="flex items-start gap-3 rounded-2xl border-2 border-warning bg-warning/10 p-4 text-sm">
+          <input
+            type="checkbox"
+            checked={continuity}
+            onChange={(e) => setContinuity(e.target.checked)}
+            className="mt-1 h-5 w-5 shrink-0"
+          />
+          <span>
+            Je certifie que cette course, ce retrait de colis ou ce passage en pharmacie s'inscrit dans la
+            <b> continuité de l'aide à domicile</b> qui m'est apportée, et ne constitue pas une prestation de
+            livraison autonome (à défaut, risque de requalification en service de livraison).
+          </span>
+        </label>
+      )}
+      <CguAcceptBlock checked={cguOk} onChange={setCguOk} role="client" />
+      <button
+        type="button"
+        onClick={() => setTestRecurrence((v) => !v)}
+        className={`text-xs underline text-left ${testRecurrence ? "text-primary font-bold" : "text-muted-foreground"}`}
+      >
+        {testRecurrence
+          ? "🧪 Mode test actif — 4e semaine consécutive avec Léa (désactiver)"
+          : "🧪 Simuler 4e semaine consécutive avec ce compagnon"}
       </button>
+      <div className="flex-1" />
+      <button type="submit" disabled={!cguOk} className="btn-huge bg-primary text-primary-foreground disabled:opacity-50">
+        {mode === "asap" ? "Lancer la recherche" : "Valider la réservation"}
+      </button>
+      {showCesuAlert && (
+        <CesuRecurrenceModal
+          companionName={companionName}
+          onClose={() => setShowCesuAlert(false)}
+          onSwitchCompanion={(n) => {
+            setCompanionName(n);
+            setTestRecurrence(false);
+            setShowCesuAlert(false);
+            createAndGo();
+          }}
+        />
+      )}
     </form>
   );
 }
+
 
 const CANCEL_WINDOW_MS = 48 * 60 * 60 * 1000;
 const canFreeCancel = (scheduledAt?: number | null) =>
@@ -1156,7 +1270,14 @@ function StudentFlow() {
                       {r.durationHours && r.durationHours > 1 && (
                         <p className="text-sm mt-1 font-semibold">⏱️ Durée : {r.durationHours}h</p>
                       )}
-                      {r.childLevel && <p className="text-sm mt-1 font-semibold">🎒 Niveau : {r.childLevel}</p>}
+                      {r.childAge && <p className="text-sm mt-1 font-semibold">🎂 Enfant : {r.childAge} ans</p>}
+                      {r.childLevel && (
+                        <p className="text-sm mt-1 font-semibold">
+                          🎒 Niveau : {r.childLevel}{r.childClass ? ` — ${r.childClass}` : ""}
+                        </p>
+                      )}
+                      {r.extraInfo && <p className="text-sm mt-1 text-muted-foreground">📝 {r.extraInfo}</p>}
+
                       {r.childrenCount && <p className="text-sm mt-1 font-semibold">🧸 {r.childrenCount}</p>}
                       {r.otherDetail && (
                         <p className="text-sm mt-1 font-semibold">✏️ {r.otherDetail}</p>
@@ -1186,9 +1307,8 @@ function StudentFlow() {
         </p>
       )}
 
-      <CharterSignatureBlock
-        defaultName={[enroll.profile?.firstName, enroll.profile?.lastName].filter(Boolean).join(" ")}
-      />
+      <CguPanel />
+
       <CompanionRulesNotice strikes={strikes} />
       <CompanionLoyaltyGrid />
     </div>
@@ -1239,7 +1359,7 @@ function CompanionRulesNotice({ strikes }: { strikes: number }) {
     <div
       className={`rounded-2xl border-2 p-4 text-left ${banned ? "border-destructive bg-destructive/10" : "border-warning bg-warning/10"}`}
     >
-      <p className="text-sm font-bold">{banned ? "🚫 Compte radié" : "⚠️ Charte d'engagement du compagnon"}</p>
+      <p className="text-sm font-bold">{banned ? "🚫 Compte radié" : "⚠️ Règles d'engagement du compagnon (CGU)"}</p>
       <p className="text-xs font-semibold mt-2">Avant la mission</p>
       <ul className="text-xs text-muted-foreground mt-1 space-y-1 list-disc pl-4">
         <li>N'acceptez que les missions que vous pouvez réellement assurer.</li>
@@ -1271,7 +1391,7 @@ function CompanionRulesNotice({ strikes }: { strikes: number }) {
           <b className="text-foreground">radiation définitive</b>.
         </li>
         <li>
-          <b className="text-foreground">Irrespect de la charte du compagnon : radiation immédiate</b>, sans préavis.
+          <b className="text-foreground">Non-respect des CGU : radiation immédiate</b>, sans préavis.
         </li>
         <li>
           Radiation immédiate et signalement aux autorités : vol, violence, maltraitance, propos discriminatoires,
@@ -1295,8 +1415,9 @@ function CompanionRulesNotice({ strikes }: { strikes: number }) {
           : "Compte en règle — merci de votre sérieux."}
       </p>
       <div className="mt-3">
-        <CharterPanel />
+        <CguPanel />
       </div>
+
     </div>
   );
 }
@@ -1408,10 +1529,16 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
         {request.durationHours && request.durationHours > 1 && (
           <p className="text-base font-semibold mt-2">⏱️ Durée demandée : {request.durationHours}h</p>
         )}
-        {(request.childLevel || request.childrenCount || request.escortDestination || request.otherDetail) && (
+        {(request.childLevel || request.childrenCount || request.escortDestination || request.otherDetail || request.childAge) && (
           <div className="mt-3 bg-accent rounded-xl p-3">
             <p className="text-xs text-muted-foreground font-bold uppercase">Enfant (3 ans et +)</p>
-            {request.childLevel && <p className="text-base font-semibold mt-1">🎒 Niveau : {request.childLevel}</p>}
+            {request.childAge && <p className="text-base font-semibold mt-1">🎂 {request.childAge} ans</p>}
+            {request.childLevel && (
+              <p className="text-base font-semibold mt-1">
+                🎒 Niveau : {request.childLevel}{request.childClass ? ` — ${request.childClass}` : ""}
+              </p>
+            )}
+
             {request.childrenCount && <p className="text-base font-semibold mt-1">🧸 {request.childrenCount}</p>}
             {request.otherDetail && (
               <p className="text-base font-semibold mt-1">✏️ {request.otherDetail}</p>
@@ -1421,6 +1548,13 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
             )}
           </div>
         )}
+        {request.extraInfo && (
+          <div className="mt-3 bg-accent rounded-xl p-3">
+            <p className="text-xs text-muted-foreground font-bold uppercase">Informations complémentaires</p>
+            <p className="text-base mt-1">{request.extraInfo}</p>
+          </div>
+        )}
+
         {request.need === "Retrait ou dépôt d'un colis" && (
           <div className="mt-3 bg-accent rounded-xl p-3">
             <p className="text-xs text-muted-foreground font-bold uppercase">Colis</p>
@@ -1511,6 +1645,7 @@ function StudentEnroll({
   onChange: (n: { status: EnrollStatus; profile?: EnrollProfile; appId?: string; demo?: boolean }) => void;
 }) {
   const [step, setStep] = useState<"intro" | "form">("intro");
+  const [cguOk, setCguOk] = useState(false);
   const [p, setP] = useState<EnrollProfile>(
     enroll.profile ?? {
       firstName: "",
@@ -1661,7 +1796,8 @@ function StudentEnroll({
   ];
 
   const allDocs = docs.every((d) => p.docs[d.k]);
-  const valid = p.firstName && p.lastName && p.email && p.phone && p.situation && p.school && p.city && p.selfie && allDocs;
+  const valid =
+    p.firstName && p.lastName && p.email && p.phone && p.situation && p.school && p.city && p.selfie && allDocs && cguOk;
 
   const setSelfie = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -1745,7 +1881,10 @@ function StudentEnroll({
         </div>
       </div>
 
+      <CguAcceptBlock checked={cguOk} onChange={setCguOk} role="companion" />
+
       <button type="submit" disabled={!valid} className="btn-huge bg-primary text-primary-foreground disabled:opacity-50 mt-2">
+
         Envoyer ma candidature
       </button>
       <ServiceLimitsNotice />
