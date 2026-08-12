@@ -267,7 +267,7 @@ function FamilyFlow() {
             <li>Attestation fiscale annuelle disponible chaque janvier depuis votre compte.</li>
           </ul>
         </div>
-        <CharterPanel label="📜 La charte de nos compagnons" />
+        <CguPanel />
         <p className="text-xs text-muted-foreground text-center max-w-xs">
           En cas d'urgence vitale, composez le <span className="font-bold text-foreground">15</span> (SAMU).
         </p>
