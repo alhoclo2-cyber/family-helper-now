@@ -1408,8 +1408,9 @@ function CompanionRulesNotice({ strikes }: { strikes: number }) {
           : "Compte en règle — merci de votre sérieux."}
       </p>
       <div className="mt-3">
-        <CharterPanel />
+        <CguPanel />
       </div>
+
     </div>
   );
 }
