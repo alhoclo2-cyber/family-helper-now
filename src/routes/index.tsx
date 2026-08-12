@@ -1881,7 +1881,10 @@ function StudentEnroll({
         </div>
       </div>
 
+      <CguAcceptBlock checked={cguOk} onChange={setCguOk} role="companion" />
+
       <button type="submit" disabled={!valid} className="btn-huge bg-primary text-primary-foreground disabled:opacity-50 mt-2">
+
         Envoyer ma candidature
       </button>
       <ServiceLimitsNotice />
