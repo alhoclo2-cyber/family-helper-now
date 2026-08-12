@@ -343,11 +343,10 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
     isEscortChild ||
     need === "Autre (à préciser)";
 
+  const isOutdoor =
+    need === "Retrait ou dépôt d'un colis" || need === "Pharmacie" || need === "Courses urgentes";
 
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!address.trim() || !phone.trim()) return;
-    if (need === "Autre (à préciser)" && !otherDetail.trim()) return;
+  const createAndGo = () => {
     const scheduledAt = mode === "scheduled" ? new Date(when).getTime() : null;
     const dh = hasDuration ? durationHours : 1;
     const isParcel = need === "Retrait ou dépôt d'un colis";
@@ -360,13 +359,32 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
       parcelWeight: isParcel ? parcelWeight : undefined,
       parcelSize: isParcel ? parcelSize : undefined,
       childLevel: isHomework ? childLevel : undefined,
+      childClass: isHomework && childClass.trim() ? childClass.trim() : undefined,
+      childAge: isChildNeed && childAge.trim() ? childAge.trim() : undefined,
       childrenCount: isChildcare ? childrenCount : undefined,
       escortDestination: isEscortChild ? escortDestination : undefined,
       escortDetail: isEscortChild && escortDestination === "Autre" ? escortDetail : undefined,
       otherDetail: isOther ? otherDetail : undefined,
+      extraInfo: extraInfo.trim() || undefined,
+      continuityCertified: isOutdoor ? continuity : undefined,
     });
     onSubmit();
   };
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!address.trim() || !phone.trim()) return;
+    if (need === "Autre (à préciser)" && !otherDetail.trim()) return;
+    if (isOutdoor && !continuity) return;
+    if (isChildNeed && (!childAge.trim() || Number(childAge) < 3)) return;
+    if (!cguOk) return;
+    if (testRecurrence) {
+      setShowCesuAlert(true);
+      return;
+    }
+    createAndGo();
+  };
+
 
   return (
     <form onSubmit={submit} className="flex-1 flex flex-col px-5 py-6 gap-6">
