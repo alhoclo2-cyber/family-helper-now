@@ -1529,10 +1529,16 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
         {request.durationHours && request.durationHours > 1 && (
           <p className="text-base font-semibold mt-2">⏱️ Durée demandée : {request.durationHours}h</p>
         )}
-        {(request.childLevel || request.childrenCount || request.escortDestination || request.otherDetail) && (
+        {(request.childLevel || request.childrenCount || request.escortDestination || request.otherDetail || request.childAge) && (
           <div className="mt-3 bg-accent rounded-xl p-3">
             <p className="text-xs text-muted-foreground font-bold uppercase">Enfant (3 ans et +)</p>
-            {request.childLevel && <p className="text-base font-semibold mt-1">🎒 Niveau : {request.childLevel}</p>}
+            {request.childAge && <p className="text-base font-semibold mt-1">🎂 {request.childAge} ans</p>}
+            {request.childLevel && (
+              <p className="text-base font-semibold mt-1">
+                🎒 Niveau : {request.childLevel}{request.childClass ? ` — ${request.childClass}` : ""}
+              </p>
+            )}
+
             {request.childrenCount && <p className="text-base font-semibold mt-1">🧸 {request.childrenCount}</p>}
             {request.otherDetail && (
               <p className="text-base font-semibold mt-1">✏️ {request.otherDetail}</p>
