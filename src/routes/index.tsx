@@ -1384,7 +1384,7 @@ function CompanionRulesNotice({ strikes }: { strikes: number }) {
           <b className="text-foreground">radiation définitive</b>.
         </li>
         <li>
-          <b className="text-foreground">Irrespect de la charte du compagnon : radiation immédiate</b>, sans préavis.
+          <b className="text-foreground">Non-respect des CGU : radiation immédiate</b>, sans préavis.
         </li>
         <li>
           Radiation immédiate et signalement aux autorités : vol, violence, maltraitance, propos discriminatoires,
