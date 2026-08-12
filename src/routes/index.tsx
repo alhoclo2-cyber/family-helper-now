@@ -1795,7 +1795,8 @@ function StudentEnroll({
   ];
 
   const allDocs = docs.every((d) => p.docs[d.k]);
-  const valid = p.firstName && p.lastName && p.email && p.phone && p.situation && p.school && p.city && p.selfie && allDocs;
+  const valid =
+    p.firstName && p.lastName && p.email && p.phone && p.situation && p.school && p.city && p.selfie && allDocs && cguOk;
 
   const setSelfie = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
