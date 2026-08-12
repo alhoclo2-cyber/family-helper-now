@@ -1548,6 +1548,13 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
             )}
           </div>
         )}
+        {request.extraInfo && (
+          <div className="mt-3 bg-accent rounded-xl p-3">
+            <p className="text-xs text-muted-foreground font-bold uppercase">Informations complémentaires</p>
+            <p className="text-base mt-1">{request.extraInfo}</p>
+          </div>
+        )}
+
         {request.need === "Retrait ou dépôt d'un colis" && (
           <div className="mt-3 bg-accent rounded-xl p-3">
             <p className="text-xs text-muted-foreground font-bold uppercase">Colis</p>
