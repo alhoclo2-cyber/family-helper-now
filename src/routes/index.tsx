@@ -301,10 +301,18 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
   })();
 
   const [childLevel, setChildLevel] = useState<string>("Primaire");
+  const [childClass, setChildClass] = useState<string>("");
+  const [childAge, setChildAge] = useState<string>("");
   const [childrenCount, setChildrenCount] = useState<string>("1 enfant");
   const [escortDestination, setEscortDestination] = useState<string>("À l'école");
   const [escortDetail, setEscortDetail] = useState<string>("");
   const [otherDetail, setOtherDetail] = useState<string>("");
+  const [extraInfo, setExtraInfo] = useState<string>("");
+  const [continuity, setContinuity] = useState(false);
+  const [cguOk, setCguOk] = useState(false);
+  const [testRecurrence, setTestRecurrence] = useState(false);
+  const [showCesuAlert, setShowCesuAlert] = useState(false);
+  const [companionName, setCompanionName] = useState("Léa");
 
   const needs: { v: NeedType; icon: string }[] = [
     { v: "Compagnie/Présence", icon: "🤝" },
