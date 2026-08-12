@@ -1645,6 +1645,7 @@ function StudentEnroll({
   onChange: (n: { status: EnrollStatus; profile?: EnrollProfile; appId?: string; demo?: boolean }) => void;
 }) {
   const [step, setStep] = useState<"intro" | "form">("intro");
+  const [cguOk, setCguOk] = useState(false);
   const [p, setP] = useState<EnrollProfile>(
     enroll.profile ?? {
       firstName: "",
