@@ -433,6 +433,24 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
           <div className="bg-accent rounded-2xl p-3 text-sm">
             👶 Services enfants accessibles <b>à partir de 3 ans</b>.
           </div>
+          <div>
+            <label className="block text-lg font-bold mb-2">Âge de l'enfant</label>
+            <input
+              type="number"
+              min={3}
+              max={17}
+              required
+              value={childAge}
+              onChange={(e) => setChildAge(e.target.value)}
+              placeholder="Ex. 6"
+              className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
+            />
+            {childAge && Number(childAge) < 3 && (
+              <p className="text-sm text-destructive mt-2">
+                Les missions avec enfant sont réservées aux enfants de 3 ans et plus.
+              </p>
+            )}
+          </div>
           {isHomework && (
             <div>
               <label className="block text-lg font-bold mb-2">Niveau scolaire</label>
@@ -450,8 +468,29 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
                   </button>
                 ))}
               </div>
+              <label className="block text-lg font-bold mt-4 mb-2">Classe de l'enfant</label>
+              <div className="grid grid-cols-3 gap-2">
+                {(childLevel === "Primaire"
+                  ? ["CP", "CE1", "CE2", "CM1", "CM2"]
+                  : childLevel === "Collège"
+                    ? ["6e", "5e", "4e", "3e"]
+                    : ["Seconde", "Première", "Terminale"]
+                ).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setChildClass(c)}
+                    className={`py-3 px-2 rounded-2xl border-2 text-sm font-bold transition-all ${
+                      childClass === c ? "border-primary bg-accent" : "border-border bg-card"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
+
           {isChildcare && (
             <div>
               <label className="block text-lg font-bold mb-2">Nombre d'enfants</label>
