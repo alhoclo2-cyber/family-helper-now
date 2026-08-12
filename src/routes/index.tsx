@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { store, useStore, randomStudent, type NeedType, type Request } from "@/lib/store";
 import { CompanionLoyaltyGrid } from "@/components/CompanionLoyaltyGrid";
-import { CharterPanel, CharterSignatureBlock } from "@/components/CompanionCharter";
+import { CguAcceptBlock, CguPanel } from "@/components/Cgu";
+import { CesuRecurrenceModal } from "@/components/CesuRecurrence";
 
 export const Route = createFileRoute("/")({
   head: () => ({
