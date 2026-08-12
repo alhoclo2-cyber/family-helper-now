@@ -655,13 +655,61 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
           className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
         />
       </div>
-      <div className="flex-1" />
-      <button type="submit" className="btn-huge bg-primary text-primary-foreground">
-        {mode === "asap" ? "Lancer la recherche" : "Confirmer le rendez-vous"}
+      <div>
+        <label className="block text-lg font-bold mb-2">Informations complémentaires</label>
+        <textarea
+          value={extraInfo}
+          onChange={(e) => setExtraInfo(e.target.value)}
+          rows={3}
+          placeholder="Précisions utiles au compagnon : code d'entrée, étage, préférences, matériel à prévoir…"
+          className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
+        />
+      </div>
+      {isOutdoor && (
+        <label className="flex items-start gap-3 rounded-2xl border-2 border-warning bg-warning/10 p-4 text-sm">
+          <input
+            type="checkbox"
+            checked={continuity}
+            onChange={(e) => setContinuity(e.target.checked)}
+            className="mt-1 h-5 w-5 shrink-0"
+          />
+          <span>
+            Je certifie que cette course, ce retrait de colis ou ce passage en pharmacie s'inscrit dans la
+            <b> continuité de l'aide à domicile</b> qui m'est apportée, et ne constitue pas une prestation de
+            livraison autonome (à défaut, risque de requalification en service de livraison).
+          </span>
+        </label>
+      )}
+      <CguAcceptBlock checked={cguOk} onChange={setCguOk} role="client" />
+      <button
+        type="button"
+        onClick={() => setTestRecurrence((v) => !v)}
+        className={`text-xs underline text-left ${testRecurrence ? "text-primary font-bold" : "text-muted-foreground"}`}
+      >
+        {testRecurrence
+          ? "🧪 Mode test actif — 4e semaine consécutive avec Léa (désactiver)"
+          : "🧪 Simuler 4e semaine consécutive avec ce compagnon"}
       </button>
+      <div className="flex-1" />
+      <button type="submit" disabled={!cguOk} className="btn-huge bg-primary text-primary-foreground disabled:opacity-50">
+        {mode === "asap" ? "Lancer la recherche" : "Valider la réservation"}
+      </button>
+      {showCesuAlert && (
+        <CesuRecurrenceModal
+          companionName={companionName}
+          onClose={() => setShowCesuAlert(false)}
+          onSwitchCompanion={(n) => {
+            setCompanionName(n);
+            setTestRecurrence(false);
+            setShowCesuAlert(false);
+            createAndGo();
+          }}
+        />
+      )}
     </form>
   );
 }
+
 
 const CANCEL_WINDOW_MS = 48 * 60 * 60 * 1000;
 const canFreeCancel = (scheduledAt?: number | null) =>
