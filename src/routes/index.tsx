@@ -1,9 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { store, useStore, randomStudent, type NeedType, type Request } from "@/lib/store";
+import { store, useStore, randomStudent, COMPANIONS, experienceBadge, type NeedType, type Request } from "@/lib/store";
 import { CompanionLoyaltyGrid } from "@/components/CompanionLoyaltyGrid";
 import { CguAcceptBlock, CguPanel } from "@/components/Cgu";
 import { CesuRecurrenceModal } from "@/components/CesuRecurrence";
+import { ExperienceBadgeChip, ExperienceBadgeScale, ThumbsCount, ThumbUpButton } from "@/components/CompanionBadges";
+import { CompanionProfilePanel } from "@/components/CompanionProfilePanel";
+import { useCompanionSettings } from "@/lib/companionSettings";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
