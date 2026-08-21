@@ -152,15 +152,64 @@ export const store = {
     };
     emit();
   },
+  // Premier répondant : verrouille la mission. Renvoie false si déjà attribuée.
   acceptRequest: (id: string, studentIdx = 0) => {
+    const req = state.requests.find((r) => r.id === id);
+    if (!req || req.status !== "searching") return false;
+    const companion = seedStudents[studentIdx % seedStudents.length];
     state = {
       ...state,
       requests: state.requests.map((r) =>
-        r.id === id ? { ...r, status: "accepted", student: seedStudents[studentIdx % seedStudents.length] } : r,
+        r.id === id ? { ...r, status: "accepted" as const, student: companion } : r,
+      ),
+    };
+    emit();
+    return true;
+  },
+  acceptRequestBy: (id: string, companionId: string) => {
+    const req = state.requests.find((r) => r.id === id);
+    if (!req || req.status !== "searching") return false;
+    const companion = COMPANIONS.find((c) => c.id === companionId) ?? COMPANIONS[0];
+    state = {
+      ...state,
+      requests: state.requests.map((r) =>
+        r.id === id ? { ...r, status: "accepted" as const, student: companion } : r,
+      ),
+    };
+    emit();
+    return true;
+  },
+  declineRequest: (id: string, companionId: string) => {
+    state = {
+      ...state,
+      requests: state.requests.map((r) =>
+        r.id === id ? { ...r, declinedBy: [...(r.declinedBy ?? []), companionId] } : r,
       ),
     };
     emit();
   },
+  acknowledgeRequest: (id: string) => {
+    state = {
+      ...state,
+      requests: state.requests.map((r) => (r.id === id ? { ...r, acknowledged: true } : r)),
+    };
+    emit();
+  },
+  giveThumb: (id: string) => {
+    state = {
+      ...state,
+      requests: state.requests.map((r) => {
+        if (r.id !== id || r.thumbsGiven) return r;
+        if (r.student) {
+          const c = COMPANIONS.find((x) => x.id === r.student!.id);
+          if (c) c.thumbs += 1;
+        }
+        return { ...r, thumbsGiven: true };
+      }),
+    };
+    emit();
+  },
+
   // La famille annule sa demande. Remboursement uniquement si > 48h avant le RDV.
   cancelRequest: (id: string, refunded: boolean) => {
     state = {
