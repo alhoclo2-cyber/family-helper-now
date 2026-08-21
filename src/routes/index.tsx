@@ -205,17 +205,24 @@ function TaxCreditHint({ total, className = "" }: { total: number; className?: s
 function FamilyFlow() {
   const [step, setStep] = useState<"home" | "form" | "wait" | "account">("home");
   const [requestMode, setRequestMode] = useState<"asap" | "scheduled">("asap");
+  const [simulateNoAnswer, setSimulateNoAnswer] = useState(false);
   const currentId = useStore((s) => s.currentRequestId);
   const current = useStore((s) => s.requests.find((r) => r.id === s.currentRequestId));
   const account = useFamilyAccount();
 
+  // Simulation « premier répondant » : un compagnon disponible accepte la mission.
   useEffect(() => {
     if (step !== "wait" || !currentId || current?.status !== "searching") return;
-    const isFuture = !!current?.scheduledAt && current.scheduledAt > Date.now() + 60_000;
-    if (isFuture) return;
-    const t = setTimeout(() => store.acceptRequest(currentId, Math.floor(Math.random() * 3)), 3500);
+    if (simulateNoAnswer) return;
+    const preferredId = current?.preferredCompanionId;
+    const delay = preferredId ? 6000 : current?.scheduledAt ? 5000 : 3500;
+    const t = setTimeout(() => {
+      if (preferredId) store.acceptRequestBy(currentId, preferredId);
+      else store.acceptRequest(currentId, Math.floor(Math.random() * COMPANIONS.length));
+    }, delay);
     return () => clearTimeout(t);
-  }, [step, current?.status, current?.scheduledAt, currentId]);
+  }, [step, current?.status, current?.preferredCompanionId, current?.scheduledAt, currentId, simulateNoAnswer]);
+
 
   if (step === "account") return <FamilyAccountScreen onBack={() => setStep("home")} />;
 
