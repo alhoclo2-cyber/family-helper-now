@@ -15,6 +15,46 @@ export type NeedType =
   | "Accompagner un enfant (à partir de 3 ans)"
   | "Autre (à préciser)";
 
+export type Companion = {
+  id: string;
+  firstName: string;
+  photo: string;
+  rating: number;
+  missions: number;
+  thumbs: number;
+  distanceKm: number;
+  radiusKm: number;
+  city: string;
+};
+
+export const COMPANIONS: Companion[] = [
+  { id: "c1", firstName: "Léa", photo: "https://i.pravatar.cc/200?img=47", rating: 4.9, missions: 8, thumbs: 7, distanceKm: 1.2, radiusKm: 3, city: "Paris" },
+  { id: "c2", firstName: "Thomas", photo: "https://i.pravatar.cc/200?img=12", rating: 4.8, missions: 34, thumbs: 29, distanceKm: 2.4, radiusKm: 5, city: "Paris" },
+  { id: "c3", firstName: "Camille", photo: "https://i.pravatar.cc/200?img=32", rating: 5.0, missions: 96, thumbs: 88, distanceKm: 4.1, radiusKm: 8, city: "Paris" },
+  { id: "c4", firstName: "Malik", photo: "https://i.pravatar.cc/200?img=15", rating: 4.9, missions: 212, thumbs: 197, distanceKm: 2.9, radiusKm: 6, city: "Paris" },
+];
+
+export type ExperienceBadge = {
+  label: string;
+  emoji: string;
+  min: number;
+  max: number | null;
+};
+
+export const EXPERIENCE_BADGES: ExperienceBadge[] = [
+  { label: "Nouveau Compagnon", emoji: "🌱", min: 0, max: 10 },
+  { label: "Compagnon Confirmé", emoji: "⭐", min: 11, max: 50 },
+  { label: "Compagnon Chevronné", emoji: "🏅", min: 51, max: 150 },
+  { label: "Compagnon Expert", emoji: "🏆", min: 151, max: null },
+];
+
+export function experienceBadge(missions: number): ExperienceBadge {
+  return (
+    EXPERIENCE_BADGES.find((b) => missions >= b.min && (b.max === null || missions <= b.max)) ??
+    EXPERIENCE_BADGES[0]
+  );
+}
+
 export type Request = {
   id: string;
   need: NeedType;
@@ -24,6 +64,12 @@ export type Request = {
   seniorName: string;
   createdAt: number;
   scheduledAt?: number | null; // null/undefined => ASAP (urgence)
+  flow?: "sos" | "scheduled";
+  preferredCompanionId?: string; // parcours RDV : compagnon choisi par son nom
+  autoSearch?: boolean; // parcours RDV : recherche automatique à proximité
+  acknowledged?: boolean; // le client a cliqué sur « C'est noté ! »
+  thumbsGiven?: boolean; // pouce levé attribué en fin de prestation
+  declinedBy?: string[]; // compagnons ayant refusé
   durationHours?: number; // durée demandée (spécifique à Compagnie/Présence)
   parcelWeight?: string; // pour "Retrait ou dépôt d'un colis"
   parcelSize?: string;
@@ -39,15 +85,12 @@ export type Request = {
   status: "searching" | "accepted" | "cancelled";
   cancelledBy?: "family" | "companion";
   refunded?: boolean;
-  student?: { firstName: string; photo: string; rating: number };
+  student?: Companion;
 };
 
 
-const seedStudents = [
-  { firstName: "Léa", photo: "https://i.pravatar.cc/200?img=47", rating: 4.9 },
-  { firstName: "Thomas", photo: "https://i.pravatar.cc/200?img=12", rating: 4.8 },
-  { firstName: "Camille", photo: "https://i.pravatar.cc/200?img=32", rating: 5.0 },
-];
+const seedStudents = COMPANIONS;
+
 
 let state: {
   requests: Request[];
