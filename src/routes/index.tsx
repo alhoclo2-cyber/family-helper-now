@@ -248,20 +248,24 @@ function FamilyFlow() {
           </ul>
         </div>
         <button
-          onClick={() => { setRequestMode("asap"); setStep("form"); }}
+          onClick={() => { setRequestMode("asap"); setSimulateNoAnswer(false); setStep("form"); }}
           className="btn-huge bg-primary text-primary-foreground hover:brightness-110 min-h-[180px] w-full flex flex-col items-center justify-center gap-2"
         >
           <span className="text-5xl">🆘</span>
           <span>Urgence — maintenant</span>
-          <span className="text-sm font-normal opacity-90">Un compagnon vient au plus vite</span>
+          <span className="text-sm font-normal opacity-90">
+            Alerte immédiate à tous les compagnons disponibles autour de vous
+          </span>
         </button>
         <button
-          onClick={() => { setRequestMode("scheduled"); setStep("form"); }}
+          onClick={() => { setRequestMode("scheduled"); setSimulateNoAnswer(false); setStep("form"); }}
           className="btn-huge bg-accent text-foreground border-2 border-primary min-h-[140px] w-full flex flex-col items-center justify-center gap-2"
         >
           <span className="text-4xl">📅</span>
           <span>Prendre un rendez-vous</span>
-          <span className="text-sm font-normal text-muted-foreground">Planifier pour plus tard</span>
+          <span className="text-sm font-normal text-muted-foreground">
+            Date et heure précises — compagnon au choix ou recherche automatique
+          </span>
         </button>
         <div className="w-full bg-success/10 border-2 border-success/40 rounded-2xl p-4 text-left">
           <p className="text-sm font-bold text-success text-center">💳 Paiement en CESU préfinancé</p>
@@ -288,8 +292,16 @@ function FamilyFlow() {
   if (step === "form")
     return <FamilyForm mode={requestMode} onSubmit={() => setStep("wait")} onBack={() => setStep("home")} />;
 
-  return <FamilyWait request={current} onDone={() => { store.clearCurrent(); setStep("home"); }} />;
+  return (
+    <FamilyWait
+      request={current}
+      simulateNoAnswer={simulateNoAnswer}
+      onSimulateNoAnswer={setSimulateNoAnswer}
+      onDone={() => { store.clearCurrent(); setSimulateNoAnswer(false); setStep("home"); }}
+    />
+  );
 }
+
 
 function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; onSubmit: () => void; onBack: () => void }) {
   const [need, setNeed] = useState<NeedType>("Compagnie/Présence");
