@@ -895,9 +895,30 @@ function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolea
 }
 
 
-function FamilyWait({ request, onDone }: { request: Request | undefined; onDone: () => void }) {
+const SOS_TIMEOUT_MS = 30 * 60 * 1000; // 30 min sans réponse sur une urgence
+const PREFERRED_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 h sans réponse du compagnon choisi
+
+function FamilyWait({
+  request,
+  simulateNoAnswer,
+  onSimulateNoAnswer,
+  onDone,
+}: {
+  request: Request | undefined;
+  simulateNoAnswer: boolean;
+  onSimulateNoAnswer: (v: boolean) => void;
+  onDone: () => void;
+}) {
   const [paid, setPaid] = useState(false);
   const [showPay, setShowPay] = useState(false);
+  const [restartedAt, setRestartedAt] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const i = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(i);
+  }, []);
+
   if (!request) return null;
   if (request.status === "cancelled") {
     return (
@@ -919,7 +940,6 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
 
   const hours = request?.durationHours ?? 1;
   const { total } = computePrice(hours);
-
 
   if (accepted && showPay && !paid) {
     return (
@@ -944,51 +964,182 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
     );
   }
 
-  const isFutureSched = !!request.scheduledAt && request.scheduledAt > Date.now() + 60_000;
+  const isSos = !request.scheduledAt;
+  const preferred = request.preferredCompanionId
+    ? COMPANIONS.find((c) => c.id === request.preferredCompanionId)
+    : undefined;
+  const startedAt = restartedAt ?? request.createdAt;
+  const waited = now - startedAt;
+  const limit = preferred ? PREFERRED_TIMEOUT_MS : SOS_TIMEOUT_MS;
+  const timedOut = !accepted && (simulateNoAnswer || waited > limit);
+  const nearbyCount = COMPANIONS.filter((c) => c.distanceKm <= c.radiusKm).length;
+
+  const relaunch = () => {
+    onSimulateNoAnswer(false);
+    setRestartedAt(Date.now());
+  };
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-6 text-center">
       {!accepted ? (
-        isFutureSched ? (
-          <>
-            <div className="text-6xl">📅</div>
-            <div>
-              <p className="text-2xl font-bold">Rendez-vous enregistré</p>
-              <p className="text-base text-muted-foreground mt-2">Nous cherchons un compagnon pour ce créneau.</p>
+        <>
+          {isSos ? (
+            <>
+              <div className="relative h-32 w-32">
+                <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
+                <div className="absolute inset-4 rounded-full bg-primary/40 animate-pulse" />
+                <div className="absolute inset-10 rounded-full bg-primary grid place-items-center text-3xl">📡</div>
+              </div>
+              <div>
+                <p className="text-2xl font-bold">Alerte urgente envoyée</p>
+                <p className="text-base text-muted-foreground mt-2">
+                  {nearbyCount} compagnon(s) disponible(s) dans leur rayon d'intervention ont reçu une notification.
+                  Le premier qui accepte verrouille la mission.
+                </p>
+              </div>
+            </>
+          ) : preferred ? (
+            <>
+              <img
+                src={preferred.photo}
+                alt={preferred.firstName}
+                className="h-28 w-28 rounded-full object-cover ring-4 ring-primary/30"
+              />
+              <div>
+                <p className="text-2xl font-bold">Demande envoyée à {preferred.firstName}</p>
+                <p className="text-base text-muted-foreground mt-2">
+                  Réponse attendue sous 2 heures. Sans réponse, nous vous proposerons une alternative.
+                </p>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-6xl">📅</div>
+              <div>
+                <p className="text-2xl font-bold">Recherche automatique en cours</p>
+                <p className="text-base text-muted-foreground mt-2">
+                  Votre demande a été envoyée aux compagnons disponibles sur ce créneau. Le premier à accepter valide
+                  le rendez-vous.
+                </p>
+              </div>
+            </>
+          )}
+
+          <div className="w-full bg-card rounded-2xl p-5 border-2 border-border text-left">
+            <p className="text-sm text-muted-foreground">Besoin</p>
+            <p className="text-base font-semibold">
+              {request.need.includes("/") ? request.need.replace("/", " / ") : request.need}
+            </p>
+            {!!request.scheduledAt && (
+              <>
+                <p className="text-sm text-muted-foreground mt-3">Date et heure</p>
+                <p className="text-lg font-bold">{formatSchedule(request.scheduledAt)}</p>
+              </>
+            )}
+            <p className="text-sm text-muted-foreground mt-3">
+              ⏱️ En attente depuis {Math.max(0, Math.floor(waited / 60000))} min
+              {isSos ? " (délai maximum 30 min)" : preferred ? " (délai maximum 2 h)" : ""}
+            </p>
+          </div>
+
+          {timedOut && (
+            <div className="w-full rounded-2xl border-2 border-warning bg-warning/10 p-4 text-left">
+              <p className="text-sm font-black">
+                {isSos ? "⏰ Aucune réponse après 30 minutes" : `⏰ ${preferred?.firstName ?? "Le compagnon"} n'a pas répondu sous 2 h`}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {isSos
+                  ? "Aucun compagnon disponible n'a accepté votre urgence. Vous pouvez relancer l'alerte ou modifier vos critères (besoin, durée, adresse)."
+                  : "Choisissez un autre compagnon ou basculez en recherche automatique à proximité."}
+              </p>
+              <div className="grid grid-cols-1 gap-2 mt-3">
+                <button
+                  type="button"
+                  onClick={relaunch}
+                  className="py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-sm"
+                >
+                  🔁 Relancer la demande
+                </button>
+                {isSos ? (
+                  <button
+                    type="button"
+                    onClick={() => { store.cancelRequest(request.id, true); }}
+                    className="py-4 rounded-2xl border-2 border-border bg-card font-bold text-sm"
+                  >
+                    ✏️ Modifier mes critères
+                  </button>
+                ) : (
+                  <>
+                    <div className="rounded-2xl border-2 border-border bg-card p-3">
+                      <p className="text-xs font-bold mb-2">Autres compagnons disponibles</p>
+                      <div className="flex flex-col gap-2">
+                        {COMPANIONS.filter((c) => c.id !== preferred?.id).map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => {
+                              store.updateRequest(request.id, { preferredCompanionId: c.id });
+                              relaunch();
+                            }}
+                            className="flex items-center gap-3 rounded-xl border-2 border-border p-2 text-left"
+                          >
+                            <img src={c.photo} alt={c.firstName} className="h-10 w-10 rounded-full object-cover" />
+                            <span className="min-w-0">
+                              <span className="block text-sm font-bold">{c.firstName}</span>
+                              <span className="block text-[11px] text-muted-foreground">
+                                {experienceBadge(c.missions).emoji} {experienceBadge(c.missions).label} · 👍 {c.thumbs}
+                              </span>
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        store.updateRequest(request.id, { preferredCompanionId: undefined, autoSearch: true });
+                        relaunch();
+                      }}
+                      className="py-4 rounded-2xl border-2 border-primary text-primary font-bold text-sm"
+                    >
+                      🔎 Basculer en recherche automatique
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-            <div className="w-full bg-card rounded-2xl p-5 border-2 border-border text-left">
-              <p className="text-sm text-muted-foreground">Date et heure</p>
-              <p className="text-lg font-bold">{formatSchedule(request.scheduledAt!)}</p>
-              <p className="text-sm text-muted-foreground mt-3">Besoin</p>
-              <p className="text-base font-semibold">{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</p>
-            </div>
-            <ScheduleManageBlock request={request} paid={false} />
-            <button onClick={onDone} className="text-base text-muted-foreground underline">Retour à l'accueil</button>
-          </>
-        ) : (
-          <>
-            <div className="relative h-32 w-32">
-              <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
-              <div className="absolute inset-4 rounded-full bg-primary/40 animate-pulse" />
-              <div className="absolute inset-10 rounded-full bg-primary grid place-items-center text-3xl">📡</div>
-            </div>
-            <div>
-              <p className="text-2xl font-bold">Recherche d'un compagnon à proximité…</p>
-              <p className="text-base text-muted-foreground mt-2">Ne quittez pas cet écran.</p>
-            </div>
-            <p className="text-sm text-muted-foreground">Besoin : <b>{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</b></p>
+          )}
+
+          {isSos ? (
             <div className="w-full rounded-2xl border-2 border-border bg-card p-3 text-left">
               <p className="text-sm font-bold">🆘 Demande d'urgence</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Une demande SOS ne peut être ni modifiée ni annulée : un compagnon est déjà en route de recherche.
-                Pour un besoin planifiable, utilisez « Prendre un rendez-vous ».
+                Une demande SOS ne peut être ni modifiée ni annulée pendant la recherche. Pour un besoin planifiable,
+                utilisez « Prendre un rendez-vous ».
               </p>
             </div>
-          </>
-        )
+          ) : (
+            <ScheduleManageBlock request={request} paid={false} />
+          )}
+
+          {!timedOut && (
+            <button
+              type="button"
+              onClick={() => onSimulateNoAnswer(true)}
+              className="text-xs underline text-muted-foreground"
+            >
+              🧪 Simuler l'absence de réponse ({isSos ? "30 min" : "2 h"})
+            </button>
+          )}
+          <button onClick={onDone} className="text-base text-muted-foreground underline">
+            Retour à l'accueil
+          </button>
+        </>
       ) : (
         <>
-          <p className="text-lg font-bold text-success">✅ Un compagnon a accepté !</p>
+          <p className="text-lg font-bold text-success">
+            {isSos ? "✅ Mission verrouillée par un compagnon !" : "✅ Rendez-vous confirmé !"}
+          </p>
           <div className="w-full bg-card rounded-3xl p-6 border-2 border-border shadow-sm">
             <img
               src={request.student!.photo}
@@ -996,8 +1147,14 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
               className="h-40 w-40 rounded-full mx-auto object-cover ring-4 ring-primary/30"
             />
             <p className="text-2xl font-bold mt-4">{request.student!.firstName}</p>
-            <p className="text-lg text-warning-foreground mt-1">⭐ {request.student!.rating.toFixed(1)}/5</p>
-            <p className="text-sm text-muted-foreground mt-1">Arrivée estimée : 10 min</p>
+            <div className="mt-2 flex items-center justify-center gap-2 flex-wrap">
+              <ExperienceBadgeChip missions={request.student!.missions} />
+              <ThumbsCount thumbs={request.student!.thumbs} />
+            </div>
+            <p className="text-sm text-muted-foreground mt-2">
+              {request.student!.missions} missions réalisées ·{" "}
+              {isSos ? "Arrivée estimée : 10 min" : "Rendez-vous confirmé"}
+            </p>
             <div className="mt-4 bg-warning/15 border-2 border-warning rounded-2xl p-3 text-left">
               <p className="text-sm font-bold">🔒 Vérifiez l'identité</p>
               <p className="text-sm text-muted-foreground mt-1">
@@ -1006,8 +1163,20 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
             </div>
           </div>
 
-
-          {!paid ? (
+          {!request.acknowledged ? (
+            <div className="w-full rounded-2xl border-2 border-primary bg-accent p-4 text-left">
+              <p className="text-sm font-black">📩 Accusé de réception</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Confirmez que vous avez bien pris connaissance de l'intervention de {request.student!.firstName}.
+              </p>
+              <button
+                onClick={() => store.acknowledgeRequest(request.id)}
+                className="btn-huge bg-primary text-primary-foreground w-full mt-3"
+              >
+                👍 C'est noté !
+              </button>
+            </div>
+          ) : !paid ? (
             <>
               <div className="w-full bg-success/10 border-2 border-success/40 rounded-2xl p-3 text-left">
                 <p className="text-sm font-bold text-success">
@@ -1036,6 +1205,10 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
               >
                 📞 Appeler le compagnon
               </a>
+              <ThumbUpButton
+                given={!!request.thumbsGiven}
+                onGive={() => store.giveThumb(request.id)}
+              />
             </>
           )}
           {!!request.scheduledAt && <ScheduleManageBlock request={request} paid={paid} />}
@@ -1043,6 +1216,7 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
         </>
       )}
     </div>
+
   );
 }
 
