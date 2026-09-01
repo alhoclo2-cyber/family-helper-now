@@ -408,7 +408,9 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
     if (need === "Autre (à préciser)" && !otherDetail.trim()) return;
     if (isOutdoor && !continuity) return;
     if (isChildNeed && (!childAge.trim() || Number(childAge) < 3)) return;
+    if (mode === "scheduled" && !autoSearch && !pickedCompanion) return;
     if (!cguOk) return;
+
     if (testRecurrence) {
       setShowCesuAlert(true);
       return;
