@@ -777,7 +777,11 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
           : "🧪 Simuler 4e semaine consécutive avec ce compagnon"}
       </button>
       <div className="flex-1" />
-      <button type="submit" disabled={!cguOk} className="btn-huge bg-primary text-primary-foreground disabled:opacity-50">
+      <button
+        type="submit"
+        disabled={!cguOk || (mode === "scheduled" && !autoSearch && !pickedCompanion)}
+        className="btn-huge bg-primary text-primary-foreground disabled:opacity-50"
+      >
         {mode === "asap" ? "Lancer la recherche" : "Valider la réservation"}
       </button>
       {showCesuAlert && (
