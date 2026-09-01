@@ -669,6 +669,59 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
           />
         </div>
       )}
+      {mode === "scheduled" && (
+        <div>
+          <label className="block text-lg font-bold mb-2">Qui doit venir ?</label>
+          <label
+            className={`flex items-start gap-3 rounded-2xl border-2 p-4 text-sm ${
+              autoSearch ? "border-primary bg-accent" : "border-border bg-card"
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={autoSearch}
+              onChange={(e) => setAutoSearch(e.target.checked)}
+              className="mt-0.5 h-5 w-5 shrink-0"
+            />
+            <span>
+              <b>Recherche d'un compagnon à proximité disponible</b>
+              <span className="block text-xs text-muted-foreground mt-1">
+                Votre demande est envoyée à tous les compagnons libres sur ce créneau. Le premier à accepter valide le
+                rendez-vous.
+              </span>
+            </span>
+          </label>
+          {!autoSearch && (
+            <div className="mt-3 flex flex-col gap-2">
+              <p className="text-sm font-bold">Choisir un compagnon par son nom</p>
+              {COMPANIONS.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setPickedCompanion(c.id)}
+                  className={`flex items-center gap-3 rounded-2xl border-2 p-3 text-left ${
+                    pickedCompanion === c.id ? "border-primary bg-accent" : "border-border bg-card"
+                  }`}
+                >
+                  <img src={c.photo} alt={c.firstName} className="h-12 w-12 rounded-full object-cover" />
+                  <span className="min-w-0">
+                    <span className="block text-base font-bold">{c.firstName}</span>
+                    <span className="block text-xs text-muted-foreground mt-0.5">
+                      {experienceBadge(c.missions).emoji} {experienceBadge(c.missions).label} · 👍 {c.thumbs} ·{" "}
+                      {c.distanceKm} km
+                    </span>
+                  </span>
+                </button>
+              ))}
+              <p className="text-xs text-muted-foreground">
+                Sans réponse du compagnon choisi sous 2 heures, nous vous proposerons un autre compagnon ou une
+                recherche automatique.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       <div>
         <label className="block text-lg font-bold mb-2">Adresse</label>
         <input
