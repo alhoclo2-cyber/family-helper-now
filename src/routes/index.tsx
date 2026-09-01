@@ -1526,13 +1526,22 @@ function StudentFlow() {
         </span>
       </button>
 
+      <CompanionProfilePanel />
+
       {online ? (
         <>
           <h2 className="text-xl font-bold mt-2">Demandes actives ({requests.length})</h2>
+          {hiddenCount > 0 && (
+            <p className="text-xs text-muted-foreground -mt-3">
+              {hiddenCount} demande(s) masquée(s) : hors de votre rayon de {settings.radiusKm} km ou hors de vos
+              critères d'acceptation.
+            </p>
+          )}
           <div className="flex flex-col gap-3">
             {requests.length === 0 && (
               <p className="text-muted-foreground text-center py-10">Aucune demande pour le moment.</p>
             )}
+
             {requests.map((r) => {
               const scheduled = !!r.scheduledAt;
               return (
