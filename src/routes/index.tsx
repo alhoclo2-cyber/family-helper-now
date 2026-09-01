@@ -324,6 +324,9 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   })();
 
+  const [autoSearch, setAutoSearch] = useState(true);
+  const [pickedCompanion, setPickedCompanion] = useState<string>("");
+
   const [childLevel, setChildLevel] = useState<string>("Primaire");
   const [childClass, setChildClass] = useState<string>("");
   const [childAge, setChildAge] = useState<string>("");
