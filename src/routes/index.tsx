@@ -1806,7 +1806,13 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
   const accepted = request.status === "accepted";
   const strikes = useStrikes();
   const banned = strikes >= 3;
-  const accept = () => { if (!banned) store.acceptRequest(request.id); };
+  const [taken, setTaken] = useState(false);
+  const accept = () => {
+    if (banned) return;
+    const ok = store.acceptRequest(request.id);
+    if (!ok) setTaken(true);
+  };
+
 
 
   return (
