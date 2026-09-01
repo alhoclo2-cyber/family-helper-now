@@ -1876,12 +1876,28 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
         )}
       </div>
 
-      {!accepted ? (
+      {taken ? (
+        <div className="rounded-2xl border-2 border-warning bg-warning/10 p-5 text-center">
+          <p className="text-lg font-black">⚡ Mission déjà attribuée</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Un autre compagnon a répondu en premier. La demande disparaît de votre liste.
+          </p>
+          <button onClick={onBack} className="btn-huge bg-primary text-primary-foreground w-full mt-4">
+            Retour aux demandes
+          </button>
+        </div>
+      ) : !accepted ? (
         <>
           <div className="bg-accent rounded-2xl p-4 text-sm">
             Vous voyez la rue et la ville. Le <b>numéro exact</b> et le <b>téléphone de la famille</b> seront
             révélés dès que vous aurez accepté la mission.
           </div>
+          {!request.scheduledAt && (
+            <div className="rounded-2xl border-2 border-primary/40 bg-primary/5 p-4 text-sm">
+              🆘 <b>Urgence — premier répondant.</b> Le premier compagnon qui accepte verrouille la mission ; elle
+              disparaît alors chez les autres.
+            </div>
+          )}
           <CompanionRulesNotice strikes={strikes} />
           <div className="flex-1" />
           <button
@@ -1893,6 +1909,7 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
           </button>
         </>
       ) : (
+
         <>
           <div className="bg-card rounded-3xl p-6 border-2 border-success">
             <p className="text-sm text-success font-bold uppercase tracking-wide">Mission acceptée</p>
