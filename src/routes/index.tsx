@@ -382,7 +382,11 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
       address,
       phone,
       scheduledAt,
+      flow: mode === "scheduled" ? "scheduled" : "sos",
+      autoSearch: mode === "scheduled" ? autoSearch : true,
+      preferredCompanionId: mode === "scheduled" && !autoSearch && pickedCompanion ? pickedCompanion : undefined,
       durationHours: dh,
+
       parcelWeight: isParcel ? parcelWeight : undefined,
       parcelSize: isParcel ? parcelSize : undefined,
       childLevel: isHomework ? childLevel : undefined,
