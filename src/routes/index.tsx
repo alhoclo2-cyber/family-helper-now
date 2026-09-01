@@ -324,6 +324,9 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   })();
 
+  const [autoSearch, setAutoSearch] = useState(true);
+  const [pickedCompanion, setPickedCompanion] = useState<string>("");
+
   const [childLevel, setChildLevel] = useState<string>("Primaire");
   const [childClass, setChildClass] = useState<string>("");
   const [childAge, setChildAge] = useState<string>("");
@@ -379,7 +382,11 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
       address,
       phone,
       scheduledAt,
+      flow: mode === "scheduled" ? "scheduled" : "sos",
+      autoSearch: mode === "scheduled" ? autoSearch : true,
+      preferredCompanionId: mode === "scheduled" && !autoSearch && pickedCompanion ? pickedCompanion : undefined,
       durationHours: dh,
+
       parcelWeight: isParcel ? parcelWeight : undefined,
       parcelSize: isParcel ? parcelSize : undefined,
       childLevel: isHomework ? childLevel : undefined,
@@ -401,7 +408,9 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
     if (need === "Autre (à préciser)" && !otherDetail.trim()) return;
     if (isOutdoor && !continuity) return;
     if (isChildNeed && (!childAge.trim() || Number(childAge) < 3)) return;
+    if (mode === "scheduled" && !autoSearch && !pickedCompanion) return;
     if (!cguOk) return;
+
     if (testRecurrence) {
       setShowCesuAlert(true);
       return;
@@ -660,6 +669,59 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
           />
         </div>
       )}
+      {mode === "scheduled" && (
+        <div>
+          <label className="block text-lg font-bold mb-2">Qui doit venir ?</label>
+          <label
+            className={`flex items-start gap-3 rounded-2xl border-2 p-4 text-sm ${
+              autoSearch ? "border-primary bg-accent" : "border-border bg-card"
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={autoSearch}
+              onChange={(e) => setAutoSearch(e.target.checked)}
+              className="mt-0.5 h-5 w-5 shrink-0"
+            />
+            <span>
+              <b>Recherche d'un compagnon à proximité disponible</b>
+              <span className="block text-xs text-muted-foreground mt-1">
+                Votre demande est envoyée à tous les compagnons libres sur ce créneau. Le premier à accepter valide le
+                rendez-vous.
+              </span>
+            </span>
+          </label>
+          {!autoSearch && (
+            <div className="mt-3 flex flex-col gap-2">
+              <p className="text-sm font-bold">Choisir un compagnon par son nom</p>
+              {COMPANIONS.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setPickedCompanion(c.id)}
+                  className={`flex items-center gap-3 rounded-2xl border-2 p-3 text-left ${
+                    pickedCompanion === c.id ? "border-primary bg-accent" : "border-border bg-card"
+                  }`}
+                >
+                  <img src={c.photo} alt={c.firstName} className="h-12 w-12 rounded-full object-cover" />
+                  <span className="min-w-0">
+                    <span className="block text-base font-bold">{c.firstName}</span>
+                    <span className="block text-xs text-muted-foreground mt-0.5">
+                      {experienceBadge(c.missions).emoji} {experienceBadge(c.missions).label} · 👍 {c.thumbs} ·{" "}
+                      {c.distanceKm} km
+                    </span>
+                  </span>
+                </button>
+              ))}
+              <p className="text-xs text-muted-foreground">
+                Sans réponse du compagnon choisi sous 2 heures, nous vous proposerons un autre compagnon ou une
+                recherche automatique.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       <div>
         <label className="block text-lg font-bold mb-2">Adresse</label>
         <input
@@ -715,7 +777,11 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
           : "🧪 Simuler 4e semaine consécutive avec ce compagnon"}
       </button>
       <div className="flex-1" />
-      <button type="submit" disabled={!cguOk} className="btn-huge bg-primary text-primary-foreground disabled:opacity-50">
+      <button
+        type="submit"
+        disabled={!cguOk || (mode === "scheduled" && !autoSearch && !pickedCompanion)}
+        className="btn-huge bg-primary text-primary-foreground disabled:opacity-50"
+      >
         {mode === "asap" ? "Lancer la recherche" : "Valider la réservation"}
       </button>
       {showCesuAlert && (
@@ -895,9 +961,30 @@ function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolea
 }
 
 
-function FamilyWait({ request, onDone }: { request: Request | undefined; onDone: () => void }) {
+const SOS_TIMEOUT_MS = 30 * 60 * 1000; // 30 min sans réponse sur une urgence
+const PREFERRED_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 h sans réponse du compagnon choisi
+
+function FamilyWait({
+  request,
+  simulateNoAnswer,
+  onSimulateNoAnswer,
+  onDone,
+}: {
+  request: Request | undefined;
+  simulateNoAnswer: boolean;
+  onSimulateNoAnswer: (v: boolean) => void;
+  onDone: () => void;
+}) {
   const [paid, setPaid] = useState(false);
   const [showPay, setShowPay] = useState(false);
+  const [restartedAt, setRestartedAt] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const i = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(i);
+  }, []);
+
   if (!request) return null;
   if (request.status === "cancelled") {
     return (
@@ -919,7 +1006,6 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
 
   const hours = request?.durationHours ?? 1;
   const { total } = computePrice(hours);
-
 
   if (accepted && showPay && !paid) {
     return (
@@ -944,51 +1030,182 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
     );
   }
 
-  const isFutureSched = !!request.scheduledAt && request.scheduledAt > Date.now() + 60_000;
+  const isSos = !request.scheduledAt;
+  const preferred = request.preferredCompanionId
+    ? COMPANIONS.find((c) => c.id === request.preferredCompanionId)
+    : undefined;
+  const startedAt = restartedAt ?? request.createdAt;
+  const waited = now - startedAt;
+  const limit = preferred ? PREFERRED_TIMEOUT_MS : SOS_TIMEOUT_MS;
+  const timedOut = !accepted && (simulateNoAnswer || waited > limit);
+  const nearbyCount = COMPANIONS.filter((c) => c.distanceKm <= c.radiusKm).length;
+
+  const relaunch = () => {
+    onSimulateNoAnswer(false);
+    setRestartedAt(Date.now());
+  };
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-6 text-center">
       {!accepted ? (
-        isFutureSched ? (
-          <>
-            <div className="text-6xl">📅</div>
-            <div>
-              <p className="text-2xl font-bold">Rendez-vous enregistré</p>
-              <p className="text-base text-muted-foreground mt-2">Nous cherchons un compagnon pour ce créneau.</p>
+        <>
+          {isSos ? (
+            <>
+              <div className="relative h-32 w-32">
+                <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
+                <div className="absolute inset-4 rounded-full bg-primary/40 animate-pulse" />
+                <div className="absolute inset-10 rounded-full bg-primary grid place-items-center text-3xl">📡</div>
+              </div>
+              <div>
+                <p className="text-2xl font-bold">Alerte urgente envoyée</p>
+                <p className="text-base text-muted-foreground mt-2">
+                  {nearbyCount} compagnon(s) disponible(s) dans leur rayon d'intervention ont reçu une notification.
+                  Le premier qui accepte verrouille la mission.
+                </p>
+              </div>
+            </>
+          ) : preferred ? (
+            <>
+              <img
+                src={preferred.photo}
+                alt={preferred.firstName}
+                className="h-28 w-28 rounded-full object-cover ring-4 ring-primary/30"
+              />
+              <div>
+                <p className="text-2xl font-bold">Demande envoyée à {preferred.firstName}</p>
+                <p className="text-base text-muted-foreground mt-2">
+                  Réponse attendue sous 2 heures. Sans réponse, nous vous proposerons une alternative.
+                </p>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-6xl">📅</div>
+              <div>
+                <p className="text-2xl font-bold">Recherche automatique en cours</p>
+                <p className="text-base text-muted-foreground mt-2">
+                  Votre demande a été envoyée aux compagnons disponibles sur ce créneau. Le premier à accepter valide
+                  le rendez-vous.
+                </p>
+              </div>
+            </>
+          )}
+
+          <div className="w-full bg-card rounded-2xl p-5 border-2 border-border text-left">
+            <p className="text-sm text-muted-foreground">Besoin</p>
+            <p className="text-base font-semibold">
+              {request.need.includes("/") ? request.need.replace("/", " / ") : request.need}
+            </p>
+            {!!request.scheduledAt && (
+              <>
+                <p className="text-sm text-muted-foreground mt-3">Date et heure</p>
+                <p className="text-lg font-bold">{formatSchedule(request.scheduledAt)}</p>
+              </>
+            )}
+            <p className="text-sm text-muted-foreground mt-3">
+              ⏱️ En attente depuis {Math.max(0, Math.floor(waited / 60000))} min
+              {isSos ? " (délai maximum 30 min)" : preferred ? " (délai maximum 2 h)" : ""}
+            </p>
+          </div>
+
+          {timedOut && (
+            <div className="w-full rounded-2xl border-2 border-warning bg-warning/10 p-4 text-left">
+              <p className="text-sm font-black">
+                {isSos ? "⏰ Aucune réponse après 30 minutes" : `⏰ ${preferred?.firstName ?? "Le compagnon"} n'a pas répondu sous 2 h`}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {isSos
+                  ? "Aucun compagnon disponible n'a accepté votre urgence. Vous pouvez relancer l'alerte ou modifier vos critères (besoin, durée, adresse)."
+                  : "Choisissez un autre compagnon ou basculez en recherche automatique à proximité."}
+              </p>
+              <div className="grid grid-cols-1 gap-2 mt-3">
+                <button
+                  type="button"
+                  onClick={relaunch}
+                  className="py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-sm"
+                >
+                  🔁 Relancer la demande
+                </button>
+                {isSos ? (
+                  <button
+                    type="button"
+                    onClick={() => { store.cancelRequest(request.id, true); }}
+                    className="py-4 rounded-2xl border-2 border-border bg-card font-bold text-sm"
+                  >
+                    ✏️ Modifier mes critères
+                  </button>
+                ) : (
+                  <>
+                    <div className="rounded-2xl border-2 border-border bg-card p-3">
+                      <p className="text-xs font-bold mb-2">Autres compagnons disponibles</p>
+                      <div className="flex flex-col gap-2">
+                        {COMPANIONS.filter((c) => c.id !== preferred?.id).map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => {
+                              store.updateRequest(request.id, { preferredCompanionId: c.id });
+                              relaunch();
+                            }}
+                            className="flex items-center gap-3 rounded-xl border-2 border-border p-2 text-left"
+                          >
+                            <img src={c.photo} alt={c.firstName} className="h-10 w-10 rounded-full object-cover" />
+                            <span className="min-w-0">
+                              <span className="block text-sm font-bold">{c.firstName}</span>
+                              <span className="block text-[11px] text-muted-foreground">
+                                {experienceBadge(c.missions).emoji} {experienceBadge(c.missions).label} · 👍 {c.thumbs}
+                              </span>
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        store.updateRequest(request.id, { preferredCompanionId: undefined, autoSearch: true });
+                        relaunch();
+                      }}
+                      className="py-4 rounded-2xl border-2 border-primary text-primary font-bold text-sm"
+                    >
+                      🔎 Basculer en recherche automatique
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-            <div className="w-full bg-card rounded-2xl p-5 border-2 border-border text-left">
-              <p className="text-sm text-muted-foreground">Date et heure</p>
-              <p className="text-lg font-bold">{formatSchedule(request.scheduledAt!)}</p>
-              <p className="text-sm text-muted-foreground mt-3">Besoin</p>
-              <p className="text-base font-semibold">{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</p>
-            </div>
-            <ScheduleManageBlock request={request} paid={false} />
-            <button onClick={onDone} className="text-base text-muted-foreground underline">Retour à l'accueil</button>
-          </>
-        ) : (
-          <>
-            <div className="relative h-32 w-32">
-              <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
-              <div className="absolute inset-4 rounded-full bg-primary/40 animate-pulse" />
-              <div className="absolute inset-10 rounded-full bg-primary grid place-items-center text-3xl">📡</div>
-            </div>
-            <div>
-              <p className="text-2xl font-bold">Recherche d'un compagnon à proximité…</p>
-              <p className="text-base text-muted-foreground mt-2">Ne quittez pas cet écran.</p>
-            </div>
-            <p className="text-sm text-muted-foreground">Besoin : <b>{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</b></p>
+          )}
+
+          {isSos ? (
             <div className="w-full rounded-2xl border-2 border-border bg-card p-3 text-left">
               <p className="text-sm font-bold">🆘 Demande d'urgence</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Une demande SOS ne peut être ni modifiée ni annulée : un compagnon est déjà en route de recherche.
-                Pour un besoin planifiable, utilisez « Prendre un rendez-vous ».
+                Une demande SOS ne peut être ni modifiée ni annulée pendant la recherche. Pour un besoin planifiable,
+                utilisez « Prendre un rendez-vous ».
               </p>
             </div>
-          </>
-        )
+          ) : (
+            <ScheduleManageBlock request={request} paid={false} />
+          )}
+
+          {!timedOut && (
+            <button
+              type="button"
+              onClick={() => onSimulateNoAnswer(true)}
+              className="text-xs underline text-muted-foreground"
+            >
+              🧪 Simuler l'absence de réponse ({isSos ? "30 min" : "2 h"})
+            </button>
+          )}
+          <button onClick={onDone} className="text-base text-muted-foreground underline">
+            Retour à l'accueil
+          </button>
+        </>
       ) : (
         <>
-          <p className="text-lg font-bold text-success">✅ Un compagnon a accepté !</p>
+          <p className="text-lg font-bold text-success">
+            {isSos ? "✅ Mission verrouillée par un compagnon !" : "✅ Rendez-vous confirmé !"}
+          </p>
           <div className="w-full bg-card rounded-3xl p-6 border-2 border-border shadow-sm">
             <img
               src={request.student!.photo}
@@ -996,8 +1213,14 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
               className="h-40 w-40 rounded-full mx-auto object-cover ring-4 ring-primary/30"
             />
             <p className="text-2xl font-bold mt-4">{request.student!.firstName}</p>
-            <p className="text-lg text-warning-foreground mt-1">⭐ {request.student!.rating.toFixed(1)}/5</p>
-            <p className="text-sm text-muted-foreground mt-1">Arrivée estimée : 10 min</p>
+            <div className="mt-2 flex items-center justify-center gap-2 flex-wrap">
+              <ExperienceBadgeChip missions={request.student!.missions} />
+              <ThumbsCount thumbs={request.student!.thumbs} />
+            </div>
+            <p className="text-sm text-muted-foreground mt-2">
+              {request.student!.missions} missions réalisées ·{" "}
+              {isSos ? "Arrivée estimée : 10 min" : "Rendez-vous confirmé"}
+            </p>
             <div className="mt-4 bg-warning/15 border-2 border-warning rounded-2xl p-3 text-left">
               <p className="text-sm font-bold">🔒 Vérifiez l'identité</p>
               <p className="text-sm text-muted-foreground mt-1">
@@ -1006,8 +1229,20 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
             </div>
           </div>
 
-
-          {!paid ? (
+          {!request.acknowledged ? (
+            <div className="w-full rounded-2xl border-2 border-primary bg-accent p-4 text-left">
+              <p className="text-sm font-black">📩 Accusé de réception</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Confirmez que vous avez bien pris connaissance de l'intervention de {request.student!.firstName}.
+              </p>
+              <button
+                onClick={() => store.acknowledgeRequest(request.id)}
+                className="btn-huge bg-primary text-primary-foreground w-full mt-3"
+              >
+                👍 C'est noté !
+              </button>
+            </div>
+          ) : !paid ? (
             <>
               <div className="w-full bg-success/10 border-2 border-success/40 rounded-2xl p-3 text-left">
                 <p className="text-sm font-bold text-success">
@@ -1036,6 +1271,10 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
               >
                 📞 Appeler le compagnon
               </a>
+              <ThumbUpButton
+                given={!!request.thumbsGiven}
+                onGive={() => store.giveThumb(request.id)}
+              />
             </>
           )}
           {!!request.scheduledAt && <ScheduleManageBlock request={request} paid={paid} />}
@@ -1043,6 +1282,7 @@ function FamilyWait({ request, onDone }: { request: Request | undefined; onDone:
         </>
       )}
     </div>
+
   );
 }
 
@@ -1218,9 +1458,24 @@ function StudentFlow() {
   const apps = useApplications();
   const [online, setOnline] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
-  const requests = useStore((s) => s.requests.filter((r) => r.status === "searching"));
+  const allSearching = useStore((s) => s.requests.filter((r) => r.status === "searching"));
   const active = useStore((s) => (openId ? s.requests.find((r) => r.id === openId) : undefined));
   const strikes = useStrikes();
+  const settings = useCompanionSettings();
+
+  // Distance simulée stable par demande (démo)
+  const distanceOf = (id: string) =>
+    Math.round((([...id].reduce((a, c) => a + c.charCodeAt(0), 0) % 90) / 10 + 0.5) * 10) / 10;
+
+  const requests = allSearching.filter((r) => {
+    if (distanceOf(r.id) > settings.radiusKm) return false;
+    if ((r.durationHours ?? 1) < settings.minDurationH) return false;
+    if (!settings.tasks.includes(r.need)) return false;
+    if (!settings.acceptPets && r.need === "Sortir ou nourrir animal de compagnie") return false;
+    return true;
+  });
+  const hiddenCount = allSearching.length - requests.length;
+
 
   // Sync enroll state with admin's decision on this candidate
   useEffect(() => {
@@ -1271,13 +1526,22 @@ function StudentFlow() {
         </span>
       </button>
 
+      <CompanionProfilePanel />
+
       {online ? (
         <>
           <h2 className="text-xl font-bold mt-2">Demandes actives ({requests.length})</h2>
+          {hiddenCount > 0 && (
+            <p className="text-xs text-muted-foreground -mt-3">
+              {hiddenCount} demande(s) masquée(s) : hors de votre rayon de {settings.radiusKm} km ou hors de vos
+              critères d'acceptation.
+            </p>
+          )}
           <div className="flex flex-col gap-3">
             {requests.length === 0 && (
               <p className="text-muted-foreground text-center py-10">Aucune demande pour le moment.</p>
             )}
+
             {requests.map((r) => {
               const scheduled = !!r.scheduledAt;
               return (
@@ -1290,6 +1554,8 @@ function StudentFlow() {
                     <div className="min-w-0">
                       <p className="text-lg font-bold">{r.need.includes("/") ? r.need.replace("/", " / ") : r.need}</p>
                       <p className="text-base text-muted-foreground mt-1">📍 {maskAddress(r.address)}</p>
+                      <p className="text-sm text-muted-foreground">🧭 ≈ {distanceOf(r.id)} km de chez vous</p>
+
                       {r.durationHours && r.durationHours > 1 && (
                         <p className="text-sm mt-1 font-semibold">⏱️ Durée : {r.durationHours}h</p>
                       )}
@@ -1316,7 +1582,7 @@ function StudentFlow() {
                       )}
                     </div>
                     <span className={`text-xs font-bold px-2 py-1 rounded-full shrink-0 ${scheduled ? "bg-accent text-foreground" : "bg-primary/10 text-primary"}`}>
-                      {scheduled ? "RDV" : "URGENT"}
+                      {scheduled ? "RDV" : "URGENT · 1er répondant"}
                     </span>
                   </div>
                 </button>
@@ -1540,7 +1806,13 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
   const accepted = request.status === "accepted";
   const strikes = useStrikes();
   const banned = strikes >= 3;
-  const accept = () => { if (!banned) store.acceptRequest(request.id); };
+  const [taken, setTaken] = useState(false);
+  const accept = () => {
+    if (banned) return;
+    const ok = store.acceptRequest(request.id);
+    if (!ok) setTaken(true);
+  };
+
 
 
   return (
@@ -1604,12 +1876,28 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
         )}
       </div>
 
-      {!accepted ? (
+      {taken ? (
+        <div className="rounded-2xl border-2 border-warning bg-warning/10 p-5 text-center">
+          <p className="text-lg font-black">⚡ Mission déjà attribuée</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Un autre compagnon a répondu en premier. La demande disparaît de votre liste.
+          </p>
+          <button onClick={onBack} className="btn-huge bg-primary text-primary-foreground w-full mt-4">
+            Retour aux demandes
+          </button>
+        </div>
+      ) : !accepted ? (
         <>
           <div className="bg-accent rounded-2xl p-4 text-sm">
             Vous voyez la rue et la ville. Le <b>numéro exact</b> et le <b>téléphone de la famille</b> seront
             révélés dès que vous aurez accepté la mission.
           </div>
+          {!request.scheduledAt && (
+            <div className="rounded-2xl border-2 border-primary/40 bg-primary/5 p-4 text-sm">
+              🆘 <b>Urgence — premier répondant.</b> Le premier compagnon qui accepte verrouille la mission ; elle
+              disparaît alors chez les autres.
+            </div>
+          )}
           <CompanionRulesNotice strikes={strikes} />
           <div className="flex-1" />
           <button
@@ -1621,6 +1909,7 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
           </button>
         </>
       ) : (
+
         <>
           <div className="bg-card rounded-3xl p-6 border-2 border-success">
             <p className="text-sm text-success font-bold uppercase tracking-wide">Mission acceptée</p>
