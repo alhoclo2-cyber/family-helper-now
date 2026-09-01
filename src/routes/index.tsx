@@ -1582,7 +1582,7 @@ function StudentFlow() {
                       )}
                     </div>
                     <span className={`text-xs font-bold px-2 py-1 rounded-full shrink-0 ${scheduled ? "bg-accent text-foreground" : "bg-primary/10 text-primary"}`}>
-                      {scheduled ? "RDV" : "URGENT"}
+                      {scheduled ? "RDV" : "URGENT · 1er répondant"}
                     </span>
                   </div>
                 </button>
