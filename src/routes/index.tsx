@@ -1458,9 +1458,24 @@ function StudentFlow() {
   const apps = useApplications();
   const [online, setOnline] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
-  const requests = useStore((s) => s.requests.filter((r) => r.status === "searching"));
+  const allSearching = useStore((s) => s.requests.filter((r) => r.status === "searching"));
   const active = useStore((s) => (openId ? s.requests.find((r) => r.id === openId) : undefined));
   const strikes = useStrikes();
+  const settings = useCompanionSettings();
+
+  // Distance simulée stable par demande (démo)
+  const distanceOf = (id: string) =>
+    Math.round((([...id].reduce((a, c) => a + c.charCodeAt(0), 0) % 90) / 10 + 0.5) * 10) / 10;
+
+  const requests = allSearching.filter((r) => {
+    if (distanceOf(r.id) > settings.radiusKm) return false;
+    if ((r.durationHours ?? 1) < settings.minDurationH) return false;
+    if (!settings.tasks.includes(r.need)) return false;
+    if (!settings.acceptPets && r.need === "Sortir ou nourrir animal de compagnie") return false;
+    return true;
+  });
+  const hiddenCount = allSearching.length - requests.length;
+
 
   // Sync enroll state with admin's decision on this candidate
   useEffect(() => {
