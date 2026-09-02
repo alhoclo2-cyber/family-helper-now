@@ -1857,7 +1857,6 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
             🗺️ Itinéraire
           </a>
           {!!request.scheduledAt && <CompanionCancelBlock request={request} />}
-          <CompanionRulesNotice strikes={strikes} />
         </>
       )}
     </div>
