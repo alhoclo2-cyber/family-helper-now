@@ -1596,9 +1596,6 @@ function StudentFlow() {
       )}
 
       <CguPanel />
-
-      <CompanionRulesNotice strikes={strikes} />
-      <CompanionLoyaltyGrid />
     </div>
   );
 }
