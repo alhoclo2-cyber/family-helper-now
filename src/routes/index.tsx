@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { store, useStore, randomStudent, COMPANIONS, experienceBadge, type NeedType, type Request } from "@/lib/store";
-import { CompanionLoyaltyGrid } from "@/components/CompanionLoyaltyGrid";
 import { CguAcceptBlock, CguPanel } from "@/components/Cgu";
 import { CesuRecurrenceModal } from "@/components/CesuRecurrence";
 import { ExperienceBadgeChip, ExperienceBadgeScale, ThumbsCount, ThumbUpButton } from "@/components/CompanionBadges";
@@ -1597,9 +1596,6 @@ function StudentFlow() {
       )}
 
       <CguPanel />
-
-      <CompanionRulesNotice strikes={strikes} />
-      <CompanionLoyaltyGrid />
     </div>
   );
 }
@@ -1632,84 +1628,6 @@ function useStrikes(): number {
   return n;
 }
 
-const BLAMES_KEY = "sos-companion-blames";
-function useBlames(): number {
-  const [n, setN] = useState(0);
-  useEffect(() => {
-    setN(Number(localStorage.getItem(BLAMES_KEY) || 0));
-  }, []);
-  return n;
-}
-
-function CompanionRulesNotice({ strikes }: { strikes: number }) {
-  const blames = useBlames();
-  const banned = strikes >= 3 || blames >= 3;
-  return (
-    <div
-      className={`rounded-2xl border-2 p-4 text-left ${banned ? "border-destructive bg-destructive/10" : "border-warning bg-warning/10"}`}
-    >
-      <p className="text-sm font-bold">{banned ? "🚫 Compte radié" : "⚠️ Règles d'engagement du compagnon (CGU)"}</p>
-      <p className="text-xs font-semibold mt-2">Avant la mission</p>
-      <ul className="text-xs text-muted-foreground mt-1 space-y-1 list-disc pl-4">
-        <li>N'acceptez que les missions que vous pouvez réellement assurer.</li>
-        <li>Annulation possible jusqu'à 48 h avant le rendez-vous, si un autre compagnon est disponible.</li>
-        <li>Moins de 48 h : uniquement sur justificatif valable (maladie, accident, cas de force majeure).</li>
-        <li>Prévenez la famille par appel ou SMS dès qu'un imprévu survient.</li>
-      </ul>
-      <p className="text-xs font-semibold mt-2">Pendant la mission</p>
-      <ul className="text-xs text-muted-foreground mt-1 space-y-1 list-disc pl-4">
-        <li>Ponctualité : arrivez à l'heure, présentez-vous et montrez votre photo de profil.</li>
-        <li>Respect, politesse et discrétion : ce qui se passe chez la famille reste confidentiel (RGPD).</li>
-        <li>Restez dans le cadre du service demandé : aucun acte médical, paramédical ou d'apprentissage.</li>
-        <li>Aucun paiement en direct, aucun cadeau, aucune clé conservée, aucune opération bancaire.</li>
-        <li>Aucun alcool, aucune substance, aucun tabac au domicile ; téléphone en usage limité.</li>
-        <li>Enfants (3 ans et +) : ne jamais laisser l'enfant seul, ne le confier qu'à l'adulte désigné.</li>
-      </ul>
-      <p className="text-xs font-semibold mt-2">Sanctions et pénalités</p>
-      <ul className="text-xs text-muted-foreground mt-1 space-y-1 list-disc pl-4">
-        <li>
-          <b className="text-foreground">Plainte justifiée d'un client</b> (impolitesse, retard répété, incivilité,
-          négligence, non-respect du service demandé) : <b className="text-foreground">1 blâme</b>.
-        </li>
-        <li>
-          <b className="text-foreground">3 blâmes = radiation définitive</b> de l'application. Chaque blâme est
-          notifié avec le motif ; vous disposez de 7 jours pour le contester.
-        </li>
-        <li>
-          <b className="text-foreground">3 rendez-vous non honorés</b> sans justificatif valable ={" "}
-          <b className="text-foreground">radiation définitive</b>.
-        </li>
-        <li>
-          <b className="text-foreground">Non-respect des CGU : radiation immédiate</b>, sans préavis.
-        </li>
-        <li>
-          Radiation immédiate et signalement aux autorités : vol, violence, maltraitance, propos discriminatoires,
-          état d'ébriété, fausse identité, paiement en direct ou mise en relation hors application.
-        </li>
-        <li>Toute mission non réglée en cas de radiation reste due au compagnon pour le travail déjà effectué.</li>
-      </ul>
-      <div className="grid grid-cols-2 gap-2 mt-3">
-        <div className="rounded-xl bg-card border-2 border-border p-2 text-center">
-          <p className="text-xs text-muted-foreground">RDV non honorés</p>
-          <p className="text-lg font-black">{strikes}/3</p>
-        </div>
-        <div className="rounded-xl bg-card border-2 border-border p-2 text-center">
-          <p className="text-xs text-muted-foreground">Blâmes clients</p>
-          <p className="text-lg font-black">{blames}/3</p>
-        </div>
-      </div>
-      <p className={`text-sm font-bold mt-2 ${banned ? "text-destructive" : ""}`}>
-        {banned
-          ? "Votre compte est radié : vous ne pouvez plus accepter de mission."
-          : "Compte en règle — merci de votre sérieux."}
-      </p>
-      <div className="mt-3">
-        <CguPanel />
-      </div>
-
-    </div>
-  );
-}
 
 function CompanionCancelBlock({ request }: { request: Request }) {
   const [confirm, setConfirm] = useState(false);
@@ -1898,7 +1816,6 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
               disparaît alors chez les autres.
             </div>
           )}
-          <CompanionRulesNotice strikes={strikes} />
           <div className="flex-1" />
           <button
             onClick={accept}
@@ -1940,7 +1857,6 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
             🗺️ Itinéraire
           </a>
           {!!request.scheduledAt && <CompanionCancelBlock request={request} />}
-          <CompanionRulesNotice strikes={strikes} />
         </>
       )}
     </div>
