@@ -1816,7 +1816,6 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
               disparaît alors chez les autres.
             </div>
           )}
-          <CompanionRulesNotice strikes={strikes} />
           <div className="flex-1" />
           <button
             onClick={accept}
