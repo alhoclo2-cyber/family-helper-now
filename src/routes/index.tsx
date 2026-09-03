@@ -236,9 +236,29 @@ function FamilyFlow() {
         >
           {account ? `👤 ${account.fullName.split(" ")[0]}` : "👤 Mon compte"}
         </button>
-        <div className="text-center">
-          <p className="text-lg text-muted-foreground">Besoin d'aide ?</p>
-          <p className="text-base text-muted-foreground mt-1">Choisissez le moment qui vous convient.</p>
+        <div className="text-center space-y-1">
+          <p className="text-base text-muted-foreground">Pour rompre l'isolement,</p>
+          <p className="text-base text-muted-foreground">Accompagner les enfants,</p>
+          <p className="text-base text-muted-foreground">Soutenir une personne temporairement ou durablement fragilisée,</p>
+          <p className="text-base text-muted-foreground">Et être présent dans les moments où l'on a simplement besoin de quelqu'un.</p>
+        </div>
+        <div className="w-full flex flex-wrap justify-center gap-2">
+          {[
+            { emoji: "👵", label: "Nos aînés" },
+            { emoji: "👶", label: "Nos enfants (dès 3 ans)" },
+            { emoji: "🤰", label: "Grossesse & maternité" },
+            { emoji: "🏥", label: "Retour d'hospitalisation & convalescence" },
+            { emoji: "🤝", label: "Handicap & invalidité" },
+            { emoji: "🩹", label: "Blessures & imprévus" },
+          ].map((b) => (
+            <span
+              key={b.label}
+              className="inline-flex items-center gap-1.5 rounded-full bg-accent border border-primary/20 px-3 py-1.5 text-xs font-semibold"
+            >
+              <span>{b.emoji}</span>
+              <span>{b.label}</span>
+            </span>
+          ))}
         </div>
         <div className="w-full bg-card border-2 border-primary/30 rounded-2xl p-4 text-center">
           <p className="text-base font-black">Un besoin = Un compagnon = Un tarif unique.</p>
