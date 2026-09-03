@@ -11,10 +11,12 @@ import { useCompanionSettings } from "@/lib/companionSettings";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "SOS Compagnons — Aide d'urgence pour seniors" },
-      { name: "description", content: "Mise en relation d'urgence entre familles seniors et compagnons vérifiés à proximité." },
-      { property: "og:title", content: "SOS Compagnons" },
-      { property: "og:description", content: "Un besoin = Un compagnon = Un tarif unique. Aide d'urgence à proximité pour les seniors." },
+      { title: "Solélia — Présence et accompagnement à domicile" },
+      { name: "description", content: "Mise en relation entre familles et compagnons de confiance pour du présence et de l'accompagnement à domicile." },
+      { property: "og:title", content: "Solélia" },
+      { property: "og:description", content: "Présence et accompagnement à domicile. Un besoin = Un compagnon = Un tarif unique." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: App,
