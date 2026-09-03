@@ -3,7 +3,13 @@ import { useEffect, useState } from "react";
 import { store, useStore, randomStudent, COMPANIONS, experienceBadge, type NeedType, type Request } from "@/lib/store";
 import { CguAcceptBlock, CguPanel } from "@/components/Cgu";
 import { CesuRecurrenceModal } from "@/components/CesuRecurrence";
-import { ExperienceBadgeChip, ExperienceBadgeScale, ThumbsCount, ThumbUpButton } from "@/components/CompanionBadges";
+import {
+  CompanionProfileHeader,
+  ExperienceBadgeChip,
+  ExperienceBadgeScale,
+  ThumbsCount,
+  ThumbUpButton,
+} from "@/components/CompanionBadges";
 import { CompanionProfilePanel } from "@/components/CompanionProfilePanel";
 import { useCompanionSettings } from "@/lib/companionSettings";
 
@@ -718,7 +724,7 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
           {!autoSearch && (
             <div className="mt-3 flex flex-col gap-2">
               <p className="text-sm font-bold">Choisir un compagnon par son nom</p>
-              {COMPANIONS.map((c) => (
+              {[...COMPANIONS].sort((a, b) => a.distanceKm - b.distanceKm).map((c) => (
                 <button
                   key={c.id}
                   type="button"
@@ -1163,7 +1169,10 @@ function FamilyWait({
                     <div className="rounded-2xl border-2 border-border bg-card p-3">
                       <p className="text-xs font-bold mb-2">Autres compagnons disponibles</p>
                       <div className="flex flex-col gap-2">
-                        {COMPANIONS.filter((c) => c.id !== preferred?.id).map((c) => (
+                        {[...COMPANIONS]
+                          .filter((c) => c.id !== preferred?.id)
+                          .sort((a, b) => a.distanceKm - b.distanceKm)
+                          .map((c) => (
                           <button
                             key={c.id}
                             type="button"
