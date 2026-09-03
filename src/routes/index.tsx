@@ -14,7 +14,7 @@ export const Route = createFileRoute("/")({
       { title: "Solélia — Présence et accompagnement à domicile" },
       { name: "description", content: "Mise en relation entre familles et compagnons de confiance pour du présence et de l'accompagnement à domicile." },
       { property: "og:title", content: "Solélia" },
-      { property: "og:description", content: "Présence et accompagnement à domicile. Un besoin = Un compagnon = Un tarif unique." },
+      { property: "og:description", content: "Présence et accompagnement à domicile. Un besoin = un compagnon à proximité." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -264,7 +264,7 @@ function FamilyFlow() {
           ))}
         </div>
         <div className="w-full bg-card border-2 border-primary/30 rounded-2xl p-4 text-center">
-          <p className="text-base font-black">Un besoin = Un compagnon = Un tarif unique.</p>
+          <p className="text-base font-black">Un besoin = un compagnon à proximité.</p>
           <ul className="mt-2 text-sm text-muted-foreground space-y-0.5">
             <li>0 € de frais de dossier</li>
             <li>0 € d'abonnement</li>
@@ -275,10 +275,10 @@ function FamilyFlow() {
           onClick={() => { setRequestMode("asap"); setSimulateNoAnswer(false); setStep("form"); }}
           className="btn-huge bg-primary text-primary-foreground hover:brightness-110 min-h-[180px] w-full flex flex-col items-center justify-center gap-2"
         >
-          <span className="text-5xl">🆘</span>
-          <span>Urgence — maintenant</span>
+          <span className="text-5xl">⚡</span>
+          <span>Besoin rapidement</span>
           <span className="text-sm font-normal opacity-90">
-            Alerte immédiate à tous les compagnons disponibles autour de vous
+            Nous recherchons activement un compagnon disponible à proximité
           </span>
         </button>
         <button
