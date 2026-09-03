@@ -11,10 +11,12 @@ import { useCompanionSettings } from "@/lib/companionSettings";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "SOS Compagnons — Aide d'urgence pour seniors" },
-      { name: "description", content: "Mise en relation d'urgence entre familles seniors et compagnons vérifiés à proximité." },
-      { property: "og:title", content: "SOS Compagnons" },
-      { property: "og:description", content: "Un besoin = Un compagnon = Un tarif unique. Aide d'urgence à proximité pour les seniors." },
+      { title: "Solélia — Présence et accompagnement à domicile" },
+      { name: "description", content: "Mise en relation entre familles et compagnons de confiance pour du présence et de l'accompagnement à domicile." },
+      { property: "og:title", content: "Solélia" },
+      { property: "og:description", content: "Présence et accompagnement à domicile. Un besoin = Un compagnon = Un tarif unique." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: App,
@@ -47,8 +49,8 @@ function Header({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
       <div className="flex items-center gap-2 mb-4">
         <div className="h-10 w-10 rounded-2xl bg-primary grid place-items-center text-primary-foreground text-xl font-black">S</div>
         <div>
-          <h1 className="text-xl font-black leading-none">SOS Compagnons</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Aide d'urgence à proximité</p>
+          <h1 className="text-xl font-black leading-none">Solélia</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Présence et accompagnement à domicile</p>
         </div>
       </div>
       <div className="grid grid-cols-3 rounded-2xl bg-muted p-1 gap-1">
@@ -234,9 +236,32 @@ function FamilyFlow() {
         >
           {account ? `👤 ${account.fullName.split(" ")[0]}` : "👤 Mon compte"}
         </button>
-        <div className="text-center">
-          <p className="text-lg text-muted-foreground">Besoin d'aide ?</p>
-          <p className="text-base text-muted-foreground mt-1">Choisissez le moment qui vous convient.</p>
+        <div className="text-center space-y-1">
+          <p className="text-base text-muted-foreground">Pour rompre l'isolement,</p>
+          <p className="text-base text-muted-foreground">Accompagner les enfants,</p>
+          <p className="text-base text-muted-foreground">Soutenir une personne temporairement ou durablement fragilisée,</p>
+          <p className="text-base text-muted-foreground">Et être présent dans les moments où l'on a simplement besoin de quelqu'un.</p>
+        </div>
+        <div className="w-full flex flex-wrap justify-center gap-2">
+          {[
+            { emoji: "👵", label: "Nos aînés" },
+            { emoji: "👶", label: "Nos enfants (dès 3 ans)" },
+            { emoji: "🤰", label: "Grossesse & maternité" },
+            { emoji: "🏥", label: "Retour d'hospitalisation & convalescence" },
+            { emoji: "🤝", label: "Handicap & invalidité", sub: "(temporaire ou permanent)" },
+            { emoji: "🩹", label: "Blessures & imprévus" },
+          ].map((b) => (
+            <span
+              key={b.label}
+              className="inline-flex items-center gap-1.5 rounded-full bg-accent border border-primary/20 px-3 py-1.5 text-xs font-semibold"
+            >
+              <span>{b.emoji}</span>
+              <span className="flex flex-col items-start leading-none">
+                <span>{b.label}</span>
+                {b.sub && <span className="text-[10px] text-muted-foreground font-medium mt-0.5">{b.sub}</span>}
+              </span>
+            </span>
+          ))}
         </div>
         <div className="w-full bg-card border-2 border-primary/30 rounded-2xl p-4 text-center">
           <p className="text-base font-black">Un besoin = Un compagnon = Un tarif unique.</p>
