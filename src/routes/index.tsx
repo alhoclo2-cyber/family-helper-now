@@ -49,8 +49,8 @@ function Header({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
       <div className="flex items-center gap-2 mb-4">
         <div className="h-10 w-10 rounded-2xl bg-primary grid place-items-center text-primary-foreground text-xl font-black">S</div>
         <div>
-          <h1 className="text-xl font-black leading-none">SOS Compagnons</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Aide d'urgence à proximité</p>
+          <h1 className="text-xl font-black leading-none">Solélia</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Présence et accompagnement à domicile</p>
         </div>
       </div>
       <div className="grid grid-cols-3 rounded-2xl bg-muted p-1 gap-1">
