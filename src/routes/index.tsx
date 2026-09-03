@@ -248,7 +248,7 @@ function FamilyFlow() {
             { emoji: "👶", label: "Nos enfants (dès 3 ans)" },
             { emoji: "🤰", label: "Grossesse & maternité" },
             { emoji: "🏥", label: "Retour d'hospitalisation & convalescence" },
-            { emoji: "🤝", label: "Handicap & invalidité" },
+            { emoji: "🤝", label: "Handicap & invalidité", sub: "(temporaire ou permanent)" },
             { emoji: "🩹", label: "Blessures & imprévus" },
           ].map((b) => (
             <span
@@ -256,7 +256,10 @@ function FamilyFlow() {
               className="inline-flex items-center gap-1.5 rounded-full bg-accent border border-primary/20 px-3 py-1.5 text-xs font-semibold"
             >
               <span>{b.emoji}</span>
-              <span>{b.label}</span>
+              <span className="flex flex-col items-start leading-none">
+                <span>{b.label}</span>
+                {b.sub && <span className="text-[10px] text-muted-foreground font-medium mt-0.5">{b.sub}</span>}
+              </span>
             </span>
           ))}
         </div>
