@@ -20,8 +20,39 @@ export function ExperienceBadgeChip({
 export function ThumbsCount({ thumbs, className = "" }: { thumbs: number; className?: string }) {
   return (
     <span className={`inline-flex items-center gap-1 text-sm font-bold ${className}`}>
-      👍 {thumbs}
+      👍 {thumbs} client{thumbs > 1 ? "s" : ""} satisfait{thumbs > 1 ? "s" : ""}
     </span>
+  );
+}
+
+/** Bloc « profil détaillé » : badge en haut + retours d'expérience neutres. */
+export function CompanionProfileHeader({
+  firstName,
+  missions,
+  thumbs,
+}: {
+  firstName: string;
+  missions: number;
+  thumbs: number;
+}) {
+  const b = experienceBadge(missions);
+  return (
+    <section className="rounded-2xl border-2 border-border bg-card p-4 text-left">
+      <span className="inline-flex items-center gap-2 rounded-full bg-accent border-2 border-primary/30 px-3 py-1 text-sm font-black">
+        {b.emoji} {b.label}
+      </span>
+      <p className="text-xs text-muted-foreground mt-2">
+        Statut attribué automatiquement selon le nombre de missions réalisées ({missions}).
+      </p>
+      <div className="mt-3 border-t-2 border-border pt-3">
+        <p className="text-sm font-black">Retours d'expérience</p>
+        <p className="text-sm mt-1">👍 {thumbs} client{thumbs > 1 ? "s" : ""} satisfait{thumbs > 1 ? "s" : ""}</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Compteur informatif, sans note ni commentaire. Il n'influence ni le classement ni la visibilité de{" "}
+          {firstName} dans la recherche.
+        </p>
+      </div>
+    </section>
   );
 }
 
@@ -40,7 +71,7 @@ export function ThumbUpButton({ given, onGive }: { given: boolean; onGive: () =>
           given ? "bg-success/20 text-success" : "bg-success text-success-foreground"
         }`}
       >
-        {given ? "👍 Pouce levé envoyé — merci !" : "👍 Donner un pouce levé"}
+        {given ? "👍 Merci, votre recommandation est enregistrée" : "Recommander ce compagnon 👍"}
       </button>
     </div>
   );
