@@ -42,10 +42,11 @@ export type ExperienceBadge = {
 };
 
 export const EXPERIENCE_BADGES: ExperienceBadge[] = [
-  { label: "Nouveau Compagnon", emoji: "🌱", min: 0, max: 10 },
-  { label: "Compagnon Confirmé", emoji: "⭐", min: 11, max: 50 },
-  { label: "Compagnon Chevronné", emoji: "🏅", min: 51, max: 150 },
-  { label: "Compagnon Expert", emoji: "🏆", min: 151, max: null },
+  { label: "Nouveau compagnon", emoji: "🌱", min: 1, max: 9 },
+  { label: "Compagnon régulier", emoji: "🤝", min: 10, max: 49 },
+  { label: "Compagnon confirmé", emoji: "⭐", min: 50, max: 99 },
+  { label: "Compagnon expert", emoji: "🏅", min: 100, max: 149 },
+  { label: "Compagnon d'élite", emoji: "👑", min: 150, max: null },
 ];
 
 export function experienceBadge(missions: number): ExperienceBadge {
