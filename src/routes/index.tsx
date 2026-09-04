@@ -12,6 +12,7 @@ import {
 } from "@/components/CompanionBadges";
 import { CompanionProfilePanel } from "@/components/CompanionProfilePanel";
 import { useCompanionSettings } from "@/lib/companionSettings";
+import soleliaLogoAsset from "@/assets/solelia-logo.png.asset.json";
 
 
 export const Route = createFileRoute("/")({
@@ -53,7 +54,11 @@ function Header({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
   return (
     <header className="px-5 pt-6 pb-4 border-b border-border">
       <div className="flex items-center gap-2 mb-4">
-        <div className="h-10 w-10 rounded-2xl bg-primary grid place-items-center text-primary-foreground text-xl font-black">S</div>
+        <img
+          src={soleliaLogoAsset.url}
+          alt="Solélia"
+          className="h-10 w-10 rounded-2xl object-cover"
+        />
         <div>
           <h1 className="text-xl font-black leading-none">Solélia</h1>
           <p className="text-xs text-muted-foreground mt-0.5">Présence et accompagnement à domicile</p>
