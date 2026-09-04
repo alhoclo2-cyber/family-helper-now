@@ -13,6 +13,7 @@ import {
 import { CompanionProfilePanel } from "@/components/CompanionProfilePanel";
 import { useCompanionSettings } from "@/lib/companionSettings";
 import soleliaLogoAsset from "@/assets/solelia-logo.png.asset.json";
+import floralBorderAsset from "@/assets/floral-border.jpg.asset.json";
 
 
 export const Route = createFileRoute("/")({
@@ -253,6 +254,11 @@ function FamilyFlow() {
           <p className="text-base text-muted-foreground">Soutenir une personne temporairement ou durablement fragilisée,</p>
           <p className="text-base text-muted-foreground">Et être présent dans les moments où l'on a simplement besoin de quelqu'un.</p>
         </div>
+        <img
+          src={floralBorderAsset.url}
+          alt="Liseret floral"
+          className="w-full max-w-[320px] h-auto object-contain opacity-90"
+        />
         <div className="w-full flex flex-wrap justify-center gap-2">
           {[
             { emoji: "👵", label: "Nos aînés" },
@@ -303,18 +309,20 @@ function FamilyFlow() {
           </span>
         </button>
         <div className="w-full bg-success/10 border-2 border-success/40 rounded-2xl p-4 text-left">
-          <p className="text-sm font-bold text-success text-center">💳 Paiement en CESU préfinancé</p>
+          <p className="text-sm font-bold text-success text-center">💳 Paiement CESU+ & Crédit d'Impôt (SAP)</p>
           <ul className="text-xs text-muted-foreground mt-2 space-y-1 list-disc pl-4">
             <li>
-              Service à la personne (SAP) : le <b className="text-foreground">crédit d'impôt de 50 %</b> est déduit
-              immédiatement.
+              <b className="text-foreground">Service à la Personne (SAP)</b> : vous bénéficiez de 50 % de crédit d'impôt sur l'ensemble de vos prestations.
             </li>
             <li>
-              Vous ne réglez que <b className="text-foreground">la moitié du tarif</b> à la commande, rien à avancer
-              ni à réclamer ensuite.
+              <b className="text-foreground">Avance Immédiate (CESU+)</b> : dès que le compte du compagnon est validé par l'URSSAF, vous ne payez que la moitié du tarif à la commande.
             </li>
-            <li>Le compagnon est déclaré en CESU : zéro démarche administrative pour vous.</li>
-            <li>Attestation fiscale annuelle disponible chaque janvier depuis votre compte.</li>
+            <li>
+              <b className="text-foreground">1ʳᵉ mission avec un nouveau compagnon</b> : règlement au tarif plein le temps que l'URSSAF crée son compte (délai de 2 à 4 semaines). Vos 50 % seront déduits lors de votre déclaration d'impôts.
+            </li>
+            <li>
+              <b className="text-foreground">Zéro démarche</b> : nous gérons l'ensemble des déclarations URSSAF. Votre attestation fiscale annuelle est disponible chaque janvier sur votre compte.
+            </li>
           </ul>
         </div>
         <CguPanel />
