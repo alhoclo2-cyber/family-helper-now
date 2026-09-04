@@ -12,6 +12,7 @@ import {
 } from "@/components/CompanionBadges";
 import { CompanionProfilePanel } from "@/components/CompanionProfilePanel";
 import { useCompanionSettings } from "@/lib/companionSettings";
+import soleliaLogoAsset from "@/assets/solelia-logo.png.asset.json";
 
 
 export const Route = createFileRoute("/")({
