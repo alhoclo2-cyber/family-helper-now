@@ -383,20 +383,27 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
   const [testRecurrence, setTestRecurrence] = useState(false);
   const [showCesuAlert, setShowCesuAlert] = useState(false);
   const [companionName, setCompanionName] = useState("Léa");
+  // Commissions extérieures rattachées à une présence à domicile (conformité SAP)
+  const [commissions, setCommissions] = useState<string[]>([]);
+  const [commissionCertified, setCommissionCertified] = useState(false);
 
   const needs: { v: NeedType; icon: string }[] = [
     { v: "Compagnie/Présence", icon: "🤝" },
-    { v: "Courses urgentes", icon: "🛒" },
-    { v: "Pharmacie", icon: "💊" },
     { v: "Aide au repas", icon: "🍽️" },
     { v: "Accompagnement sorties extérieures", icon: "🌳" },
-    { v: "Sortir ou nourrir animal de compagnie", icon: "🐕" },
-    { v: "Arroser les plantes", icon: "🪴" },
-    { v: "Retrait ou dépôt d'un colis", icon: "📦" },
     { v: "Aide aux devoirs (primaire au lycée)", icon: "📚" },
     { v: "Garde d'enfants (à partir de 3 ans)", icon: "🧸" },
     { v: "Accompagner un enfant (à partir de 3 ans)", icon: "🚸" },
     { v: "Autre (à préciser)", icon: "✏️" },
+  ];
+
+  const PRESENCE_SUBTITLE =
+    "Présence bienveillante au domicile (inclut dans son prolongement les petites commissions : courses, pharmacie, colis, promenade d'animaux)";
+  const COMMISSION_OPTIONS = [
+    "💊 Médicaments / pharmacie",
+    "🛒 Courses",
+    "📦 Retrait ou dépôt d'un colis",
+    "🐕 Animaux (sortir ou nourrir)",
   ];
 
   const isOther = need === "Autre (à préciser)";
