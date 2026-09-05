@@ -499,10 +499,55 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
             >
               <div className="text-3xl mb-1">{n.icon}</div>
               <NeedLabel need={n.v} />
+              {n.v === "Compagnie/Présence" && (
+                <p className="text-xs font-medium text-muted-foreground mt-1 leading-snug">
+                  {PRESENCE_SUBTITLE}
+                </p>
+              )}
             </button>
           ))}
         </div>
       </div>
+      {need === "Compagnie/Présence" && (
+        <div className="flex flex-col gap-3">
+          <label className="block text-lg font-bold">Petites commissions en complément (optionnel)</label>
+          <div className="grid grid-cols-2 gap-2">
+            {COMMISSION_OPTIONS.map((opt) => {
+              const checked = commissions.includes(opt);
+              return (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() =>
+                    setCommissions((prev) =>
+                      checked ? prev.filter((c) => c !== opt) : [...prev, opt],
+                    )
+                  }
+                  className={`p-3 rounded-2xl border-2 text-sm font-semibold text-left transition-all ${
+                    checked ? "border-primary bg-accent" : "border-border bg-card"
+                  }`}
+                >
+                  {opt}
+                </button>
+              );
+            })}
+          </div>
+          {commissions.length > 0 && (
+            <label className="flex items-start gap-3 rounded-2xl border-2 border-warning/50 bg-warning/10 p-4 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={commissionCertified}
+                onChange={(e) => setCommissionCertified(e.target.checked)}
+                className="mt-1 h-5 w-5 shrink-0 accent-primary"
+              />
+              <span className="text-sm font-semibold leading-snug">
+                Je certifie que cette demande de commission ou service extérieur est effectuée dans le
+                prolongement direct d'une présence à domicile.
+              </span>
+            </label>
+          )}
+        </div>
+      )}
       {isOther && (
         <div>
           <label className="block text-lg font-bold mb-2">Précisez votre besoin</label>
