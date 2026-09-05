@@ -446,8 +446,17 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
       escortDestination: isEscortChild ? escortDestination : undefined,
       escortDetail: isEscortChild && escortDestination === "Autre" ? escortDetail : undefined,
       otherDetail: isOther ? otherDetail : undefined,
-      extraInfo: extraInfo.trim() || undefined,
-      continuityCertified: isOutdoor ? continuity : undefined,
+      extraInfo:
+        [
+          need === "Compagnie/Présence" && commissions.length > 0
+            ? `Commissions demandées dans le prolongement de la présence : ${commissions.join(", ")}`
+            : "",
+          extraInfo.trim(),
+        ]
+          .filter(Boolean)
+          .join("\n") || undefined,
+      continuityCertified:
+        isOutdoor ? continuity : need === "Compagnie/Présence" && commissions.length > 0 ? commissionCertified : undefined,
     });
     onSubmit();
   };
@@ -457,6 +466,7 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
     if (!address.trim() || !phone.trim()) return;
     if (need === "Autre (à préciser)" && !otherDetail.trim()) return;
     if (isOutdoor && !continuity) return;
+    if (need === "Compagnie/Présence" && commissions.length > 0 && !commissionCertified) return;
     if (isChildNeed && (!childAge.trim() || Number(childAge) < 3)) return;
     if (mode === "scheduled" && !autoSearch && !pickedCompanion) return;
     if (!cguOk) return;
