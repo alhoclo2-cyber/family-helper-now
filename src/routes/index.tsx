@@ -383,20 +383,27 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
   const [testRecurrence, setTestRecurrence] = useState(false);
   const [showCesuAlert, setShowCesuAlert] = useState(false);
   const [companionName, setCompanionName] = useState("Léa");
+  // Commissions extérieures rattachées à une présence à domicile (conformité SAP)
+  const [commissions, setCommissions] = useState<string[]>([]);
+  const [commissionCertified, setCommissionCertified] = useState(false);
 
   const needs: { v: NeedType; icon: string }[] = [
     { v: "Compagnie/Présence", icon: "🤝" },
-    { v: "Courses urgentes", icon: "🛒" },
-    { v: "Pharmacie", icon: "💊" },
     { v: "Aide au repas", icon: "🍽️" },
     { v: "Accompagnement sorties extérieures", icon: "🌳" },
-    { v: "Sortir ou nourrir animal de compagnie", icon: "🐕" },
-    { v: "Arroser les plantes", icon: "🪴" },
-    { v: "Retrait ou dépôt d'un colis", icon: "📦" },
     { v: "Aide aux devoirs (primaire au lycée)", icon: "📚" },
     { v: "Garde d'enfants (à partir de 3 ans)", icon: "🧸" },
     { v: "Accompagner un enfant (à partir de 3 ans)", icon: "🚸" },
     { v: "Autre (à préciser)", icon: "✏️" },
+  ];
+
+  const PRESENCE_SUBTITLE =
+    "Présence bienveillante au domicile (inclut dans son prolongement les petites commissions : courses, pharmacie, colis, promenade d'animaux)";
+  const COMMISSION_OPTIONS = [
+    "💊 Médicaments / pharmacie",
+    "🛒 Courses",
+    "📦 Retrait ou dépôt d'un colis",
+    "🐕 Animaux (sortir ou nourrir)",
   ];
 
   const isOther = need === "Autre (à préciser)";
@@ -439,8 +446,17 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
       escortDestination: isEscortChild ? escortDestination : undefined,
       escortDetail: isEscortChild && escortDestination === "Autre" ? escortDetail : undefined,
       otherDetail: isOther ? otherDetail : undefined,
-      extraInfo: extraInfo.trim() || undefined,
-      continuityCertified: isOutdoor ? continuity : undefined,
+      extraInfo:
+        [
+          need === "Compagnie/Présence" && commissions.length > 0
+            ? `Commissions demandées dans le prolongement de la présence : ${commissions.join(", ")}`
+            : "",
+          extraInfo.trim(),
+        ]
+          .filter(Boolean)
+          .join("\n") || undefined,
+      continuityCertified:
+        isOutdoor ? continuity : need === "Compagnie/Présence" && commissions.length > 0 ? commissionCertified : undefined,
     });
     onSubmit();
   };
@@ -450,6 +466,7 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
     if (!address.trim() || !phone.trim()) return;
     if (need === "Autre (à préciser)" && !otherDetail.trim()) return;
     if (isOutdoor && !continuity) return;
+    if (need === "Compagnie/Présence" && commissions.length > 0 && !commissionCertified) return;
     if (isChildNeed && (!childAge.trim() || Number(childAge) < 3)) return;
     if (mode === "scheduled" && !autoSearch && !pickedCompanion) return;
     if (!cguOk) return;
@@ -482,10 +499,55 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
             >
               <div className="text-3xl mb-1">{n.icon}</div>
               <NeedLabel need={n.v} />
+              {n.v === "Compagnie/Présence" && (
+                <p className="text-xs font-medium text-muted-foreground mt-1 leading-snug">
+                  {PRESENCE_SUBTITLE}
+                </p>
+              )}
             </button>
           ))}
         </div>
       </div>
+      {need === "Compagnie/Présence" && (
+        <div className="flex flex-col gap-3">
+          <label className="block text-lg font-bold">Petites commissions en complément (optionnel)</label>
+          <div className="grid grid-cols-2 gap-2">
+            {COMMISSION_OPTIONS.map((opt) => {
+              const checked = commissions.includes(opt);
+              return (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() =>
+                    setCommissions((prev) =>
+                      checked ? prev.filter((c) => c !== opt) : [...prev, opt],
+                    )
+                  }
+                  className={`p-3 rounded-2xl border-2 text-sm font-semibold text-left transition-all ${
+                    checked ? "border-primary bg-accent" : "border-border bg-card"
+                  }`}
+                >
+                  {opt}
+                </button>
+              );
+            })}
+          </div>
+          {commissions.length > 0 && (
+            <label className="flex items-start gap-3 rounded-2xl border-2 border-warning/50 bg-warning/10 p-4 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={commissionCertified}
+                onChange={(e) => setCommissionCertified(e.target.checked)}
+                className="mt-1 h-5 w-5 shrink-0 accent-primary"
+              />
+              <span className="text-sm font-semibold leading-snug">
+                Je certifie que cette demande de commission ou service extérieur est effectuée dans le
+                prolongement direct d'une présence à domicile.
+              </span>
+            </label>
+          )}
+        </div>
+      )}
       {isOther && (
         <div>
           <label className="block text-lg font-bold mb-2">Précisez votre besoin</label>
