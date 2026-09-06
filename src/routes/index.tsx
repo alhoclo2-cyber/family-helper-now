@@ -2087,6 +2087,27 @@ function StudentEnroll({
             <li>✓ RIB pour les paiements</li>
           </ul>
         </div>
+        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 text-left">
+          <div className="flex items-start gap-3">
+            <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
+            <div className="space-y-2 text-sm text-blue-900">
+              <p>
+                Le bulletin n°3 du casier judiciaire (datant de moins de 3 mois) est obligatoire pour valider votre inscription. La démarche est 100 % gratuite sur le site officiel du Ministère de la Justice.
+              </p>
+              <p className="font-medium">
+                Astuce : connectez-vous avec FranceConnect pour recevoir votre extrait immédiatement.
+              </p>
+            </div>
+          </div>
+          <a
+            href="https://casier-judiciaire.justice.gouv.fr/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-blue-600 px-4 py-4 text-base font-bold text-white shadow-sm transition-all active:scale-[0.98]"
+          >
+            Obtenir mon casier judiciaire (Gratuit - Ministère de la Justice)
+          </a>
+        </div>
         <ServiceLimitsNotice />
         <div className="flex-1" />
         <button onClick={() => setStep("form")} className="btn-huge bg-primary text-primary-foreground">
