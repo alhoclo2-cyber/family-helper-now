@@ -249,11 +249,14 @@ function FamilyFlow() {
         >
           {account ? `👤 ${account.fullName.split(" ")[0]}` : "👤 Mon compte"}
         </button>
-        <div className="text-center space-y-1">
-          <p className="text-base text-muted-foreground">Pour rompre l'isolement,</p>
-          <p className="text-base text-muted-foreground">Accompagner les enfants,</p>
-          <p className="text-base text-muted-foreground">Soutenir une personne temporairement ou durablement fragilisée,</p>
-          <p className="text-base text-muted-foreground">Et être présent dans les moments où l'on a simplement besoin de quelqu'un.</p>
+        <div
+          className="text-center space-y-1"
+          style={{ fontFamily: "'Parisienne', cursive", color: "#4A1525" }}
+        >
+          <p className="text-base">Pour rompre l'isolement,</p>
+          <p className="text-base">Accompagner les enfants,</p>
+          <p className="text-base">Soutenir une personne temporairement ou durablement fragilisée,</p>
+          <p className="text-base">Et être présent dans les moments où l'on a simplement besoin de quelqu'un.</p>
         </div>
         <img
           src={floralBorderAsset.url}
