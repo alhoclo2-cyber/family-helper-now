@@ -1,6 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ShieldCheck } from "lucide-react";
+import type { Session } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
+import { useAccess, useSession } from "@/lib/auth";
+import { AuthCard } from "@/components/AuthCard";
 import { store, useStore, randomStudent, COMPANIONS, experienceBadge, type NeedType, type Request } from "@/lib/store";
 import { CguAcceptBlock, CguPanel } from "@/components/Cgu";
 import { CesuRecurrenceModal } from "@/components/CesuRecurrence";
@@ -31,27 +37,40 @@ export const Route = createFileRoute("/")({
   component: App,
 });
 
-type Mode = "family" | "student" | "admin";
+type Mode = "family" | "student";
 
 function App() {
   const [mode, setMode] = useState<Mode>("family");
+  const navigate = useNavigate();
+  const { session } = useSession();
+  const access = useAccess(session?.user.id);
+
+  // Le Mandataire est redirigé vers son tableau de bord dédié
+  useEffect(() => {
+    if (access.data?.isMandataire && access.data.strongAuth) navigate({ to: "/mandataire" });
+  }, [access.data, navigate]);
+
   return (
     <div className="min-h-screen bg-background flex justify-center">
       <div className="w-full max-w-[440px] min-h-screen flex flex-col bg-background shadow-xl">
-        <Header mode={mode} setMode={setMode} />
+        <Header mode={mode} setMode={setMode} session={session} />
         <main className="flex-1 flex flex-col">
-          {mode === "family" ? <FamilyFlow /> : mode === "student" ? <StudentFlow /> : <AdminFlow />}
+          {mode === "family" ? <FamilyFlow /> : <StudentFlow />}
         </main>
+        <footer className="px-5 py-4 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
+          <span>© Solélia</span>
+          <Link to="/pro" className="underline hover:text-foreground">Espace Pro</Link>
+        </footer>
       </div>
     </div>
   );
 }
 
-function Header({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
+function Header({ mode, setMode, session }: { mode: Mode; setMode: (m: Mode) => void; session: Session | null }) {
+  const qc = useQueryClient();
   const tabs: { v: Mode; label: string }[] = [
     { v: "family", label: "👴👵 👨👩 Famille" },
     { v: "student", label: "🤝 Compagnon" },
-    { v: "admin", label: "🛡️ Admin" },
   ];
   return (
     <header className="px-5 pt-6 pb-4 border-b border-border">
@@ -61,12 +80,29 @@ function Header({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
           alt="Solélia"
           className="h-10 w-10 rounded-2xl object-cover"
         />
-        <div>
+        <div className="flex-1 min-w-0">
           <h1 className="text-xl font-black leading-none">Solélia</h1>
           <p className="text-xs text-muted-foreground mt-0.5">Présence et accompagnement à domicile</p>
         </div>
+        {session ? (
+          <button
+            onClick={async () => {
+              await qc.cancelQueries();
+              qc.clear();
+              await supabase.auth.signOut();
+            }}
+            className="text-xs font-bold text-primary underline shrink-0"
+            title={session.user.email ?? undefined}
+          >
+            Déconnexion
+          </button>
+        ) : (
+          <Link to="/auth" className="text-xs font-bold text-primary underline shrink-0">
+            Se connecter
+          </Link>
+        )}
       </div>
-      <div className="grid grid-cols-3 rounded-2xl bg-muted p-1 gap-1">
+      <div className="grid grid-cols-2 rounded-2xl bg-muted p-1 gap-1">
         {tabs.map((t) => (
           <button
             key={t.v}
@@ -223,6 +259,7 @@ function FamilyFlow() {
   const currentId = useStore((s) => s.currentRequestId);
   const current = useStore((s) => s.requests.find((r) => r.id === s.currentRequestId));
   const account = useFamilyAccount();
+  const { session, loading: sessionLoading } = useSession();
 
   // Simulation « premier répondant » : un compagnon disponible accepte la mission.
   useEffect(() => {
@@ -336,8 +373,23 @@ function FamilyFlow() {
       </div>
     );
 
-  if (step === "form")
+  if (step === "form") {
+    if (sessionLoading) return <p className="flex-1 grid place-items-center text-muted-foreground">Chargement…</p>;
+    if (!session)
+      return (
+        <div className="flex-1 flex flex-col px-5 py-6 gap-4">
+          <button type="button" onClick={() => setStep("home")} className="text-base text-muted-foreground text-left">
+            ← Retour
+          </button>
+          <AuthCard
+            title="Connectez-vous pour continuer"
+            subtitle="Un compte est nécessaire pour réserver un compagnon."
+            onSuccess={() => {}}
+          />
+        </div>
+      );
     return <FamilyForm mode={requestMode} onSubmit={() => setStep("wait")} onBack={() => setStep("home")} />;
+  }
 
   return (
     <FamilyWait
@@ -1510,73 +1562,39 @@ function PaymentScreen({ student, hours, onDone, onBack }: { student: string; ho
 /* ---------------- STUDENT ---------------- */
 
 type EnrollStatus = "none" | "pending" | "approved" | "rejected";
-type EnrollProfile = {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  situation?: string;
-  school: string;
-  city: string;
-  motivation: string;
-  selfie?: string;
-  docs: { idCard?: string; studentCard?: string; criminalRecord?: string; iban?: string };
-};
+type CompanionApplicationRow = Database["public"]["Tables"]["companion_applications"]["Row"];
 
-type Application = {
-  id: string;
-  submittedAt: number;
-  status: "pending" | "approved" | "rejected";
-  reviewedAt?: number;
-  rejectReason?: string;
-  profile: EnrollProfile;
-};
+const DEMO_KEY = "solelia-companion-demo";
 
-const APPS_KEY = "sos-applications";
-const ENROLL_KEY = "sos-enroll";
-
-function loadApplications(): Application[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(APPS_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return [];
-}
-function saveApplications(list: Application[]) {
-  try {
-    localStorage.setItem(APPS_KEY, JSON.stringify(list));
-    window.dispatchEvent(new Event("sos-apps-changed"));
-  } catch {}
-}
-function useApplications(): Application[] {
-  const [apps, setApps] = useState<Application[]>(() => loadApplications());
-  useEffect(() => {
-    const refresh = () => setApps(loadApplications());
-    window.addEventListener("storage", refresh);
-    window.addEventListener("sos-apps-changed", refresh);
-    window.addEventListener("focus", refresh);
-    return () => {
-      window.removeEventListener("storage", refresh);
-      window.removeEventListener("sos-apps-changed", refresh);
-      window.removeEventListener("focus", refresh);
-    };
-  }, []);
-  return apps;
-}
-
-function loadEnroll(): { status: EnrollStatus; profile?: EnrollProfile; appId?: string; demo?: boolean } {
-  if (typeof window === "undefined") return { status: "none" };
-  try {
-    const raw = localStorage.getItem(ENROLL_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return { status: "none" };
+function useMyApplication(userId: string | undefined) {
+  return useQuery({
+    queryKey: ["my-application", userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("companion_applications")
+        .select("*")
+        .eq("user_id", userId!)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    enabled: !!userId,
+  });
 }
 
 function StudentFlow() {
-  const [enroll, setEnroll] = useState<{ status: EnrollStatus; profile?: EnrollProfile; appId?: string; demo?: boolean }>(() => loadEnroll());
-  const apps = useApplications();
+  const { session, loading: sessionLoading } = useSession();
+  const qc = useQueryClient();
+  const myApp = useMyApplication(session?.user.id);
+  const [demo, setDemo] = useState(false);
+  useEffect(() => {
+    setDemo(window.localStorage?.getItem(DEMO_KEY) === "1");
+  }, []);
+  const saveDemo = (v: boolean) => {
+    setDemo(v);
+    if (v) window.localStorage?.setItem(DEMO_KEY, "1");
+    else window.localStorage?.removeItem(DEMO_KEY);
+  };
   const [online, setOnline] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const allSearching = useStore((s) => s.requests.filter((r) => r.status === "searching"));
@@ -1597,28 +1615,18 @@ function StudentFlow() {
   });
   const hiddenCount = allSearching.length - requests.length;
 
+  const status: EnrollStatus = demo ? "approved" : (myApp.data?.status ?? "none");
 
-  // Sync enroll state with admin's decision on this candidate
-  useEffect(() => {
-    if (!enroll.appId || enroll.demo) return;
-    const app = apps.find((a) => a.id === enroll.appId);
-    if (!app) return;
-    const nextStatus: EnrollStatus =
-      app.status === "approved" ? "approved" : app.status === "rejected" ? "rejected" : "pending";
-    if (nextStatus !== enroll.status) {
-      const next = { ...enroll, status: nextStatus };
-      setEnroll(next);
-      try { localStorage.setItem(ENROLL_KEY, JSON.stringify(next)); } catch {}
-    }
-  }, [apps, enroll]);
-
-  const saveEnroll = (next: { status: EnrollStatus; profile?: EnrollProfile; appId?: string; demo?: boolean }) => {
-    setEnroll(next);
-    try { localStorage.setItem(ENROLL_KEY, JSON.stringify(next)); } catch {}
-  };
-
-  if (enroll.status !== "approved") {
-    return <StudentEnroll enroll={enroll} onChange={saveEnroll} />;
+  if (status !== "approved") {
+    return (
+      <StudentEnroll
+        session={session}
+        app={myApp.data ?? null}
+        loading={sessionLoading || (!!session && myApp.isLoading)}
+        onDemo={() => saveDemo(true)}
+        onSubmitted={() => qc.invalidateQueries({ queryKey: ["my-application"] })}
+      />
+    );
   }
 
 
@@ -1626,11 +1634,11 @@ function StudentFlow() {
 
   return (
     <div className="flex-1 flex flex-col px-5 py-6 gap-5">
-      {enroll.demo && (
+      {demo && (
         <div className="flex items-center justify-between gap-3 rounded-2xl border-2 border-primary/40 bg-accent p-3">
           <p className="text-sm font-bold">👁️ Mode démo — espace Compagnon validé</p>
           <button
-            onClick={() => saveEnroll({ status: "none" })}
+            onClick={() => saveDemo(false)}
             className="text-sm font-bold text-primary underline shrink-0"
           >
             Quitter
@@ -1987,82 +1995,142 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
 
 /* ---------------- STUDENT ENROLLMENT ---------------- */
 
+type DocKey = "idCard" | "studentCard" | "criminalRecord" | "iban";
+type EnrollForm = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  situation: string;
+  school: string;
+  city: string;
+  motivation: string;
+  selfie?: File;
+  selfiePreview?: string;
+  docs: Partial<Record<DocKey, File>>;
+};
+
+const DOC_COLUMN: Record<DocKey, "id_card_path" | "situation_proof_path" | "criminal_record_path" | "iban_path"> = {
+  idCard: "id_card_path",
+  studentCard: "situation_proof_path",
+  criminalRecord: "criminal_record_path",
+  iban: "iban_path",
+};
+
 function StudentEnroll({
-  enroll,
-  onChange,
+  session,
+  app,
+  loading,
+  onDemo,
+  onSubmitted,
 }: {
-  enroll: { status: EnrollStatus; profile?: EnrollProfile; appId?: string; demo?: boolean };
-  onChange: (n: { status: EnrollStatus; profile?: EnrollProfile; appId?: string; demo?: boolean }) => void;
+  session: Session | null;
+  app: CompanionApplicationRow | null;
+  loading: boolean;
+  onDemo: () => void;
+  onSubmitted: () => void;
 }) {
-  const [step, setStep] = useState<"intro" | "form">("intro");
+  const [step, setStep] = useState<"intro" | "auth" | "form">("intro");
   const [cguOk, setCguOk] = useState(false);
-  const [p, setP] = useState<EnrollProfile>(
-    enroll.profile ?? {
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      situation: "Étudiant(e)",
-      school: "",
-      city: "",
-      motivation: "",
-      docs: {},
-    },
-  );
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [p, setP] = useState<EnrollForm>({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    situation: "Étudiant(e)",
+    school: "",
+    city: "",
+    motivation: "",
+    docs: {},
+  });
 
-  const apps = useApplications();
-  const myApp = enroll.appId ? apps.find((a) => a.id === enroll.appId) : undefined;
+  // Pré-remplissage depuis le profil du compte ou la candidature existante
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+    (async () => {
+      const { data: prof } = await supabase.from("profiles").select("*").eq("id", session.user.id).maybeSingle();
+      if (cancelled) return;
+      setP((prev) => ({
+        ...prev,
+        firstName: prev.firstName || app?.first_name || prof?.first_name || "",
+        lastName: prev.lastName || app?.last_name || prof?.last_name || "",
+        email: prev.email || app?.email || prof?.email || session.user.email || "",
+        phone: prev.phone || app?.phone || prof?.phone || "",
+        city: prev.city || app?.city || prof?.city || "",
+        situation: app?.situation || prev.situation,
+        school: prev.school || app?.school || "",
+        motivation: prev.motivation || app?.motivation || "",
+      }));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [session, app]);
 
-  if (enroll.status === "rejected") {
+  if (loading) {
+    return <p className="flex-1 grid place-items-center text-muted-foreground">Chargement…</p>;
+  }
+
+  if (app?.status === "rejected" && step === "intro") {
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
         <div className="text-6xl">❌</div>
         <h2 className="text-2xl font-black">Candidature refusée</h2>
-        <p className="text-base text-muted-foreground">
-          Malheureusement votre dossier n'a pas été retenu.
-        </p>
-        {myApp?.rejectReason && (
+        <p className="text-base text-muted-foreground">Malheureusement votre dossier n'a pas été retenu.</p>
+        {app.reject_reason && (
           <div className="w-full bg-destructive/10 border-2 border-destructive/40 rounded-2xl p-4 text-left">
             <p className="text-sm font-bold text-destructive">Motif</p>
-            <p className="text-sm mt-1">{myApp.rejectReason}</p>
+            <p className="text-sm mt-1">{app.reject_reason}</p>
           </div>
         )}
-        <button
-          onClick={() => onChange({ status: "none" })}
-          className="btn-huge bg-primary text-primary-foreground"
-        >
+        <button onClick={() => setStep("form")} className="btn-huge bg-primary text-primary-foreground">
           Refaire une candidature
         </button>
       </div>
     );
   }
 
-  if (enroll.status === "pending") {
+  if (app?.status === "pending" && step === "intro") {
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
         <div className="text-6xl">📨</div>
         <h2 className="text-2xl font-black">Dossier envoyé !</h2>
         <p className="text-base text-muted-foreground">
-          Un administrateur vérifie vos documents. Vous serez notifié dès la validation.
+          Solélia vérifie vos documents. Vous serez notifié dès la validation.
         </p>
         <div className="w-full bg-card border-2 border-border rounded-2xl p-5 text-left">
           <p className="text-sm text-muted-foreground">Candidat</p>
-          <p className="text-lg font-bold">{enroll.profile?.firstName} {enroll.profile?.lastName}</p>
+          <p className="text-lg font-bold">{app.first_name} {app.last_name}</p>
           <p className="text-sm text-muted-foreground mt-2">Situation</p>
-          <p className="text-base">{enroll.profile?.situation} — {enroll.profile?.school}</p>
+          <p className="text-base">{app.situation} — {app.school}</p>
           <p className="text-sm text-muted-foreground mt-2">Statut</p>
           <p className="text-base font-semibold text-warning-foreground">⏳ En attente de vérification</p>
         </div>
-        <button
-          onClick={() => onChange({ status: "none" })}
-          className="text-sm text-muted-foreground underline"
-        >
+        <button onClick={() => setStep("form")} className="text-sm text-muted-foreground underline">
           Modifier ma candidature
         </button>
       </div>
     );
   }
 
+  if (step === "auth") {
+    return (
+      <div className="flex-1 flex flex-col px-5 py-6 gap-4">
+        <button type="button" onClick={() => setStep("intro")} className="text-base text-muted-foreground text-left">
+          ← Retour
+        </button>
+        <AuthCard
+          title="Créer mon compte Compagnon"
+          subtitle="Un compte est nécessaire pour déposer votre candidature."
+          initialMode="signup"
+          onSuccess={() => setStep("form")}
+        />
+      </div>
+    );
+  }
 
   if (step === "intro") {
     return (
@@ -2113,76 +2181,111 @@ function StudentEnroll({
         </div>
         <ServiceLimitsNotice />
         <div className="flex-1" />
-        <button onClick={() => setStep("form")} className="btn-huge bg-primary text-primary-foreground">
+        <button onClick={() => setStep(session ? "form" : "auth")} className="btn-huge bg-primary text-primary-foreground">
           Commencer ma candidature
         </button>
+        {!session && (
+          <p className="text-xs text-muted-foreground text-center -mt-2">
+            Déjà un compte ?{" "}
+            <button type="button" onClick={() => setStep("auth")} className="underline font-bold text-primary">
+              Se connecter
+            </button>
+          </p>
+        )}
         <button
           type="button"
-          onClick={() =>
-            onChange({
-              status: "approved",
-              demo: true,
-              profile: {
-                firstName: "Démo",
-                lastName: "Compagnon",
-                email: "demo@sos-compagnons.fr",
-                phone: "06 00 00 00 00",
-                situation: "Étudiant(e)",
-                school: "Démonstration",
-                city: "Paris",
-                motivation: "Aperçu de l'espace Compagnon",
-                docs: {},
-              },
-            })
-          }
+          onClick={onDemo}
           className="py-4 rounded-2xl border-2 border-primary text-primary font-bold text-base"
         >
           👁️ Aperçu de l'espace Compagnon (démo)
         </button>
       </div>
-
     );
   }
 
-  const submit = (e: React.FormEvent) => {
+  if (!session) {
+    setStep("auth");
+    return null;
+  }
+
+  const ext = (f: File) => (f.name.split(".").pop() || "bin").toLowerCase();
+  const upload = async (key: string, f: File) => {
+    const path = `${session.user.id}/${key}-${Date.now()}.${ext(f)}`;
+    const { error } = await supabase.storage.from("companion-docs").upload(path, f, { upsert: true, contentType: f.type });
+    if (error) throw new Error(`Envoi du document « ${key} » impossible : ${error.message}`);
+    return path;
+  };
+
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const id = `app-${Date.now()}`;
-    const app: Application = {
-      id,
-      submittedAt: Date.now(),
-      status: "pending",
-      profile: p,
-    };
-    const list = loadApplications();
-    saveApplications([app, ...list]);
-    onChange({ status: "pending", profile: p, appId: id });
+    setBusy(true);
+    setErr(null);
+    try {
+      const paths: Partial<Record<(typeof DOC_COLUMN)[DocKey] | "selfie_path", string | null>> = {};
+      for (const k of Object.keys(DOC_COLUMN) as DocKey[]) {
+        const f = p.docs[k];
+        if (f) paths[DOC_COLUMN[k]] = await upload(k, f);
+      }
+      if (p.selfie) paths.selfie_path = await upload("selfie", p.selfie);
+
+      const row = {
+        user_id: session.user.id,
+        first_name: p.firstName.trim(),
+        last_name: p.lastName.trim(),
+        email: p.email.trim(),
+        phone: p.phone.trim(),
+        situation: p.situation,
+        school: p.school.trim(),
+        city: p.city.trim(),
+        motivation: p.motivation.trim(),
+        status: "pending" as const,
+        reject_reason: null,
+        reviewed_at: null,
+        reviewed_by: null,
+        ...paths,
+      };
+      const res = app
+        ? await supabase.from("companion_applications").update(row).eq("id", app.id)
+        : await supabase.from("companion_applications").insert(row);
+      if (res.error) throw new Error(res.error.message);
+      onSubmitted();
+      setStep("intro");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Envoi impossible. Réessayez.");
+    } finally {
+      setBusy(false);
+    }
   };
 
-
-  const setDoc = (key: keyof EnrollProfile["docs"]) => (e: React.ChangeEvent<HTMLInputElement>) => {
+  const setDoc = (key: DocKey) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
-    if (f) setP({ ...p, docs: { ...p.docs, [key]: f.name } });
+    if (f) setP({ ...p, docs: { ...p.docs, [key]: f } });
   };
 
-  const docs: { k: keyof EnrollProfile["docs"]; label: string; icon: string }[] = [
+  const docs: { k: DocKey; label: string; icon: string }[] = [
     { k: "idCard", label: "Pièce d'identité", icon: "🪪" },
     { k: "studentCard", label: "Justificatif de situation (carte étudiante, contrat, attestation…)", icon: "📑" },
-    { k: "criminalRecord", label: "Casier judiciaire (B3)", icon: "📄" },
+    { k: "criminalRecord", label: "Casier judiciaire (B3, moins de 3 mois)", icon: "📄" },
     { k: "iban", label: "RIB", icon: "🏦" },
   ];
 
-  const allDocs = docs.every((d) => p.docs[d.k]);
+  // Un document déjà transmis lors d'une candidature précédente reste valable
+  const hasDoc = (k: DocKey) => !!p.docs[k] || !!app?.[DOC_COLUMN[k]];
+  const hasSelfie = !!p.selfie || !!app?.selfie_path;
+  const allDocs = docs.every((d) => hasDoc(d.k));
   const valid =
-    p.firstName && p.lastName && p.email && p.phone && p.situation && p.school && p.city && p.selfie && allDocs && cguOk;
+    p.firstName && p.lastName && p.email && p.phone && p.situation && p.school && p.city && hasSelfie && allDocs && cguOk;
 
   const setSelfie = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
     const reader = new FileReader();
-    reader.onload = () => setP({ ...p, selfie: typeof reader.result === "string" ? reader.result : undefined });
+    reader.onload = () =>
+      setP({ ...p, selfie: f, selfiePreview: typeof reader.result === "string" ? reader.result : undefined });
     reader.readAsDataURL(f);
   };
 
+  const field = "px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none";
 
   return (
     <form onSubmit={submit} className="flex-1 flex flex-col px-5 py-6 gap-4">
@@ -2190,13 +2293,14 @@ function StudentEnroll({
         ← Retour
       </button>
       <h2 className="text-xl font-black">Ma candidature</h2>
+      <p className="text-xs text-muted-foreground -mt-2">Connecté en tant que {session.user.email}</p>
 
       <div className="grid grid-cols-2 gap-3">
-        <input required placeholder="Prénom" value={p.firstName} onChange={(e) => setP({ ...p, firstName: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
-        <input required placeholder="Nom" value={p.lastName} onChange={(e) => setP({ ...p, lastName: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
+        <input required placeholder="Prénom" value={p.firstName} onChange={(e) => setP({ ...p, firstName: e.target.value })} className={field} />
+        <input required placeholder="Nom" value={p.lastName} onChange={(e) => setP({ ...p, lastName: e.target.value })} className={field} />
       </div>
-      <input required type="email" placeholder="Email" value={p.email} onChange={(e) => setP({ ...p, email: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
-      <input required type="tel" placeholder="Téléphone" value={p.phone} onChange={(e) => setP({ ...p, phone: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
+      <input required type="email" placeholder="Email" value={p.email} onChange={(e) => setP({ ...p, email: e.target.value })} className={field} />
+      <input required type="tel" placeholder="Téléphone" value={p.phone} onChange={(e) => setP({ ...p, phone: e.target.value })} className={field} />
       <div>
         <p className="font-bold mb-2 text-sm">Votre situation</p>
         <div className="grid grid-cols-2 gap-2">
@@ -2214,43 +2318,42 @@ function StudentEnroll({
           ))}
         </div>
       </div>
-      <input required placeholder="Établissement / employeur / activité" value={p.school} onChange={(e) => setP({ ...p, school: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
-      <input required placeholder="Ville" value={p.city} onChange={(e) => setP({ ...p, city: e.target.value })} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none" />
-      <textarea placeholder="Pourquoi voulez-vous rejoindre SOS Compagnons ?" value={p.motivation} onChange={(e) => setP({ ...p, motivation: e.target.value })} rows={3} className="px-4 py-3 rounded-2xl border-2 border-border bg-card focus:border-primary outline-none resize-none" />
+      <input required placeholder="Établissement / employeur / activité" value={p.school} onChange={(e) => setP({ ...p, school: e.target.value })} className={field} />
+      <input required placeholder="Ville" value={p.city} onChange={(e) => setP({ ...p, city: e.target.value })} className={field} />
+      <textarea placeholder="Pourquoi voulez-vous rejoindre Solélia ?" value={p.motivation} onChange={(e) => setP({ ...p, motivation: e.target.value })} rows={3} className={field + " resize-none"} />
 
       <div className="mt-2">
         <p className="font-bold mb-2">Photo / Selfie</p>
         <p className="text-xs text-muted-foreground mb-2">
           Cette photo sera montrée à la famille pour qu'elle vous reconnaisse à la porte. Visage bien visible, sans lunettes de soleil ni casquette.
         </p>
-        <label className={`flex items-center gap-4 p-3 rounded-2xl border-2 cursor-pointer ${p.selfie ? "border-success bg-success/5" : "border-border bg-card"}`}>
-          {p.selfie ? (
-            <img src={p.selfie} alt="Selfie" className="h-16 w-16 rounded-full object-cover" />
+        <label className={`flex items-center gap-4 p-3 rounded-2xl border-2 cursor-pointer ${hasSelfie ? "border-success bg-success/5" : "border-border bg-card"}`}>
+          {p.selfiePreview ? (
+            <img src={p.selfiePreview} alt="Selfie" className="h-16 w-16 rounded-full object-cover" />
           ) : (
-            <span className="h-16 w-16 rounded-full bg-muted grid place-items-center text-2xl">📸</span>
+            <span className="h-16 w-16 rounded-full bg-muted grid place-items-center text-2xl">{hasSelfie ? "✅" : "📸"}</span>
           )}
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-sm">{p.selfie ? "Photo enregistrée" : "Prendre un selfie"}</p>
-            <p className="text-xs text-muted-foreground">{p.selfie ? "Appuyez pour changer" : "Utilise la caméra frontale"}</p>
+            <p className="font-semibold text-sm">{hasSelfie ? "Photo enregistrée" : "Prendre un selfie"}</p>
+            <p className="text-xs text-muted-foreground">{hasSelfie ? "Appuyez pour changer" : "Utilise la caméra frontale"}</p>
           </div>
           <input type="file" accept="image/*" capture="user" className="hidden" onChange={setSelfie} />
         </label>
       </div>
 
-
       <div className="mt-2">
         <p className="font-bold mb-2">Documents à fournir</p>
         <div className="flex flex-col gap-2">
           {docs.map((d) => (
-            <label key={d.k} className={`flex items-center gap-3 p-3 rounded-2xl border-2 cursor-pointer ${p.docs[d.k] ? "border-success bg-success/5" : "border-border bg-card"}`}>
+            <label key={d.k} className={`flex items-center gap-3 p-3 rounded-2xl border-2 cursor-pointer ${hasDoc(d.k) ? "border-success bg-success/5" : "border-border bg-card"}`}>
               <span className="text-2xl">{d.icon}</span>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm">{d.label}</p>
                 <p className="text-xs text-muted-foreground truncate">
-                  {p.docs[d.k] ? `✓ ${p.docs[d.k]}` : "Aucun fichier"}
+                  {p.docs[d.k] ? `✓ ${p.docs[d.k]!.name}` : hasDoc(d.k) ? "✓ Document déjà transmis" : "Aucun fichier"}
                 </p>
               </div>
-              <span className="text-xs font-bold text-primary">{p.docs[d.k] ? "Modifier" : "Ajouter"}</span>
+              <span className="text-xs font-bold text-primary">{hasDoc(d.k) ? "Modifier" : "Ajouter"}</span>
               <input type="file" accept="image/*,application/pdf" className="hidden" onChange={setDoc(d.k)} />
             </label>
           ))}
@@ -2259,278 +2362,15 @@ function StudentEnroll({
 
       <CguAcceptBlock checked={cguOk} onChange={setCguOk} role="companion" />
 
-      <button type="submit" disabled={!valid} className="btn-huge bg-primary text-primary-foreground disabled:opacity-50 mt-2">
-
-        Envoyer ma candidature
+      {err && <p className="text-sm text-destructive text-center">{err}</p>}
+      <button type="submit" disabled={!valid || busy} className="btn-huge bg-primary text-primary-foreground disabled:opacity-50 mt-2">
+        {busy ? "Envoi en cours…" : "Envoyer ma candidature"}
       </button>
       <ServiceLimitsNotice />
-      <p className="text-xs text-muted-foreground text-center">🔒 Vos documents sont traités confidentiellement.</p>
+      <p className="text-xs text-muted-foreground text-center">🔒 Vos documents sont stockés de façon privée et consultés uniquement par Solélia.</p>
     </form>
   );
 }
-
-/* ---------------- ADMIN ---------------- */
-
-const ADMIN_PASSWORD = "admin2026";
-const ADMIN_SESSION_KEY = "sos-admin-auth";
-
-function AdminFlow() {
-  const [authed, setAuthed] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return sessionStorage.getItem(ADMIN_SESSION_KEY) === "1";
-  });
-
-  if (!authed) return <AdminLogin onOk={() => {
-    try { sessionStorage.setItem(ADMIN_SESSION_KEY, "1"); } catch {}
-    setAuthed(true);
-  }} />;
-
-  return <AdminDashboard onLogout={() => {
-    try { sessionStorage.removeItem(ADMIN_SESSION_KEY); } catch {}
-    setAuthed(false);
-  }} />;
-}
-
-function AdminLogin({ onOk }: { onOk: () => void }) {
-  const [pwd, setPwd] = useState("");
-  const [err, setErr] = useState(false);
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (pwd === ADMIN_PASSWORD) onOk();
-    else setErr(true);
-  };
-  return (
-    <form onSubmit={submit} className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
-      <div className="text-6xl">🛡️</div>
-      <h2 className="text-2xl font-black">Espace administrateur</h2>
-      <p className="text-sm text-muted-foreground">Réservé à l'équipe SOS Compagnons — vérification des candidatures.</p>
-      <input
-        type="password"
-        autoFocus
-        value={pwd}
-        onChange={(e) => { setPwd(e.target.value); setErr(false); }}
-        placeholder="Mot de passe"
-        className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg text-center focus:border-primary outline-none"
-      />
-      {err && <p className="text-sm text-destructive">Mot de passe incorrect</p>}
-      <button type="submit" className="btn-huge bg-primary text-primary-foreground w-full">Se connecter</button>
-      <p className="text-xs text-muted-foreground">Démo : le mot de passe est <b>admin2026</b></p>
-    </form>
-  );
-}
-
-function AdminDashboard({ onLogout }: { onLogout: () => void }) {
-  const apps = useApplications();
-  const [filter, setFilter] = useState<"pending" | "approved" | "rejected" | "all">("pending");
-  const [openId, setOpenId] = useState<string | null>(null);
-
-  const filtered = apps.filter((a) => filter === "all" || a.status === filter);
-  const opened = openId ? apps.find((a) => a.id === openId) : undefined;
-
-  if (opened) return <AdminApplicationDetail app={opened} onBack={() => setOpenId(null)} />;
-
-  const counts = {
-    pending: apps.filter((a) => a.status === "pending").length,
-    approved: apps.filter((a) => a.status === "approved").length,
-    rejected: apps.filter((a) => a.status === "rejected").length,
-  };
-
-  return (
-    <div className="flex-1 flex flex-col px-5 py-5 gap-4">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-xl font-black">Candidatures</h2>
-          <p className="text-xs text-muted-foreground">Vérification et validation des compagnons</p>
-        </div>
-        <button onClick={onLogout} className="text-xs text-muted-foreground underline">Déconnexion</button>
-      </div>
-
-      <div className="grid grid-cols-3 gap-2">
-        <div className="bg-warning/10 border-2 border-warning/40 rounded-2xl p-3 text-center">
-          <p className="text-2xl font-black">{counts.pending}</p>
-          <p className="text-xs text-muted-foreground">En attente</p>
-        </div>
-        <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-3 text-center">
-          <p className="text-2xl font-black">{counts.approved}</p>
-          <p className="text-xs text-muted-foreground">Validés</p>
-        </div>
-        <div className="bg-destructive/10 border-2 border-destructive/40 rounded-2xl p-3 text-center">
-          <p className="text-2xl font-black">{counts.rejected}</p>
-          <p className="text-xs text-muted-foreground">Refusés</p>
-        </div>
-      </div>
-
-      <div className="flex gap-1 bg-muted p-1 rounded-2xl">
-        {(["pending", "approved", "rejected", "all"] as const).map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`flex-1 py-2 rounded-xl text-xs font-semibold ${filter === f ? "bg-background shadow-sm" : "text-muted-foreground"}`}
-          >
-            {f === "pending" ? "En attente" : f === "approved" ? "Validés" : f === "rejected" ? "Refusés" : "Tous"}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex flex-col gap-3">
-        {filtered.length === 0 && (
-          <p className="text-center text-muted-foreground py-10 text-sm">Aucune candidature.</p>
-        )}
-        {filtered.map((a) => (
-          <button
-            key={a.id}
-            onClick={() => setOpenId(a.id)}
-            className="text-left bg-card rounded-2xl p-4 border-2 border-border hover:border-primary transition-all flex items-center gap-3"
-          >
-            {a.profile.selfie ? (
-              <img src={a.profile.selfie} alt="" className="h-14 w-14 rounded-full object-cover" />
-            ) : (
-              <div className="h-14 w-14 rounded-full bg-muted grid place-items-center text-xl">👤</div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="font-bold truncate">{a.profile.firstName} {a.profile.lastName}</p>
-              <p className="text-xs text-muted-foreground truncate">{a.profile.school} — {a.profile.city}</p>
-            </div>
-            <span className={`text-[10px] font-bold px-2 py-1 rounded-full shrink-0 ${
-              a.status === "pending" ? "bg-warning/20 text-warning-foreground" :
-              a.status === "approved" ? "bg-success/20 text-success" :
-              "bg-destructive/20 text-destructive"
-            }`}>
-              {a.status === "pending" ? "EN ATTENTE" : a.status === "approved" ? "VALIDÉ" : "REFUSÉ"}
-            </span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function AdminApplicationDetail({ app, onBack }: { app: Application; onBack: () => void }) {
-  const [reason, setReason] = useState("");
-  const [showReject, setShowReject] = useState(false);
-
-  const update = (patch: Partial<Application>) => {
-    const list = loadApplications().map((a) => (a.id === app.id ? { ...a, ...patch, reviewedAt: Date.now() } : a));
-    saveApplications(list);
-    onBack();
-  };
-
-  const docs: { k: keyof EnrollProfile["docs"]; label: string; icon: string }[] = [
-    { k: "idCard", label: "Pièce d'identité", icon: "🪪" },
-    { k: "studentCard", label: "Justificatif de situation (carte étudiante, contrat, attestation…)", icon: "📑" },
-    { k: "criminalRecord", label: "Casier judiciaire (B3)", icon: "📄" },
-    { k: "iban", label: "RIB", icon: "🏦" },
-  ];
-
-  return (
-    <div className="flex-1 flex flex-col px-5 py-5 gap-4">
-      <button onClick={onBack} className="text-sm text-muted-foreground text-left">← Retour</button>
-
-      <div className="bg-card rounded-3xl p-5 border-2 border-border flex flex-col items-center text-center">
-        {app.profile.selfie ? (
-          <img src={app.profile.selfie} alt="" className="h-32 w-32 rounded-full object-cover ring-4 ring-primary/30" />
-        ) : (
-          <div className="h-32 w-32 rounded-full bg-muted grid place-items-center text-4xl">👤</div>
-        )}
-        <p className="text-xl font-black mt-3">{app.profile.firstName} {app.profile.lastName}</p>
-        <p className="text-sm text-muted-foreground">Candidature du {new Date(app.submittedAt).toLocaleDateString("fr-FR")}</p>
-        <span className={`mt-2 text-xs font-bold px-3 py-1 rounded-full ${
-          app.status === "pending" ? "bg-warning/20 text-warning-foreground" :
-          app.status === "approved" ? "bg-success/20 text-success" :
-          "bg-destructive/20 text-destructive"
-        }`}>
-          {app.status === "pending" ? "EN ATTENTE" : app.status === "approved" ? "VALIDÉ" : "REFUSÉ"}
-        </span>
-      </div>
-
-      <div className="bg-card rounded-2xl p-4 border-2 border-border space-y-2 text-sm">
-        <Row label="Email" value={app.profile.email} />
-        <Row label="Téléphone" value={app.profile.phone} />
-        <Row label="Situation" value={app.profile.situation ?? "—"} />
-        <Row label="Établissement / employeur" value={app.profile.school} />
-        <Row label="Ville" value={app.profile.city} />
-        {app.profile.motivation && <Row label="Motivation" value={app.profile.motivation} />}
-      </div>
-
-      <div>
-        <p className="font-bold text-sm mb-2">Documents fournis</p>
-        <div className="flex flex-col gap-2">
-          {docs.map((d) => (
-            <div key={d.k} className={`flex items-center gap-3 p-3 rounded-2xl border-2 ${app.profile.docs[d.k] ? "border-success/40 bg-success/5" : "border-destructive/40 bg-destructive/5"}`}>
-              <span className="text-xl">{d.icon}</span>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm">{d.label}</p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {app.profile.docs[d.k] ? `✓ ${app.profile.docs[d.k]}` : "❌ Manquant"}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {app.status === "rejected" && app.rejectReason && (
-        <div className="bg-destructive/10 border-2 border-destructive/40 rounded-2xl p-3 text-sm">
-          <p className="font-bold text-destructive">Motif du refus</p>
-          <p className="mt-1">{app.rejectReason}</p>
-        </div>
-      )}
-
-      {app.status === "pending" && !showReject && (
-        <div className="flex flex-col gap-2 mt-2">
-          <button onClick={() => update({ status: "approved" })} className="btn-huge bg-success text-success-foreground">
-            ✅ Valider la candidature
-          </button>
-          <button onClick={() => setShowReject(true)} className="btn-huge bg-destructive text-white">
-            ❌ Refuser
-          </button>
-        </div>
-      )}
-
-      {app.status === "pending" && showReject && (
-        <div className="flex flex-col gap-2 mt-2">
-          <textarea
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            rows={3}
-            placeholder="Motif du refus (visible par le candidat)"
-            className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-sm focus:border-primary outline-none resize-none"
-          />
-          <button
-            disabled={!reason.trim()}
-            onClick={() => update({ status: "rejected", rejectReason: reason.trim() })}
-            className="btn-huge bg-destructive text-white disabled:opacity-50"
-          >
-            Confirmer le refus
-          </button>
-          <button onClick={() => setShowReject(false)} className="text-sm text-muted-foreground underline">
-            Annuler
-          </button>
-        </div>
-      )}
-
-      {app.status !== "pending" && (
-        <button
-          onClick={() => update({ status: "pending", rejectReason: undefined })}
-          className="text-sm text-muted-foreground underline mt-2"
-        >
-          Remettre en attente
-        </button>
-      )}
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="font-semibold break-words">{value}</p>
-    </div>
-  );
-}
-
-/* ---------------- FAMILY ACCOUNT SCREEN ---------------- */
 
 function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
   const account = useFamilyAccount();
