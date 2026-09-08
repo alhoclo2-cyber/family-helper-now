@@ -1588,11 +1588,12 @@ function StudentFlow() {
   const myApp = useMyApplication(session?.user.id);
   const [demo, setDemo] = useState(false);
   useEffect(() => {
-    try { setDemo(localStorage.getItem(DEMO_KEY) === "1"); } catch {}
+    setDemo(window.localStorage?.getItem(DEMO_KEY) === "1");
   }, []);
   const saveDemo = (v: boolean) => {
     setDemo(v);
-    try { v ? localStorage.setItem(DEMO_KEY, "1") : localStorage.removeItem(DEMO_KEY); } catch {}
+    if (v) window.localStorage?.setItem(DEMO_KEY, "1");
+    else window.localStorage?.removeItem(DEMO_KEY);
   };
   const [online, setOnline] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
