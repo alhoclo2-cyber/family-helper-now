@@ -14,16 +14,154 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      companion_applications: {
+        Row: {
+          city: string
+          created_at: string
+          criminal_record_path: string | null
+          email: string
+          first_name: string
+          iban_path: string | null
+          id: string
+          id_card_path: string | null
+          last_name: string
+          motivation: string
+          phone: string
+          reject_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          school: string
+          selfie_path: string | null
+          situation: string
+          situation_proof_path: string | null
+          status: Database["public"]["Enums"]["application_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          city?: string
+          created_at?: string
+          criminal_record_path?: string | null
+          email: string
+          first_name: string
+          iban_path?: string | null
+          id?: string
+          id_card_path?: string | null
+          last_name: string
+          motivation?: string
+          phone: string
+          reject_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          school?: string
+          selfie_path?: string | null
+          situation?: string
+          situation_proof_path?: string | null
+          status?: Database["public"]["Enums"]["application_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          criminal_record_path?: string | null
+          email?: string
+          first_name?: string
+          iban_path?: string | null
+          id?: string
+          id_card_path?: string | null
+          last_name?: string
+          motivation?: string
+          phone?: string
+          reject_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          school?: string
+          selfie_path?: string | null
+          situation?: string
+          situation_proof_path?: string | null
+          status?: Database["public"]["Enums"]["application_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          address_line: string
+          city: string
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          phone: string
+          postal_code: string
+          updated_at: string
+        }
+        Insert: {
+          address_line?: string
+          city?: string
+          created_at?: string
+          email?: string
+          first_name?: string
+          id: string
+          last_name?: string
+          phone?: string
+          postal_code?: string
+          updated_at?: string
+        }
+        Update: {
+          address_line?: string
+          city?: string
+          created_at?: string
+          email?: string
+          first_name?: string
+          id?: string
+          last_name?: string
+          phone?: string
+          postal_code?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "mandataire"
+      application_status: "pending" | "approved" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +288,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["mandataire"],
+      application_status: ["pending", "approved", "rejected"],
+    },
   },
 } as const
