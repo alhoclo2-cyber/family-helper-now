@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.grant_mandataire_role() FROM PUBLIC, anon, authenticated;
