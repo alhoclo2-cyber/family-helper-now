@@ -2502,7 +2502,7 @@ function StudentEnroll({
         <p className="text-xs text-muted-foreground mb-2">
           Cette photo sera montrée à la famille pour qu'elle vous reconnaisse à la porte. Visage bien visible, sans lunettes de soleil ni casquette.
         </p>
-        <label className={`flex items-center gap-4 p-3 rounded-2xl border-2 cursor-pointer ${hasSelfie ? "border-success bg-success/5" : "border-border bg-card"}`}>
+        <label className={`flex items-center gap-4 p-3 rounded-2xl border-2 cursor-pointer ${hasSelfie ? "border-success bg-success/5" : bad(hasSelfie) ? "border-destructive bg-destructive/5" : "border-border bg-card"}`}>
           {p.selfiePreview ? (
             <img src={p.selfiePreview} alt="Selfie" className="h-16 w-16 rounded-full object-cover" />
           ) : (
@@ -2514,31 +2514,38 @@ function StudentEnroll({
           </div>
           <input type="file" accept="image/*" capture="user" className="hidden" onChange={setSelfie} />
         </label>
+        <Missing ok={hasSelfie} text="Photo obligatoire" />
       </div>
 
       <div className="mt-2">
         <p className="font-bold mb-2">Documents à fournir</p>
         <div className="flex flex-col gap-2">
           {[...docs, ...housingDocs].map((d) => (
-            <label key={d.k} className={`flex items-center gap-3 p-3 rounded-2xl border-2 cursor-pointer ${hasDoc(d.k) ? "border-success bg-success/5" : "border-border bg-card"}`}>
-              <span className="text-2xl">{d.icon}</span>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm">{d.label}</p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {p.docs[d.k] ? `✓ ${p.docs[d.k]!.name}` : hasDoc(d.k) ? "✓ Document déjà transmis" : "Aucun fichier"}
-                </p>
-              </div>
-              <span className="text-xs font-bold text-primary">{hasDoc(d.k) ? "Modifier" : "Ajouter"}</span>
-              <input type="file" accept="image/*,application/pdf" className="hidden" onChange={setDoc(d.k)} />
-            </label>
+            <div key={d.k}>
+              <label className={`flex items-center gap-3 p-3 rounded-2xl border-2 cursor-pointer ${hasDoc(d.k) ? "border-success bg-success/5" : bad(hasDoc(d.k)) ? "border-destructive bg-destructive/5" : "border-border bg-card"}`}>
+                <span className="text-2xl">{d.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm">{d.label}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {p.docs[d.k] ? `✓ ${p.docs[d.k]!.name}` : hasDoc(d.k) ? "✓ Document déjà transmis" : "Aucun fichier"}
+                  </p>
+                </div>
+                <span className="text-xs font-bold text-primary">{hasDoc(d.k) ? "Modifier" : "Ajouter"}</span>
+                <input type="file" accept="image/*,application/pdf" className="hidden" onChange={setDoc(d.k)} />
+              </label>
+              <Missing ok={hasDoc(d.k)} text="Pièce justificative obligatoire" />
+            </div>
           ))}
         </div>
       </div>
 
-      <CguAcceptBlock checked={cguOk} onChange={setCguOk} role="companion" />
+      <div className={bad(cguOk) ? "rounded-2xl border-2 border-destructive bg-destructive/5 p-1" : ""}>
+        <CguAcceptBlock checked={cguOk} onChange={setCguOk} role="companion" />
+        <Missing ok={cguOk} text="Acceptation des CGU obligatoire" />
+      </div>
 
-      {err && <p className="text-sm text-destructive text-center">{err}</p>}
-      <button type="submit" disabled={!valid || busy} className="btn-huge bg-primary text-primary-foreground disabled:opacity-50 mt-2">
+      {err && <p className="text-sm text-destructive text-center font-semibold">{err}</p>}
+      <button type="submit" disabled={busy} className="btn-huge bg-primary text-primary-foreground disabled:opacity-50 mt-2">
         {busy ? "Envoi en cours…" : "Envoyer ma candidature"}
       </button>
       <ServiceLimitsNotice />
