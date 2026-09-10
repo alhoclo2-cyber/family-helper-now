@@ -2429,22 +2429,28 @@ function StudentEnroll({
               type="button"
               onClick={() => setP({ ...p, situation: s })}
               className={`py-3 px-2 rounded-2xl border-2 text-sm font-bold transition-all ${
-                p.situation === s ? "border-primary bg-accent" : "border-border bg-card"
+                p.situation === s ? "border-primary bg-accent" : bad(!!p.situation) ? "border-destructive bg-destructive/5" : "border-border bg-card"
               }`}
             >
               {s}
             </button>
           ))}
         </div>
+        <Missing ok={!!p.situation} text="Sélection obligatoire" />
       </div>
-      <input required placeholder="Établissement / employeur / activité" value={p.school} onChange={(e) => setP({ ...p, school: e.target.value })} className={field} />
-      <input required placeholder="Ville" value={p.city} onChange={(e) => setP({ ...p, city: e.target.value })} className={field} />
+      <div className="flex flex-col">
+        <input placeholder="Établissement / employeur / activité" value={p.school} onChange={(e) => setP({ ...p, school: e.target.value })} className={field + errCls(!!p.school.trim())} />
+        <Missing ok={!!p.school.trim()} text="Champ obligatoire" />
+      </div>
+      <div className="flex flex-col">
+        <input placeholder="Ville" value={p.city} onChange={(e) => setP({ ...p, city: e.target.value })} className={field + errCls(!!p.city.trim())} />
+        <Missing ok={!!p.city.trim()} text="Champ obligatoire" />
+      </div>
       <textarea placeholder="Pourquoi voulez-vous rejoindre Solélia ?" value={p.motivation} onChange={(e) => setP({ ...p, motivation: e.target.value })} rows={3} className={field + " resize-none"} />
 
       <div>
         <p className="font-bold mb-2 text-sm">Numéro de Sécurité sociale (NIR — 15 chiffres)</p>
         <input
-          required
           inputMode="numeric"
           autoComplete="off"
           placeholder="1 23 45 67 890 123 45"
@@ -2452,15 +2458,19 @@ function StudentEnroll({
           onFocus={() => setNirFocus(true)}
           onBlur={() => setNirFocus(false)}
           onChange={(e) => setP({ ...p, nir: e.target.value.replace(/[^\d ]/g, "").slice(0, 21) })}
-          className={field + " w-full tracking-wider"}
+          className={field + " w-full tracking-wider" + errCls(nirOk)}
         />
         <p className="text-xs text-muted-foreground mt-2">
           🔒 Ce numéro est strictement conservé pour établir vos déclarations administratives et contrats auprès de
           l'URSSAF.
         </p>
-        {!nirOk && nirDigits.length > 0 && (
+        {!nirLenOk && nirDigits.length > 0 && (
           <p className="text-xs text-destructive mt-1">Le NIR doit comporter 15 chiffres.</p>
         )}
+        {nirLenOk && !nirKeyOk && (
+          <p className="text-xs text-destructive font-semibold mt-1">Numéro de Sécurité sociale invalide (erreur de saisie).</p>
+        )}
+        <Missing ok={nirOk || nirDigits.length > 0} text="Champ obligatoire" />
       </div>
 
       <div>
