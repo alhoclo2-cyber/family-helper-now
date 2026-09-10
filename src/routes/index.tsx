@@ -2451,7 +2451,7 @@ function StudentEnroll({
       <div className="mt-2">
         <p className="font-bold mb-2">Documents à fournir</p>
         <div className="flex flex-col gap-2">
-          {docs.map((d) => (
+          {[...docs, ...housingDocs].map((d) => (
             <label key={d.k} className={`flex items-center gap-3 p-3 rounded-2xl border-2 cursor-pointer ${hasDoc(d.k) ? "border-success bg-success/5" : "border-border bg-card"}`}>
               <span className="text-2xl">{d.icon}</span>
               <div className="flex-1 min-w-0">
