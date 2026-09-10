@@ -276,6 +276,13 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
         <p>📧 {app.email}</p>
         <p>📞 {app.phone}</p>
         <p>📍 {app.city}</p>
+        <p>
+          🆔 NIR : <span className="font-mono font-bold">{app.nir || "Non renseigné"}</span>
+        </p>
+        <p>
+          🏠 Logement :{" "}
+          {app.housing_status === "hosted" ? "Hébergé(e) par un tiers" : "Titulaire du logement"}
+        </p>
         <p>🗓️ Candidature du {new Date(app.created_at).toLocaleString("fr-FR")}</p>
         {app.motivation && (
           <p className="pt-2 text-muted-foreground italic">« {app.motivation} »</p>
@@ -287,6 +294,15 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
       <DocCard label="🎓 Justificatif de situation" path={app.situation_proof_path} />
       <DocCard label="⚖️ Casier judiciaire (B3, moins de 3 mois)" path={app.criminal_record_path} />
       <DocCard label="🏦 RIB" path={app.iban_path} />
+      {app.housing_status === "hosted" ? (
+        <>
+          <DocCard label="✍️ Attestation d'hébergement" path={app.host_attestation_path} />
+          <DocCard label="🏠 Justificatif de domicile de l'hébergeur" path={app.host_address_proof_path} />
+          <DocCard label="🪪 Pièce d'identité de l'hébergeur" path={app.host_id_path} />
+        </>
+      ) : (
+        <DocCard label="🏠 Justificatif de domicile" path={app.address_proof_path} />
+      )}
       <DocCard label="🤳 Selfie" path={app.selfie_path} />
 
       {app.status === "rejected" && app.reject_reason && (
