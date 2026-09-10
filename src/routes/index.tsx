@@ -2058,6 +2058,17 @@ function maskNir(v: string) {
   return out.join(" ");
 }
 
+/** Contrôle de la clé du NIR (métropole) : clé = 97 - (13 premiers chiffres mod 97) */
+function isNirValid(v: string) {
+  const d = v.replace(/\D/g, "");
+  if (d.length !== 15) return false;
+  const body = d.slice(0, 13);
+  const key = Number(d.slice(13));
+  if (!/^\d{13}$/.test(body) || Number.isNaN(key)) return false;
+  const expected = 97 - (Number(BigInt(body) % 97n) % 97);
+  return key === (expected === 97 ? 0 : expected);
+}
+
 function StudentEnroll({
   session,
   app,
