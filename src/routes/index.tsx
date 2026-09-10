@@ -2086,6 +2086,7 @@ function StudentEnroll({
   const [cguOk, setCguOk] = useState(false);
   const [nirFocus, setNirFocus] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [p, setP] = useState<EnrollForm>({
     firstName: "",
