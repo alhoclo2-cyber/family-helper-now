@@ -2058,6 +2058,17 @@ function maskNir(v: string) {
   return out.join(" ");
 }
 
+/** Contrôle de la clé du NIR (métropole) : clé = 97 - (13 premiers chiffres mod 97) */
+function isNirValid(v: string) {
+  const d = v.replace(/\D/g, "");
+  if (d.length !== 15) return false;
+  const body = d.slice(0, 13);
+  const key = Number(d.slice(13));
+  if (!/^\d{13}$/.test(body) || Number.isNaN(key)) return false;
+  const expected = 97 - Number(BigInt(body) % 97n);
+  return key === expected;
+}
+
 function StudentEnroll({
   session,
   app,
@@ -2075,6 +2086,7 @@ function StudentEnroll({
   const [cguOk, setCguOk] = useState(false);
   const [nirFocus, setNirFocus] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [p, setP] = useState<EnrollForm>({
     firstName: "",
@@ -2266,6 +2278,13 @@ function StudentEnroll({
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!valid) {
+      setShowErrors(true);
+      setErr("Votre inscription ne peut pas être validée. Veuillez compléter les pièces manquantes indiquées en rouge.");
+      if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    setShowErrors(false);
     setBusy(true);
     setErr(null);
     try {
@@ -2333,9 +2352,28 @@ function StudentEnroll({
   const hasSelfie = !!p.selfie || !!app?.selfie_path;
   const allDocs = [...docs, ...housingDocs].every((d) => hasDoc(d.k));
   const nirDigits = p.nir.replace(/\D/g, "");
-  const nirOk = nirDigits.length === 15;
-  const valid =
-    p.firstName && p.lastName && p.email && p.phone && p.situation && p.school && p.city && nirOk && hasSelfie && allDocs && cguOk;
+  const nirLenOk = nirDigits.length === 15;
+  const nirKeyOk = isNirValid(nirDigits);
+  const nirOk = nirLenOk && nirKeyOk;
+  const valid = Boolean(
+    p.firstName.trim() &&
+      p.lastName.trim() &&
+      p.email.trim() &&
+      p.phone.trim() &&
+      p.situation &&
+      p.school.trim() &&
+      p.city.trim() &&
+      nirOk &&
+      hasSelfie &&
+      allDocs &&
+      cguOk,
+  );
+
+  // Bordure rouge + message sous les éléments manquants après un clic sur « Envoyer »
+  const bad = (ok: boolean) => showErrors && !ok;
+  const errCls = (ok: boolean) => (bad(ok) ? " border-destructive bg-destructive/5" : "");
+  const Missing = ({ ok, text }: { ok: boolean; text: string }) =>
+    bad(ok) ? <p className="text-xs text-destructive font-semibold mt-1">{text}</p> : null;
 
   const setSelfie = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -2356,12 +2394,32 @@ function StudentEnroll({
       <h2 className="text-xl font-black">Ma candidature</h2>
       <p className="text-xs text-muted-foreground -mt-2">Connecté en tant que {session.user.email}</p>
 
+      {showErrors && !valid && (
+        <div className="rounded-2xl border-2 border-destructive bg-destructive/10 p-3">
+          <p className="text-sm font-bold text-destructive">
+            Votre inscription ne peut pas être validée. Veuillez compléter les pièces manquantes indiquées en rouge.
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
-        <input required placeholder="Prénom" value={p.firstName} onChange={(e) => setP({ ...p, firstName: e.target.value })} className={field} />
-        <input required placeholder="Nom" value={p.lastName} onChange={(e) => setP({ ...p, lastName: e.target.value })} className={field} />
+        <div className="flex flex-col">
+          <input placeholder="Prénom" value={p.firstName} onChange={(e) => setP({ ...p, firstName: e.target.value })} className={field + errCls(!!p.firstName.trim())} />
+          <Missing ok={!!p.firstName.trim()} text="Champ obligatoire" />
+        </div>
+        <div className="flex flex-col">
+          <input placeholder="Nom" value={p.lastName} onChange={(e) => setP({ ...p, lastName: e.target.value })} className={field + errCls(!!p.lastName.trim())} />
+          <Missing ok={!!p.lastName.trim()} text="Champ obligatoire" />
+        </div>
       </div>
-      <input required type="email" placeholder="Email" value={p.email} onChange={(e) => setP({ ...p, email: e.target.value })} className={field} />
-      <input required type="tel" placeholder="Téléphone" value={p.phone} onChange={(e) => setP({ ...p, phone: e.target.value })} className={field} />
+      <div className="flex flex-col">
+        <input type="email" placeholder="Email" value={p.email} onChange={(e) => setP({ ...p, email: e.target.value })} className={field + errCls(!!p.email.trim())} />
+        <Missing ok={!!p.email.trim()} text="Champ obligatoire" />
+      </div>
+      <div className="flex flex-col">
+        <input type="tel" placeholder="Téléphone" value={p.phone} onChange={(e) => setP({ ...p, phone: e.target.value })} className={field + errCls(!!p.phone.trim())} />
+        <Missing ok={!!p.phone.trim()} text="Champ obligatoire" />
+      </div>
       <div>
         <p className="font-bold mb-2 text-sm">Votre situation</p>
         <div className="grid grid-cols-2 gap-2">
@@ -2371,22 +2429,28 @@ function StudentEnroll({
               type="button"
               onClick={() => setP({ ...p, situation: s })}
               className={`py-3 px-2 rounded-2xl border-2 text-sm font-bold transition-all ${
-                p.situation === s ? "border-primary bg-accent" : "border-border bg-card"
+                p.situation === s ? "border-primary bg-accent" : bad(!!p.situation) ? "border-destructive bg-destructive/5" : "border-border bg-card"
               }`}
             >
               {s}
             </button>
           ))}
         </div>
+        <Missing ok={!!p.situation} text="Sélection obligatoire" />
       </div>
-      <input required placeholder="Établissement / employeur / activité" value={p.school} onChange={(e) => setP({ ...p, school: e.target.value })} className={field} />
-      <input required placeholder="Ville" value={p.city} onChange={(e) => setP({ ...p, city: e.target.value })} className={field} />
+      <div className="flex flex-col">
+        <input placeholder="Établissement / employeur / activité" value={p.school} onChange={(e) => setP({ ...p, school: e.target.value })} className={field + errCls(!!p.school.trim())} />
+        <Missing ok={!!p.school.trim()} text="Champ obligatoire" />
+      </div>
+      <div className="flex flex-col">
+        <input placeholder="Ville" value={p.city} onChange={(e) => setP({ ...p, city: e.target.value })} className={field + errCls(!!p.city.trim())} />
+        <Missing ok={!!p.city.trim()} text="Champ obligatoire" />
+      </div>
       <textarea placeholder="Pourquoi voulez-vous rejoindre Solélia ?" value={p.motivation} onChange={(e) => setP({ ...p, motivation: e.target.value })} rows={3} className={field + " resize-none"} />
 
       <div>
         <p className="font-bold mb-2 text-sm">Numéro de Sécurité sociale (NIR — 15 chiffres)</p>
         <input
-          required
           inputMode="numeric"
           autoComplete="off"
           placeholder="1 23 45 67 890 123 45"
@@ -2394,15 +2458,19 @@ function StudentEnroll({
           onFocus={() => setNirFocus(true)}
           onBlur={() => setNirFocus(false)}
           onChange={(e) => setP({ ...p, nir: e.target.value.replace(/[^\d ]/g, "").slice(0, 21) })}
-          className={field + " w-full tracking-wider"}
+          className={field + " w-full tracking-wider" + errCls(nirOk)}
         />
         <p className="text-xs text-muted-foreground mt-2">
           🔒 Ce numéro est strictement conservé pour établir vos déclarations administratives et contrats auprès de
           l'URSSAF.
         </p>
-        {!nirOk && nirDigits.length > 0 && (
+        {!nirLenOk && nirDigits.length > 0 && (
           <p className="text-xs text-destructive mt-1">Le NIR doit comporter 15 chiffres.</p>
         )}
+        {nirLenOk && !nirKeyOk && (
+          <p className="text-xs text-destructive font-semibold mt-1">Numéro de Sécurité sociale invalide (erreur de saisie).</p>
+        )}
+        <Missing ok={nirOk || nirDigits.length > 0} text="Champ obligatoire" />
       </div>
 
       <div>
@@ -2434,7 +2502,7 @@ function StudentEnroll({
         <p className="text-xs text-muted-foreground mb-2">
           Cette photo sera montrée à la famille pour qu'elle vous reconnaisse à la porte. Visage bien visible, sans lunettes de soleil ni casquette.
         </p>
-        <label className={`flex items-center gap-4 p-3 rounded-2xl border-2 cursor-pointer ${hasSelfie ? "border-success bg-success/5" : "border-border bg-card"}`}>
+        <label className={`flex items-center gap-4 p-3 rounded-2xl border-2 cursor-pointer ${hasSelfie ? "border-success bg-success/5" : bad(hasSelfie) ? "border-destructive bg-destructive/5" : "border-border bg-card"}`}>
           {p.selfiePreview ? (
             <img src={p.selfiePreview} alt="Selfie" className="h-16 w-16 rounded-full object-cover" />
           ) : (
@@ -2446,31 +2514,38 @@ function StudentEnroll({
           </div>
           <input type="file" accept="image/*" capture="user" className="hidden" onChange={setSelfie} />
         </label>
+        <Missing ok={hasSelfie} text="Photo obligatoire" />
       </div>
 
       <div className="mt-2">
         <p className="font-bold mb-2">Documents à fournir</p>
         <div className="flex flex-col gap-2">
           {[...docs, ...housingDocs].map((d) => (
-            <label key={d.k} className={`flex items-center gap-3 p-3 rounded-2xl border-2 cursor-pointer ${hasDoc(d.k) ? "border-success bg-success/5" : "border-border bg-card"}`}>
-              <span className="text-2xl">{d.icon}</span>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm">{d.label}</p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {p.docs[d.k] ? `✓ ${p.docs[d.k]!.name}` : hasDoc(d.k) ? "✓ Document déjà transmis" : "Aucun fichier"}
-                </p>
-              </div>
-              <span className="text-xs font-bold text-primary">{hasDoc(d.k) ? "Modifier" : "Ajouter"}</span>
-              <input type="file" accept="image/*,application/pdf" className="hidden" onChange={setDoc(d.k)} />
-            </label>
+            <div key={d.k}>
+              <label className={`flex items-center gap-3 p-3 rounded-2xl border-2 cursor-pointer ${hasDoc(d.k) ? "border-success bg-success/5" : bad(hasDoc(d.k)) ? "border-destructive bg-destructive/5" : "border-border bg-card"}`}>
+                <span className="text-2xl">{d.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm">{d.label}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {p.docs[d.k] ? `✓ ${p.docs[d.k]!.name}` : hasDoc(d.k) ? "✓ Document déjà transmis" : "Aucun fichier"}
+                  </p>
+                </div>
+                <span className="text-xs font-bold text-primary">{hasDoc(d.k) ? "Modifier" : "Ajouter"}</span>
+                <input type="file" accept="image/*,application/pdf" className="hidden" onChange={setDoc(d.k)} />
+              </label>
+              <Missing ok={hasDoc(d.k)} text="Pièce justificative obligatoire" />
+            </div>
           ))}
         </div>
       </div>
 
-      <CguAcceptBlock checked={cguOk} onChange={setCguOk} role="companion" />
+      <div className={bad(cguOk) ? "rounded-2xl border-2 border-destructive bg-destructive/5 p-1" : ""}>
+        <CguAcceptBlock checked={cguOk} onChange={setCguOk} role="companion" />
+        <Missing ok={cguOk} text="Acceptation des CGU obligatoire" />
+      </div>
 
-      {err && <p className="text-sm text-destructive text-center">{err}</p>}
-      <button type="submit" disabled={!valid || busy} className="btn-huge bg-primary text-primary-foreground disabled:opacity-50 mt-2">
+      {err && <p className="text-sm text-destructive text-center font-semibold">{err}</p>}
+      <button type="submit" disabled={busy} className="btn-huge bg-primary text-primary-foreground disabled:opacity-50 mt-2">
         {busy ? "Envoi en cours…" : "Envoyer ma candidature"}
       </button>
       <ServiceLimitsNotice />
