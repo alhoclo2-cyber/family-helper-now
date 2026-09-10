@@ -2073,6 +2073,7 @@ function StudentEnroll({
 }) {
   const [step, setStep] = useState<"intro" | "auth" | "form">("intro");
   const [cguOk, setCguOk] = useState(false);
+  const [nirFocus, setNirFocus] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [p, setP] = useState<EnrollForm>({
@@ -2106,6 +2107,8 @@ function StudentEnroll({
         situation: app?.situation || prev.situation,
         school: prev.school || app?.school || "",
         motivation: prev.motivation || app?.motivation || "",
+        nir: prev.nir || app?.nir || "",
+        housing: (app?.housing_status as HousingStatus) || prev.housing,
       }));
     })();
     return () => {
@@ -2379,6 +2382,52 @@ function StudentEnroll({
       <input required placeholder="Établissement / employeur / activité" value={p.school} onChange={(e) => setP({ ...p, school: e.target.value })} className={field} />
       <input required placeholder="Ville" value={p.city} onChange={(e) => setP({ ...p, city: e.target.value })} className={field} />
       <textarea placeholder="Pourquoi voulez-vous rejoindre Solélia ?" value={p.motivation} onChange={(e) => setP({ ...p, motivation: e.target.value })} rows={3} className={field + " resize-none"} />
+
+      <div>
+        <p className="font-bold mb-2 text-sm">Numéro de Sécurité sociale (NIR — 15 chiffres)</p>
+        <input
+          required
+          inputMode="numeric"
+          autoComplete="off"
+          placeholder="1 23 45 67 890 123 45"
+          value={nirFocus ? p.nir : maskNir(p.nir)}
+          onFocus={() => setNirFocus(true)}
+          onBlur={() => setNirFocus(false)}
+          onChange={(e) => setP({ ...p, nir: e.target.value.replace(/[^\d ]/g, "").slice(0, 21) })}
+          className={field + " w-full tracking-wider"}
+        />
+        <p className="text-xs text-muted-foreground mt-2">
+          🔒 Ce numéro est strictement conservé pour établir vos déclarations administratives et contrats auprès de
+          l'URSSAF.
+        </p>
+        {!nirOk && nirDigits.length > 0 && (
+          <p className="text-xs text-destructive mt-1">Le NIR doit comporter 15 chiffres.</p>
+        )}
+      </div>
+
+      <div>
+        <p className="font-bold mb-2 text-sm">Quel est votre statut d'occupation ?</p>
+        <div className="flex flex-col gap-2">
+          {(
+            [
+              { v: "owner", label: "Je suis titulaire du logement" },
+              { v: "hosted", label: "Je suis hébergé(e) par un tiers / mes parents" },
+            ] as const
+          ).map((o) => (
+            <button
+              key={o.v}
+              type="button"
+              onClick={() => setP({ ...p, housing: o.v })}
+              className={`py-3 px-4 rounded-2xl border-2 text-sm font-bold text-left transition-all ${
+                p.housing === o.v ? "border-primary bg-accent" : "border-border bg-card"
+              }`}
+            >
+              {p.housing === o.v ? "● " : "○ "}
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="mt-2">
         <p className="font-bold mb-2">Photo / Selfie</p>
