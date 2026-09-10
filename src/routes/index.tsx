@@ -2065,8 +2065,8 @@ function isNirValid(v: string) {
   const body = d.slice(0, 13);
   const key = Number(d.slice(13));
   if (!/^\d{13}$/.test(body) || Number.isNaN(key)) return false;
-  const expected = 97 - (Number(BigInt(body) % 97n) % 97);
-  return key === (expected === 97 ? 0 : expected);
+  const expected = 97 - Number(BigInt(body) % 97n);
+  return key === expected;
 }
 
 function StudentEnroll({
