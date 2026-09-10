@@ -2352,9 +2352,28 @@ function StudentEnroll({
   const hasSelfie = !!p.selfie || !!app?.selfie_path;
   const allDocs = [...docs, ...housingDocs].every((d) => hasDoc(d.k));
   const nirDigits = p.nir.replace(/\D/g, "");
-  const nirOk = nirDigits.length === 15;
-  const valid =
-    p.firstName && p.lastName && p.email && p.phone && p.situation && p.school && p.city && nirOk && hasSelfie && allDocs && cguOk;
+  const nirLenOk = nirDigits.length === 15;
+  const nirKeyOk = isNirValid(nirDigits);
+  const nirOk = nirLenOk && nirKeyOk;
+  const valid = Boolean(
+    p.firstName.trim() &&
+      p.lastName.trim() &&
+      p.email.trim() &&
+      p.phone.trim() &&
+      p.situation &&
+      p.school.trim() &&
+      p.city.trim() &&
+      nirOk &&
+      hasSelfie &&
+      allDocs &&
+      cguOk,
+  );
+
+  // Bordure rouge + message sous les éléments manquants après un clic sur « Envoyer »
+  const bad = (ok: boolean) => showErrors && !ok;
+  const errCls = (ok: boolean) => (bad(ok) ? " border-destructive bg-destructive/5" : "");
+  const Missing = ({ ok, text }: { ok: boolean; text: string }) =>
+    bad(ok) ? <p className="text-xs text-destructive font-semibold mt-1">{text}</p> : null;
 
   const setSelfie = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
