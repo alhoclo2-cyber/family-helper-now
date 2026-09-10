@@ -2394,12 +2394,32 @@ function StudentEnroll({
       <h2 className="text-xl font-black">Ma candidature</h2>
       <p className="text-xs text-muted-foreground -mt-2">Connecté en tant que {session.user.email}</p>
 
+      {showErrors && !valid && (
+        <div className="rounded-2xl border-2 border-destructive bg-destructive/10 p-3">
+          <p className="text-sm font-bold text-destructive">
+            Votre inscription ne peut pas être validée. Veuillez compléter les pièces manquantes indiquées en rouge.
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
-        <input required placeholder="Prénom" value={p.firstName} onChange={(e) => setP({ ...p, firstName: e.target.value })} className={field} />
-        <input required placeholder="Nom" value={p.lastName} onChange={(e) => setP({ ...p, lastName: e.target.value })} className={field} />
+        <div className="flex flex-col">
+          <input placeholder="Prénom" value={p.firstName} onChange={(e) => setP({ ...p, firstName: e.target.value })} className={field + errCls(!!p.firstName.trim())} />
+          <Missing ok={!!p.firstName.trim()} text="Champ obligatoire" />
+        </div>
+        <div className="flex flex-col">
+          <input placeholder="Nom" value={p.lastName} onChange={(e) => setP({ ...p, lastName: e.target.value })} className={field + errCls(!!p.lastName.trim())} />
+          <Missing ok={!!p.lastName.trim()} text="Champ obligatoire" />
+        </div>
       </div>
-      <input required type="email" placeholder="Email" value={p.email} onChange={(e) => setP({ ...p, email: e.target.value })} className={field} />
-      <input required type="tel" placeholder="Téléphone" value={p.phone} onChange={(e) => setP({ ...p, phone: e.target.value })} className={field} />
+      <div className="flex flex-col">
+        <input type="email" placeholder="Email" value={p.email} onChange={(e) => setP({ ...p, email: e.target.value })} className={field + errCls(!!p.email.trim())} />
+        <Missing ok={!!p.email.trim()} text="Champ obligatoire" />
+      </div>
+      <div className="flex flex-col">
+        <input type="tel" placeholder="Téléphone" value={p.phone} onChange={(e) => setP({ ...p, phone: e.target.value })} className={field + errCls(!!p.phone.trim())} />
+        <Missing ok={!!p.phone.trim()} text="Champ obligatoire" />
+      </div>
       <div>
         <p className="font-bold mb-2 text-sm">Votre situation</p>
         <div className="grid grid-cols-2 gap-2">
