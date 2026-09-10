@@ -2278,6 +2278,13 @@ function StudentEnroll({
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!valid) {
+      setShowErrors(true);
+      setErr("Votre inscription ne peut pas être validée. Veuillez compléter les pièces manquantes indiquées en rouge.");
+      if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    setShowErrors(false);
     setBusy(true);
     setErr(null);
     try {
