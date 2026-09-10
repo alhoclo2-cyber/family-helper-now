@@ -2084,6 +2084,8 @@ function StudentEnroll({
     school: "",
     city: "",
     motivation: "",
+    nir: "",
+    housing: "owner",
     docs: {},
   });
 
@@ -2281,6 +2283,8 @@ function StudentEnroll({
         school: p.school.trim(),
         city: p.city.trim(),
         motivation: p.motivation.trim(),
+        nir: p.nir.replace(/\D/g, ""),
+        housing_status: p.housing,
         status: "pending" as const,
         reject_reason: null,
         reviewed_at: null,
@@ -2312,12 +2316,23 @@ function StudentEnroll({
     { k: "iban", label: "RIB", icon: "🏦" },
   ];
 
+  const housingDocs: { k: DocKey; label: string; icon: string }[] =
+    p.housing === "owner"
+      ? [{ k: "addressProof", label: "Justificatif de domicile (moins de 3 mois)", icon: "🏠" }]
+      : [
+          { k: "hostAttestation", label: "Attestation d'hébergement sur l'honneur (datée et signée)", icon: "✍️" },
+          { k: "hostAddressProof", label: "Justificatif de domicile de l'hébergeur (moins de 3 mois)", icon: "🏠" },
+          { k: "hostId", label: "Pièce d'identité de l'hébergeur", icon: "🪪" },
+        ];
+
   // Un document déjà transmis lors d'une candidature précédente reste valable
   const hasDoc = (k: DocKey) => !!p.docs[k] || !!app?.[DOC_COLUMN[k]];
   const hasSelfie = !!p.selfie || !!app?.selfie_path;
-  const allDocs = docs.every((d) => hasDoc(d.k));
+  const allDocs = [...docs, ...housingDocs].every((d) => hasDoc(d.k));
+  const nirDigits = p.nir.replace(/\D/g, "");
+  const nirOk = nirDigits.length === 15;
   const valid =
-    p.firstName && p.lastName && p.email && p.phone && p.situation && p.school && p.city && hasSelfie && allDocs && cguOk;
+    p.firstName && p.lastName && p.email && p.phone && p.situation && p.school && p.city && nirOk && hasSelfie && allDocs && cguOk;
 
   const setSelfie = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
