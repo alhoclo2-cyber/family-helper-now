@@ -1995,7 +1995,16 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
 
 /* ---------------- STUDENT ENROLLMENT ---------------- */
 
-type DocKey = "idCard" | "studentCard" | "criminalRecord" | "iban";
+type DocKey =
+  | "idCard"
+  | "studentCard"
+  | "criminalRecord"
+  | "iban"
+  | "addressProof"
+  | "hostAttestation"
+  | "hostAddressProof"
+  | "hostId";
+type HousingStatus = "owner" | "hosted";
 type EnrollForm = {
   firstName: string;
   lastName: string;
@@ -2005,17 +2014,49 @@ type EnrollForm = {
   school: string;
   city: string;
   motivation: string;
+  nir: string;
+  housing: HousingStatus;
   selfie?: File;
   selfiePreview?: string;
   docs: Partial<Record<DocKey, File>>;
 };
 
-const DOC_COLUMN: Record<DocKey, "id_card_path" | "situation_proof_path" | "criminal_record_path" | "iban_path"> = {
+type DocColumn =
+  | "id_card_path"
+  | "situation_proof_path"
+  | "criminal_record_path"
+  | "iban_path"
+  | "address_proof_path"
+  | "host_attestation_path"
+  | "host_address_proof_path"
+  | "host_id_path";
+
+const DOC_COLUMN: Record<DocKey, DocColumn> = {
   idCard: "id_card_path",
   studentCard: "situation_proof_path",
   criminalRecord: "criminal_record_path",
   iban: "iban_path",
+  addressProof: "address_proof_path",
+  hostAttestation: "host_attestation_path",
+  hostAddressProof: "host_address_proof_path",
+  hostId: "host_id_path",
 };
+
+/** Masque le NIR côté Compagnon : 1 ** ** ** *** *** ** */
+function maskNir(v: string) {
+  const d = v.replace(/\D/g, "");
+  if (!d) return "";
+  const groups = [1, 2, 2, 2, 3, 3, 2];
+  let i = 0;
+  const out: string[] = [];
+  for (const g of groups) {
+    const chunk = d.slice(i, i + g);
+    if (!chunk) break;
+    out.push(out.length === 0 ? chunk : "*".repeat(chunk.length));
+    i += g;
+  }
+  return out.join(" ");
+}
 
 function StudentEnroll({
   session,
@@ -2032,6 +2073,7 @@ function StudentEnroll({
 }) {
   const [step, setStep] = useState<"intro" | "auth" | "form">("intro");
   const [cguOk, setCguOk] = useState(false);
+  const [nirFocus, setNirFocus] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [p, setP] = useState<EnrollForm>({
@@ -2043,6 +2085,8 @@ function StudentEnroll({
     school: "",
     city: "",
     motivation: "",
+    nir: "",
+    housing: "owner",
     docs: {},
   });
 
@@ -2063,6 +2107,8 @@ function StudentEnroll({
         situation: app?.situation || prev.situation,
         school: prev.school || app?.school || "",
         motivation: prev.motivation || app?.motivation || "",
+        nir: prev.nir || app?.nir || "",
+        housing: (app?.housing_status as HousingStatus) || prev.housing,
       }));
     })();
     return () => {
@@ -2153,8 +2199,10 @@ function StudentEnroll({
           <ul className="space-y-2 text-sm">
             <li>✓ Être majeur (18 ans et +)</li>
             <li>✓ Pièce d'identité valide</li>
-            <li>✓ Justificatif de situation (carte étudiante, contrat de travail, attestation Pôle emploi/France Travail, notification de retraite…)</li>
-            <li>✓ Extrait de casier judiciaire (bulletin n°3)</li>
+            <li>✓ Justificatif de domicile (ou dossier d'hébergement)</li>
+            <li>✓ Justificatif de situation (carte étudiante, contrat de travail, attestation France Travail, notification de retraite…)</li>
+            <li>✓ Extrait de casier judiciaire (bulletin n°3 de moins de 3 mois)</li>
+            <li>✓ Numéro de Sécurité sociale (NIR)</li>
             <li>✓ RIB pour les paiements</li>
           </ul>
         </div>
@@ -2238,6 +2286,8 @@ function StudentEnroll({
         school: p.school.trim(),
         city: p.city.trim(),
         motivation: p.motivation.trim(),
+        nir: p.nir.replace(/\D/g, ""),
+        housing_status: p.housing,
         status: "pending" as const,
         reject_reason: null,
         reviewed_at: null,
@@ -2269,12 +2319,23 @@ function StudentEnroll({
     { k: "iban", label: "RIB", icon: "🏦" },
   ];
 
+  const housingDocs: { k: DocKey; label: string; icon: string }[] =
+    p.housing === "owner"
+      ? [{ k: "addressProof", label: "Justificatif de domicile (moins de 3 mois)", icon: "🏠" }]
+      : [
+          { k: "hostAttestation", label: "Attestation d'hébergement sur l'honneur (datée et signée)", icon: "✍️" },
+          { k: "hostAddressProof", label: "Justificatif de domicile de l'hébergeur (moins de 3 mois)", icon: "🏠" },
+          { k: "hostId", label: "Pièce d'identité de l'hébergeur", icon: "🪪" },
+        ];
+
   // Un document déjà transmis lors d'une candidature précédente reste valable
   const hasDoc = (k: DocKey) => !!p.docs[k] || !!app?.[DOC_COLUMN[k]];
   const hasSelfie = !!p.selfie || !!app?.selfie_path;
-  const allDocs = docs.every((d) => hasDoc(d.k));
+  const allDocs = [...docs, ...housingDocs].every((d) => hasDoc(d.k));
+  const nirDigits = p.nir.replace(/\D/g, "");
+  const nirOk = nirDigits.length === 15;
   const valid =
-    p.firstName && p.lastName && p.email && p.phone && p.situation && p.school && p.city && hasSelfie && allDocs && cguOk;
+    p.firstName && p.lastName && p.email && p.phone && p.situation && p.school && p.city && nirOk && hasSelfie && allDocs && cguOk;
 
   const setSelfie = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -2322,6 +2383,52 @@ function StudentEnroll({
       <input required placeholder="Ville" value={p.city} onChange={(e) => setP({ ...p, city: e.target.value })} className={field} />
       <textarea placeholder="Pourquoi voulez-vous rejoindre Solélia ?" value={p.motivation} onChange={(e) => setP({ ...p, motivation: e.target.value })} rows={3} className={field + " resize-none"} />
 
+      <div>
+        <p className="font-bold mb-2 text-sm">Numéro de Sécurité sociale (NIR — 15 chiffres)</p>
+        <input
+          required
+          inputMode="numeric"
+          autoComplete="off"
+          placeholder="1 23 45 67 890 123 45"
+          value={nirFocus ? p.nir : maskNir(p.nir)}
+          onFocus={() => setNirFocus(true)}
+          onBlur={() => setNirFocus(false)}
+          onChange={(e) => setP({ ...p, nir: e.target.value.replace(/[^\d ]/g, "").slice(0, 21) })}
+          className={field + " w-full tracking-wider"}
+        />
+        <p className="text-xs text-muted-foreground mt-2">
+          🔒 Ce numéro est strictement conservé pour établir vos déclarations administratives et contrats auprès de
+          l'URSSAF.
+        </p>
+        {!nirOk && nirDigits.length > 0 && (
+          <p className="text-xs text-destructive mt-1">Le NIR doit comporter 15 chiffres.</p>
+        )}
+      </div>
+
+      <div>
+        <p className="font-bold mb-2 text-sm">Quel est votre statut d'occupation ?</p>
+        <div className="flex flex-col gap-2">
+          {(
+            [
+              { v: "owner", label: "Je suis titulaire du logement" },
+              { v: "hosted", label: "Je suis hébergé(e) par un tiers / mes parents" },
+            ] as const
+          ).map((o) => (
+            <button
+              key={o.v}
+              type="button"
+              onClick={() => setP({ ...p, housing: o.v })}
+              className={`py-3 px-4 rounded-2xl border-2 text-sm font-bold text-left transition-all ${
+                p.housing === o.v ? "border-primary bg-accent" : "border-border bg-card"
+              }`}
+            >
+              {p.housing === o.v ? "● " : "○ "}
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="mt-2">
         <p className="font-bold mb-2">Photo / Selfie</p>
         <p className="text-xs text-muted-foreground mb-2">
@@ -2344,7 +2451,7 @@ function StudentEnroll({
       <div className="mt-2">
         <p className="font-bold mb-2">Documents à fournir</p>
         <div className="flex flex-col gap-2">
-          {docs.map((d) => (
+          {[...docs, ...housingDocs].map((d) => (
             <label key={d.k} className={`flex items-center gap-3 p-3 rounded-2xl border-2 cursor-pointer ${hasDoc(d.k) ? "border-success bg-success/5" : "border-border bg-card"}`}>
               <span className="text-2xl">{d.icon}</span>
               <div className="flex-1 min-w-0">
