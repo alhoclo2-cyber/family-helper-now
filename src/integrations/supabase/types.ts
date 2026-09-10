@@ -16,16 +16,22 @@ export type Database = {
     Tables: {
       companion_applications: {
         Row: {
+          address_proof_path: string | null
           city: string
           created_at: string
           criminal_record_path: string | null
           email: string
           first_name: string
+          host_address_proof_path: string | null
+          host_attestation_path: string | null
+          host_id_path: string | null
+          housing_status: string
           iban_path: string | null
           id: string
           id_card_path: string | null
           last_name: string
           motivation: string
+          nir: string
           phone: string
           reject_reason: string | null
           reviewed_at: string | null
@@ -39,16 +45,22 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          address_proof_path?: string | null
           city?: string
           created_at?: string
           criminal_record_path?: string | null
           email: string
           first_name: string
+          host_address_proof_path?: string | null
+          host_attestation_path?: string | null
+          host_id_path?: string | null
+          housing_status?: string
           iban_path?: string | null
           id?: string
           id_card_path?: string | null
           last_name: string
           motivation?: string
+          nir?: string
           phone: string
           reject_reason?: string | null
           reviewed_at?: string | null
@@ -62,16 +74,22 @@ export type Database = {
           user_id: string
         }
         Update: {
+          address_proof_path?: string | null
           city?: string
           created_at?: string
           criminal_record_path?: string | null
           email?: string
           first_name?: string
+          host_address_proof_path?: string | null
+          host_attestation_path?: string | null
+          host_id_path?: string | null
+          housing_status?: string
           iban_path?: string | null
           id?: string
           id_card_path?: string | null
           last_name?: string
           motivation?: string
+          nir?: string
           phone?: string
           reject_reason?: string | null
           reviewed_at?: string | null
