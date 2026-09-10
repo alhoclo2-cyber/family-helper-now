@@ -1995,7 +1995,16 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
 
 /* ---------------- STUDENT ENROLLMENT ---------------- */
 
-type DocKey = "idCard" | "studentCard" | "criminalRecord" | "iban";
+type DocKey =
+  | "idCard"
+  | "studentCard"
+  | "criminalRecord"
+  | "iban"
+  | "addressProof"
+  | "hostAttestation"
+  | "hostAddressProof"
+  | "hostId";
+type HousingStatus = "owner" | "hosted";
 type EnrollForm = {
   firstName: string;
   lastName: string;
@@ -2005,17 +2014,49 @@ type EnrollForm = {
   school: string;
   city: string;
   motivation: string;
+  nir: string;
+  housing: HousingStatus;
   selfie?: File;
   selfiePreview?: string;
   docs: Partial<Record<DocKey, File>>;
 };
 
-const DOC_COLUMN: Record<DocKey, "id_card_path" | "situation_proof_path" | "criminal_record_path" | "iban_path"> = {
+type DocColumn =
+  | "id_card_path"
+  | "situation_proof_path"
+  | "criminal_record_path"
+  | "iban_path"
+  | "address_proof_path"
+  | "host_attestation_path"
+  | "host_address_proof_path"
+  | "host_id_path";
+
+const DOC_COLUMN: Record<DocKey, DocColumn> = {
   idCard: "id_card_path",
   studentCard: "situation_proof_path",
   criminalRecord: "criminal_record_path",
   iban: "iban_path",
+  addressProof: "address_proof_path",
+  hostAttestation: "host_attestation_path",
+  hostAddressProof: "host_address_proof_path",
+  hostId: "host_id_path",
 };
+
+/** Masque le NIR côté Compagnon : 1 ** ** ** *** *** ** */
+function maskNir(v: string) {
+  const d = v.replace(/\D/g, "");
+  if (!d) return "";
+  const groups = [1, 2, 2, 2, 3, 3, 2];
+  let i = 0;
+  const out: string[] = [];
+  for (const g of groups) {
+    const chunk = d.slice(i, i + g);
+    if (!chunk) break;
+    out.push(out.length === 0 ? chunk : "*".repeat(chunk.length));
+    i += g;
+  }
+  return out.join(" ");
+}
 
 function StudentEnroll({
   session,
@@ -2153,8 +2194,10 @@ function StudentEnroll({
           <ul className="space-y-2 text-sm">
             <li>✓ Être majeur (18 ans et +)</li>
             <li>✓ Pièce d'identité valide</li>
-            <li>✓ Justificatif de situation (carte étudiante, contrat de travail, attestation Pôle emploi/France Travail, notification de retraite…)</li>
-            <li>✓ Extrait de casier judiciaire (bulletin n°3)</li>
+            <li>✓ Justificatif de domicile (ou dossier d'hébergement)</li>
+            <li>✓ Justificatif de situation (carte étudiante, contrat de travail, attestation France Travail, notification de retraite…)</li>
+            <li>✓ Extrait de casier judiciaire (bulletin n°3 de moins de 3 mois)</li>
+            <li>✓ Numéro de Sécurité sociale (NIR)</li>
             <li>✓ RIB pour les paiements</li>
           </ul>
         </div>
