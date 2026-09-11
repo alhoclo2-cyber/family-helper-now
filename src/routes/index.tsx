@@ -2162,20 +2162,27 @@ function StudentEnroll({
     return <p className="flex-1 grid place-items-center text-muted-foreground">Chargement…</p>;
   }
 
-  if (app?.status === "rejected" && step === "intro") {
+  if ((app?.status === "changes_requested" || app?.status === "rejected") && step === "intro") {
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
-        <div className="text-6xl">❌</div>
-        <h2 className="text-2xl font-black">Candidature refusée</h2>
-        <p className="text-base text-muted-foreground">Malheureusement votre dossier n'a pas été retenu.</p>
+        <div className="text-6xl">📝</div>
+        <h2 className="text-2xl font-black">Dossier à compléter</h2>
+        <p className="text-base text-muted-foreground text-left">
+          Bonjour ! Votre inscription auprès de Solélia est presque finalisée. Afin de pouvoir valider votre profil et
+          vous permettre de démarrer vos interventions, notre équipe a besoin de quelques ajustements sur votre dossier.
+        </p>
         {app.reject_reason && (
           <div className="w-full bg-destructive/10 border-2 border-destructive/40 rounded-2xl p-4 text-left">
-            <p className="text-sm font-bold text-destructive">Motif</p>
+            <p className="text-sm font-bold text-destructive">Note de notre équipe</p>
             <p className="text-sm mt-1">{app.reject_reason}</p>
           </div>
         )}
+        <p className="text-base text-muted-foreground text-left">
+          Nous vous invitons à mettre à jour la ou les pièces concernées ci-après pour que nous puissions valider votre
+          candidature. À très bientôt !
+        </p>
         <button onClick={() => setStep("form")} className="btn-huge bg-primary text-primary-foreground">
-          Refaire une candidature
+          Mettre à jour mon dossier
         </button>
       </div>
     );
