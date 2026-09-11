@@ -127,7 +127,7 @@ export const reviewApplication = createServerFn({ method: "POST" })
       .from("companion_applications")
       .update({
         status: data.status,
-        reject_reason: data.status === "rejected" ? data.rejectReason!.trim() : null,
+        reject_reason: data.status === "changes_requested" ? data.rejectReason!.trim() : null,
         reviewed_at: data.status === "pending" ? null : new Date().toISOString(),
         reviewed_by: data.status === "pending" ? null : context.userId,
       })
