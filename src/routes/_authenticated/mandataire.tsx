@@ -262,7 +262,7 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
   const [reason, setReason] = useState(app.reject_reason ?? "");
   const [err, setErr] = useState<string | null>(null);
   const mut = useMutation({
-    mutationFn: (v: { status: "pending" | "approved" | "rejected"; rejectReason?: string }) =>
+    mutationFn: (v: { status: "pending" | "approved" | "changes_requested"; rejectReason?: string }) =>
       review({ data: { id: app.id, ...v } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["applications"] }),
     onError: (e: Error) => setErr(e.message),
