@@ -26,9 +26,9 @@ import floralBorderAsset from "@/assets/floral-border.jpg.asset.json";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Solélia — Présence et accompagnement à domicile" },
+      { title: "Solélia Accompagnement — Présence à domicile" },
       { name: "description", content: "Mise en relation entre familles et compagnons de confiance pour du présence et de l'accompagnement à domicile." },
-      { property: "og:title", content: "Solélia" },
+      { property: "og:title", content: "Solélia Accompagnement" },
       { property: "og:description", content: "Présence et accompagnement à domicile. Un besoin = un compagnon à proximité." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
