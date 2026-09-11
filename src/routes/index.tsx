@@ -26,9 +26,9 @@ import floralBorderAsset from "@/assets/floral-border.jpg.asset.json";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Solélia — Présence et accompagnement à domicile" },
+      { title: "Solélia Accompagnement — Présence à domicile" },
       { name: "description", content: "Mise en relation entre familles et compagnons de confiance pour du présence et de l'accompagnement à domicile." },
-      { property: "og:title", content: "Solélia" },
+      { property: "og:title", content: "Solélia Accompagnement" },
       { property: "og:description", content: "Présence et accompagnement à domicile. Un besoin = un compagnon à proximité." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -81,7 +81,7 @@ function Header({ mode, setMode, session }: { mode: Mode; setMode: (m: Mode) => 
           className="h-10 w-10 rounded-2xl object-cover"
         />
         <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-black leading-none">Solélia</h1>
+          <h1 className="text-xl font-black leading-none">Solélia Accompagnement</h1>
           <p className="text-xs text-muted-foreground mt-0.5">Présence et accompagnement à domicile</p>
         </div>
         {session ? (
@@ -1561,7 +1561,34 @@ function PaymentScreen({ student, hours, onDone, onBack }: { student: string; ho
 
 /* ---------------- STUDENT ---------------- */
 
-type EnrollStatus = "none" | "pending" | "approved" | "rejected";
+type EnrollStatus = "none" | "pending" | "approved" | "rejected" | "changes_requested";
+
+const WELCOME_KEY = "solelia-companion-welcome-dismissed";
+
+function CompanionWelcomeBanner({ firstName }: { firstName: string }) {
+  const [hidden, setHidden] = useState(true);
+  useEffect(() => {
+    setHidden(window.localStorage?.getItem(WELCOME_KEY) === "1");
+  }, []);
+  if (hidden) return null;
+  return (
+    <div className="rounded-2xl border-2 border-success/50 bg-success/10 p-4">
+      <p className="text-base font-bold">
+        🎉 Félicitations {firstName} ! Votre dossier est validé, bienvenue parmi les Compagnons Solélia. Vous pouvez
+        désormais consulter les offres et démarrer vos missions.
+      </p>
+      <button
+        onClick={() => {
+          window.localStorage?.setItem(WELCOME_KEY, "1");
+          setHidden(true);
+        }}
+        className="mt-2 text-sm font-bold underline"
+      >
+        Fermer
+      </button>
+    </div>
+  );
+}
 type CompanionApplicationRow = Database["public"]["Tables"]["companion_applications"]["Row"];
 
 const DEMO_KEY = "solelia-companion-demo";
@@ -1644,6 +1671,9 @@ function StudentFlow() {
             Quitter
           </button>
         </div>
+      )}
+      {!demo && myApp.data?.status === "approved" && (
+        <CompanionWelcomeBanner firstName={myApp.data.first_name} />
       )}
       <button
         onClick={() => setOnline((v) => !v)}
@@ -2042,6 +2072,18 @@ const DOC_COLUMN: Record<DocKey, DocColumn> = {
   hostId: "host_id_path",
 };
 
+/** Mots-clés permettant de mettre en rouge les pièces citées dans le motif du Mandataire */
+const DOC_KEYWORDS: Record<DocKey, string[]> = {
+  idCard: ["identité", "identite", "cni", "passeport"],
+  studentCard: ["situation", "étudiante", "etudiante", "contrat", "retraite", "france travail"],
+  criminalRecord: ["casier", "judiciaire", "b3", "bulletin"],
+  iban: ["rib", "iban", "banc"],
+  addressProof: ["domicile", "adresse"],
+  hostAttestation: ["attestation", "hébergement", "hebergement"],
+  hostAddressProof: ["domicile de l'hébergeur", "domicile de l'hebergeur", "hébergeur", "hebergeur"],
+  hostId: ["identité de l'hébergeur", "identite de l'hebergeur"],
+};
+
 /** Masque le NIR côté Compagnon : 1 ** ** ** *** *** ** */
 function maskNir(v: string) {
   const d = v.replace(/\D/g, "");
@@ -2132,20 +2174,27 @@ function StudentEnroll({
     return <p className="flex-1 grid place-items-center text-muted-foreground">Chargement…</p>;
   }
 
-  if (app?.status === "rejected" && step === "intro") {
+  if ((app?.status === "changes_requested" || app?.status === "rejected") && step === "intro") {
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
-        <div className="text-6xl">❌</div>
-        <h2 className="text-2xl font-black">Candidature refusée</h2>
-        <p className="text-base text-muted-foreground">Malheureusement votre dossier n'a pas été retenu.</p>
+        <div className="text-6xl">📝</div>
+        <h2 className="text-2xl font-black">Dossier à compléter</h2>
+        <p className="text-base text-muted-foreground text-left">
+          Bonjour ! Votre inscription auprès de Solélia est presque finalisée. Afin de pouvoir valider votre profil et
+          vous permettre de démarrer vos interventions, notre équipe a besoin de quelques ajustements sur votre dossier.
+        </p>
         {app.reject_reason && (
           <div className="w-full bg-destructive/10 border-2 border-destructive/40 rounded-2xl p-4 text-left">
-            <p className="text-sm font-bold text-destructive">Motif</p>
+            <p className="text-sm font-bold text-destructive">Note de notre équipe</p>
             <p className="text-sm mt-1">{app.reject_reason}</p>
           </div>
         )}
+        <p className="text-base text-muted-foreground text-left">
+          Nous vous invitons à mettre à jour la ou les pièces concernées ci-après pour que nous puissions valider votre
+          candidature. À très bientôt !
+        </p>
         <button onClick={() => setStep("form")} className="btn-huge bg-primary text-primary-foreground">
-          Refaire une candidature
+          Mettre à jour mon dossier
         </button>
       </div>
     );
@@ -2349,6 +2398,9 @@ function StudentEnroll({
 
   // Un document déjà transmis lors d'une candidature précédente reste valable
   const hasDoc = (k: DocKey) => !!p.docs[k] || !!app?.[DOC_COLUMN[k]];
+  const motif =
+    app?.status === "changes_requested" || app?.status === "rejected" ? (app.reject_reason ?? "").toLowerCase() : "";
+  const flagged = (k: DocKey) => !!motif && !p.docs[k] && DOC_KEYWORDS[k].some((w) => motif.includes(w));
   const hasSelfie = !!p.selfie || !!app?.selfie_path;
   const allDocs = [...docs, ...housingDocs].every((d) => hasDoc(d.k));
   const nirDigits = p.nir.replace(/\D/g, "");
@@ -2522,7 +2574,7 @@ function StudentEnroll({
         <div className="flex flex-col gap-2">
           {[...docs, ...housingDocs].map((d) => (
             <div key={d.k}>
-              <label className={`flex items-center gap-3 p-3 rounded-2xl border-2 cursor-pointer ${hasDoc(d.k) ? "border-success bg-success/5" : bad(hasDoc(d.k)) ? "border-destructive bg-destructive/5" : "border-border bg-card"}`}>
+              <label className={`flex items-center gap-3 p-3 rounded-2xl border-2 cursor-pointer ${flagged(d.k) || bad(hasDoc(d.k)) ? "border-destructive bg-destructive/5" : hasDoc(d.k) ? "border-success bg-success/5" : "border-border bg-card"}`}>
                 <span className="text-2xl">{d.icon}</span>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm">{d.label}</p>
@@ -2534,6 +2586,9 @@ function StudentEnroll({
                 <input type="file" accept="image/*,application/pdf" className="hidden" onChange={setDoc(d.k)} />
               </label>
               <Missing ok={hasDoc(d.k)} text="Pièce justificative obligatoire" />
+              {flagged(d.k) && (
+                <p className="text-xs font-bold text-destructive mt-1">Pièce à mettre à jour selon la note de l'équipe</p>
+              )}
             </div>
           ))}
         </div>

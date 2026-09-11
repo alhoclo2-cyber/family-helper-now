@@ -24,13 +24,27 @@ export const Route = createFileRoute("/_authenticated/mandataire")({
 });
 
 type App = Awaited<ReturnType<typeof listApplications>>[number];
-type Filter = "pending" | "approved" | "rejected" | "all";
+type Filter = "pending" | "changes_requested" | "approved" | "all";
 
 const STATUS_LABEL: Record<string, string> = {
   pending: "⏳ En attente",
+  changes_requested: "📝 À compléter",
   approved: "✅ Validé",
-  rejected: "❌ Refusé",
+  rejected: "📝 À compléter",
 };
+
+const APP_URL = "https://id-preview--7fa03864-dcca-451b-8ec4-d161c6f9b537.lovable.app";
+
+function mailtoLink(app: App, reason: string) {
+  const isApproved = app.status === "approved";
+  const subject = isApproved
+    ? "Solélia — Bienvenue dans l'aventure !"
+    : "Solélia — Action requise sur votre dossier";
+  const body = isApproved
+    ? `Félicitations ${app.first_name} ! Votre dossier est validé : vous faites désormais officiellement partie des Compagnons Solélia. Vous pouvez dès à présent vous connecter à votre espace pour découvrir les offres et réaliser vos premières missions : ${APP_URL}\n\nBienvenue dans l'équipe,\nL'équipe Solélia`
+    : `Bonjour ${app.first_name},\n\nDe légers ajustements sont nécessaires pour valider votre profil.\n\nMotif : ${reason || app.reject_reason || ""}\n\nMerci de mettre à jour vos pièces sur votre espace : ${APP_URL}\n\nL'équipe Solélia`;
+  return `mailto:${encodeURIComponent(app.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
 
 function MandatairePage() {
   const navigate = useNavigate();
@@ -119,13 +133,14 @@ function Dashboard() {
   const current = all.find((a) => a.id === selected);
   if (current) return <Detail app={current} onBack={() => setSelected(null)} />;
 
-  const shown = filter === "all" ? all : all.filter((a) => a.status === filter);
-  const count = (s: string) => all.filter((a) => a.status === s).length;
+  const norm = (s: string) => (s === "rejected" ? "changes_requested" : s);
+  const shown = filter === "all" ? all : all.filter((a) => norm(a.status) === filter);
+  const count = (s: string) => all.filter((a) => norm(a.status) === s).length;
 
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-3 gap-2 text-center">
-        {(["pending", "approved", "rejected"] as const).map((s) => (
+        {(["pending", "changes_requested", "approved"] as const).map((s) => (
           <button
             key={s}
             onClick={() => setFilter(s)}
@@ -148,25 +163,29 @@ function Dashboard() {
         </p>
       )}
       {shown.map((a) => (
-        <button
-          key={a.id}
-          onClick={() => setSelected(a.id)}
-          className="rounded-2xl border-2 border-border bg-card p-4 text-left flex gap-3 items-center"
-        >
-          <DocThumb path={a.selfie_path} size={56} rounded />
-          <div className="flex-1 min-w-0">
-            <div className="font-bold text-base truncate">
-              {a.first_name} {a.last_name}
+        <div key={a.id} className="rounded-2xl border-2 border-border bg-card p-4 flex flex-col gap-3">
+          <button onClick={() => setSelected(a.id)} className="text-left flex gap-3 items-center">
+            <DocThumb path={a.selfie_path} size={56} rounded />
+            <div className="flex-1 min-w-0">
+              <div className="font-bold text-base truncate">
+                {a.first_name} {a.last_name}
+              </div>
+              <div className="text-sm text-muted-foreground truncate">
+                {a.situation ?? "—"} · {a.city}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {new Date(a.created_at).toLocaleDateString("fr-FR")}
+              </div>
             </div>
-            <div className="text-sm text-muted-foreground truncate">
-              {a.situation ?? "—"} · {a.city}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {new Date(a.created_at).toLocaleDateString("fr-FR")}
-            </div>
-          </div>
-          <span className="text-xs font-bold whitespace-nowrap">{STATUS_LABEL[a.status]}</span>
-        </button>
+            <span className="text-xs font-bold whitespace-nowrap">{STATUS_LABEL[a.status]}</span>
+          </button>
+          <a
+            href={mailtoLink(a, a.reject_reason ?? "")}
+            className="text-sm font-bold text-primary underline"
+          >
+            ✉️ Envoyer l'email
+          </a>
+        </div>
       ))}
     </div>
   );
@@ -247,7 +266,7 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
   const [reason, setReason] = useState(app.reject_reason ?? "");
   const [err, setErr] = useState<string | null>(null);
   const mut = useMutation({
-    mutationFn: (v: { status: "pending" | "approved" | "rejected"; rejectReason?: string }) =>
+    mutationFn: (v: { status: "pending" | "approved" | "changes_requested"; rejectReason?: string }) =>
       review({ data: { id: app.id, ...v } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["applications"] }),
     onError: (e: Error) => setErr(e.message),
@@ -305,8 +324,10 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
       )}
       <DocCard label="🤳 Selfie" path={app.selfie_path} />
 
-      {app.status === "rejected" && app.reject_reason && (
-        <p className="text-sm rounded-2xl bg-secondary p-3">Motif du refus : {app.reject_reason}</p>
+      {app.reject_reason && (
+        <p className="text-sm rounded-2xl bg-secondary p-3">
+          Note envoyée au compagnon : {app.reject_reason}
+        </p>
       )}
 
       {err && <p className="text-sm text-destructive text-center">{err}</p>}
@@ -320,23 +341,27 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
           ✅ Valider la candidature
         </button>
       )}
-      {app.status !== "rejected" && (
-        <div className="flex flex-col gap-2">
-          <textarea
-            placeholder="Motif du refus (obligatoire)"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            className={inputCls + " min-h-20"}
-          />
-          <button
-            disabled={mut.isPending || !reason.trim()}
-            onClick={() => mut.mutate({ status: "rejected", rejectReason: reason })}
-            className="btn-huge bg-destructive text-destructive-foreground disabled:opacity-50"
-          >
-            ❌ Refuser
-          </button>
-        </div>
-      )}
+      <div className="flex flex-col gap-2">
+        <textarea
+          placeholder="Motif des corrections demandées (10 caractères minimum)"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          className={inputCls + " min-h-20"}
+        />
+        <button
+          disabled={mut.isPending || reason.trim().length < 10}
+          onClick={() => mut.mutate({ status: "changes_requested", rejectReason: reason })}
+          className="btn-huge bg-warning text-warning-foreground disabled:opacity-50"
+        >
+          📝 Demander des corrections
+        </button>
+      </div>
+      <a
+        href={mailtoLink(app, reason)}
+        className="py-4 rounded-2xl border-2 border-primary text-primary font-bold text-center"
+      >
+        ✉️ Envoyer l'email
+      </a>
       {app.status !== "pending" && (
         <button
           disabled={mut.isPending}
