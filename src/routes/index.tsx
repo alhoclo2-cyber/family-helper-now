@@ -81,7 +81,7 @@ function Header({ mode, setMode, session }: { mode: Mode; setMode: (m: Mode) => 
           className="h-10 w-10 rounded-2xl object-cover"
         />
         <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-black leading-none">Solélia</h1>
+          <h1 className="text-xl font-black leading-none">Solélia Accompagnement</h1>
           <p className="text-xs text-muted-foreground mt-0.5">Présence et accompagnement à domicile</p>
         </div>
         {session ? (
