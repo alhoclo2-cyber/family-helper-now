@@ -2398,6 +2398,9 @@ function StudentEnroll({
 
   // Un document déjà transmis lors d'une candidature précédente reste valable
   const hasDoc = (k: DocKey) => !!p.docs[k] || !!app?.[DOC_COLUMN[k]];
+  const motif =
+    app?.status === "changes_requested" || app?.status === "rejected" ? (app.reject_reason ?? "").toLowerCase() : "";
+  const flagged = (k: DocKey) => !!motif && !p.docs[k] && DOC_KEYWORDS[k].some((w) => motif.includes(w));
   const hasSelfie = !!p.selfie || !!app?.selfie_path;
   const allDocs = [...docs, ...housingDocs].every((d) => hasDoc(d.k));
   const nirDigits = p.nir.replace(/\D/g, "");
