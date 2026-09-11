@@ -1672,6 +1672,9 @@ function StudentFlow() {
           </button>
         </div>
       )}
+      {!demo && myApp.data?.status === "approved" && (
+        <CompanionWelcomeBanner firstName={myApp.data.first_name} />
+      )}
       <button
         onClick={() => setOnline((v) => !v)}
         className={`btn-huge ${online ? "bg-success text-success-foreground" : "bg-muted text-foreground"}`}
