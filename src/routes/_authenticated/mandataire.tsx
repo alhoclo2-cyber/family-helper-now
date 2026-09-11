@@ -320,8 +320,10 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
       )}
       <DocCard label="🤳 Selfie" path={app.selfie_path} />
 
-      {app.status === "rejected" && app.reject_reason && (
-        <p className="text-sm rounded-2xl bg-secondary p-3">Motif du refus : {app.reject_reason}</p>
+      {app.reject_reason && (
+        <p className="text-sm rounded-2xl bg-secondary p-3">
+          Note envoyée au compagnon : {app.reject_reason}
+        </p>
       )}
 
       {err && <p className="text-sm text-destructive text-center">{err}</p>}
@@ -335,23 +337,27 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
           ✅ Valider la candidature
         </button>
       )}
-      {app.status !== "rejected" && (
-        <div className="flex flex-col gap-2">
-          <textarea
-            placeholder="Motif du refus (obligatoire)"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            className={inputCls + " min-h-20"}
-          />
-          <button
-            disabled={mut.isPending || !reason.trim()}
-            onClick={() => mut.mutate({ status: "rejected", rejectReason: reason })}
-            className="btn-huge bg-destructive text-destructive-foreground disabled:opacity-50"
-          >
-            ❌ Refuser
-          </button>
-        </div>
-      )}
+      <div className="flex flex-col gap-2">
+        <textarea
+          placeholder="Motif des corrections demandées (10 caractères minimum)"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          className={inputCls + " min-h-20"}
+        />
+        <button
+          disabled={mut.isPending || reason.trim().length < 10}
+          onClick={() => mut.mutate({ status: "changes_requested", rejectReason: reason })}
+          className="btn-huge bg-warning text-warning-foreground disabled:opacity-50"
+        >
+          📝 Demander des corrections
+        </button>
+      </div>
+      <a
+        href={mailtoLink(app, reason)}
+        className="py-4 rounded-2xl border-2 border-primary text-primary font-bold text-center"
+      >
+        ✉️ Envoyer l'email
+      </a>
       {app.status !== "pending" && (
         <button
           disabled={mut.isPending}
