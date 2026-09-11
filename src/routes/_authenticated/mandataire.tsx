@@ -163,25 +163,29 @@ function Dashboard() {
         </p>
       )}
       {shown.map((a) => (
-        <button
-          key={a.id}
-          onClick={() => setSelected(a.id)}
-          className="rounded-2xl border-2 border-border bg-card p-4 text-left flex gap-3 items-center"
-        >
-          <DocThumb path={a.selfie_path} size={56} rounded />
-          <div className="flex-1 min-w-0">
-            <div className="font-bold text-base truncate">
-              {a.first_name} {a.last_name}
+        <div key={a.id} className="rounded-2xl border-2 border-border bg-card p-4 flex flex-col gap-3">
+          <button onClick={() => setSelected(a.id)} className="text-left flex gap-3 items-center">
+            <DocThumb path={a.selfie_path} size={56} rounded />
+            <div className="flex-1 min-w-0">
+              <div className="font-bold text-base truncate">
+                {a.first_name} {a.last_name}
+              </div>
+              <div className="text-sm text-muted-foreground truncate">
+                {a.situation ?? "—"} · {a.city}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {new Date(a.created_at).toLocaleDateString("fr-FR")}
+              </div>
             </div>
-            <div className="text-sm text-muted-foreground truncate">
-              {a.situation ?? "—"} · {a.city}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {new Date(a.created_at).toLocaleDateString("fr-FR")}
-            </div>
-          </div>
-          <span className="text-xs font-bold whitespace-nowrap">{STATUS_LABEL[a.status]}</span>
-        </button>
+            <span className="text-xs font-bold whitespace-nowrap">{STATUS_LABEL[a.status]}</span>
+          </button>
+          <a
+            href={mailtoLink(a, a.reject_reason ?? "")}
+            className="text-sm font-bold text-primary underline"
+          >
+            ✉️ Envoyer l'email
+          </a>
+        </div>
       ))}
     </div>
   );
