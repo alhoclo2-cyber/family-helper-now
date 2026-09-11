@@ -1561,7 +1561,34 @@ function PaymentScreen({ student, hours, onDone, onBack }: { student: string; ho
 
 /* ---------------- STUDENT ---------------- */
 
-type EnrollStatus = "none" | "pending" | "approved" | "rejected";
+type EnrollStatus = "none" | "pending" | "approved" | "rejected" | "changes_requested";
+
+const WELCOME_KEY = "solelia-companion-welcome-dismissed";
+
+function CompanionWelcomeBanner({ firstName }: { firstName: string }) {
+  const [hidden, setHidden] = useState(true);
+  useEffect(() => {
+    setHidden(window.localStorage?.getItem(WELCOME_KEY) === "1");
+  }, []);
+  if (hidden) return null;
+  return (
+    <div className="rounded-2xl border-2 border-success/50 bg-success/10 p-4">
+      <p className="text-base font-bold">
+        🎉 Félicitations {firstName} ! Votre dossier est validé, bienvenue parmi les Compagnons Solélia. Vous pouvez
+        désormais consulter les offres et démarrer vos missions.
+      </p>
+      <button
+        onClick={() => {
+          window.localStorage?.setItem(WELCOME_KEY, "1");
+          setHidden(true);
+        }}
+        className="mt-2 text-sm font-bold underline"
+      >
+        Fermer
+      </button>
+    </div>
+  );
+}
 type CompanionApplicationRow = Database["public"]["Tables"]["companion_applications"]["Row"];
 
 const DEMO_KEY = "solelia-companion-demo";
