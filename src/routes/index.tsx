@@ -2586,6 +2586,9 @@ function StudentEnroll({
                 <input type="file" accept="image/*,application/pdf" className="hidden" onChange={setDoc(d.k)} />
               </label>
               <Missing ok={hasDoc(d.k)} text="Pièce justificative obligatoire" />
+              {flagged(d.k) && (
+                <p className="text-xs font-bold text-destructive mt-1">Pièce à mettre à jour selon la note de l'équipe</p>
+              )}
             </div>
           ))}
         </div>
