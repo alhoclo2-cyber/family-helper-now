@@ -2072,6 +2072,18 @@ const DOC_COLUMN: Record<DocKey, DocColumn> = {
   hostId: "host_id_path",
 };
 
+/** Mots-clés permettant de mettre en rouge les pièces citées dans le motif du Mandataire */
+const DOC_KEYWORDS: Record<DocKey, string[]> = {
+  idCard: ["identité", "identite", "cni", "passeport"],
+  studentCard: ["situation", "étudiante", "etudiante", "contrat", "retraite", "france travail"],
+  criminalRecord: ["casier", "judiciaire", "b3", "bulletin"],
+  iban: ["rib", "iban", "banc"],
+  addressProof: ["domicile", "adresse"],
+  hostAttestation: ["attestation", "hébergement", "hebergement"],
+  hostAddressProof: ["domicile de l'hébergeur", "domicile de l'hebergeur", "hébergeur", "hebergeur"],
+  hostId: ["identité de l'hébergeur", "identite de l'hebergeur"],
+};
+
 /** Masque le NIR côté Compagnon : 1 ** ** ** *** *** ** */
 function maskNir(v: string) {
   const d = v.replace(/\D/g, "");
