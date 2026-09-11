@@ -2574,7 +2574,7 @@ function StudentEnroll({
         <div className="flex flex-col gap-2">
           {[...docs, ...housingDocs].map((d) => (
             <div key={d.k}>
-              <label className={`flex items-center gap-3 p-3 rounded-2xl border-2 cursor-pointer ${hasDoc(d.k) ? "border-success bg-success/5" : bad(hasDoc(d.k)) ? "border-destructive bg-destructive/5" : "border-border bg-card"}`}>
+              <label className={`flex items-center gap-3 p-3 rounded-2xl border-2 cursor-pointer ${flagged(d.k) || bad(hasDoc(d.k)) ? "border-destructive bg-destructive/5" : hasDoc(d.k) ? "border-success bg-success/5" : "border-border bg-card"}`}>
                 <span className="text-2xl">{d.icon}</span>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm">{d.label}</p>
