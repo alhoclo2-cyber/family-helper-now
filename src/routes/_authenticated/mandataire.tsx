@@ -24,13 +24,27 @@ export const Route = createFileRoute("/_authenticated/mandataire")({
 });
 
 type App = Awaited<ReturnType<typeof listApplications>>[number];
-type Filter = "pending" | "approved" | "rejected" | "all";
+type Filter = "pending" | "changes_requested" | "approved" | "all";
 
 const STATUS_LABEL: Record<string, string> = {
   pending: "⏳ En attente",
+  changes_requested: "📝 À compléter",
   approved: "✅ Validé",
-  rejected: "❌ Refusé",
+  rejected: "📝 À compléter",
 };
+
+const APP_URL = "https://id-preview--7fa03864-dcca-451b-8ec4-d161c6f9b537.lovable.app";
+
+function mailtoLink(app: App, reason: string) {
+  const isApproved = app.status === "approved";
+  const subject = isApproved
+    ? "Solélia — Bienvenue dans l'aventure !"
+    : "Solélia — Action requise sur votre dossier";
+  const body = isApproved
+    ? `Félicitations ${app.first_name} ! Votre dossier est validé : vous faites désormais officiellement partie des Compagnons Solélia. Vous pouvez dès à présent vous connecter à votre espace pour découvrir les offres et réaliser vos premières missions : ${APP_URL}\n\nBienvenue dans l'équipe,\nL'équipe Solélia`
+    : `Bonjour ${app.first_name},\n\nDe légers ajustements sont nécessaires pour valider votre profil.\n\nMotif : ${reason || app.reject_reason || ""}\n\nMerci de mettre à jour vos pièces sur votre espace : ${APP_URL}\n\nL'équipe Solélia`;
+  return `mailto:${encodeURIComponent(app.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
 
 function MandatairePage() {
   const navigate = useNavigate();
