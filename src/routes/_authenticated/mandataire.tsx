@@ -133,13 +133,14 @@ function Dashboard() {
   const current = all.find((a) => a.id === selected);
   if (current) return <Detail app={current} onBack={() => setSelected(null)} />;
 
-  const shown = filter === "all" ? all : all.filter((a) => a.status === filter);
-  const count = (s: string) => all.filter((a) => a.status === s).length;
+  const norm = (s: string) => (s === "rejected" ? "changes_requested" : s);
+  const shown = filter === "all" ? all : all.filter((a) => norm(a.status) === filter);
+  const count = (s: string) => all.filter((a) => norm(a.status) === s).length;
 
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-3 gap-2 text-center">
-        {(["pending", "approved", "rejected"] as const).map((s) => (
+        {(["pending", "changes_requested", "approved"] as const).map((s) => (
           <button
             key={s}
             onClick={() => setFilter(s)}
