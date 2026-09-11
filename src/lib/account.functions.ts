@@ -109,11 +109,15 @@ export const getDocumentUrl = createServerFn({ method: "POST" })
 export const reviewApplication = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    (input: { id: string; status: "pending" | "approved" | "rejected"; rejectReason?: string }) => {
-      if (!input?.id || !["pending", "approved", "rejected"].includes(input.status))
+    (input: {
+      id: string;
+      status: "pending" | "approved" | "changes_requested";
+      rejectReason?: string;
+    }) => {
+      if (!input?.id || !["pending", "approved", "changes_requested"].includes(input.status))
         throw new Error("Données invalides");
-      if (input.status === "rejected" && !input.rejectReason?.trim())
-        throw new Error("Motif de refus requis");
+      if (input.status === "changes_requested" && (input.rejectReason?.trim().length ?? 0) < 10)
+        throw new Error("Merci de préciser le motif (10 caractères minimum).");
       return input;
     },
   )
