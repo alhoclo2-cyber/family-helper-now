@@ -343,19 +343,19 @@ function FamilyFlow() {
           </span>
         </button>
         <div className="w-full bg-success/10 border-2 border-success/40 rounded-2xl p-4 text-left">
-          <p className="text-sm font-bold text-success text-center">💳 Paiement CESU+ & Crédit d'Impôt (SAP)</p>
+          <p className="text-sm font-bold text-success text-center">💳 Solélia, votre mandataire</p>
           <ul className="text-xs text-muted-foreground mt-2 space-y-1 list-disc pl-4">
             <li>
-              <b className="text-foreground">Service à la Personne (SAP)</b> : vous bénéficiez de 50 % de crédit d'impôt sur l'ensemble de vos prestations.
+              <b className="text-foreground">Frais de service uniques</b> : {formatPrice(SERVICE_FEE)} € par mission,
+              quels que soient la durée et le compagnon choisi.
             </li>
             <li>
-              <b className="text-foreground">Avance Immédiate (CESU+)</b> : dès que le compte du compagnon est validé par l'URSSAF, vous ne payez que la moitié du tarif à la commande.
+              <b className="text-foreground">Vous êtes particulier employeur</b> : le salaire net conseillé est de{" "}
+              {formatPrice(DEFAULT_HOURLY_RATE)} €/h (congés payés inclus) et reste modifiable.
             </li>
             <li>
-              <b className="text-foreground">1ʳᵉ mission avec un nouveau compagnon</b> : règlement au tarif plein le temps que l'URSSAF crée son compte (délai de 2 à 4 semaines). Vos 50 % seront déduits lors de votre déclaration d'impôts.
-            </li>
-            <li>
-              <b className="text-foreground">Zéro démarche</b> : nous gérons l'ensemble des déclarations URSSAF. Votre attestation fiscale annuelle est disponible chaque janvier sur votre compte.
+              <b className="text-foreground">Zéro démarche</b> : Solélia transmet les déclarations à l'URSSAF.
+              Votre attestation fiscale officielle est délivrée par l'URSSAF.
             </li>
           </ul>
         </div>
@@ -740,7 +740,7 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
         <div>
           <label className="block text-lg font-bold mb-2">Durée souhaitée</label>
           <p className="text-sm text-muted-foreground mb-3">
-            Le tarif de base couvre 1 heure. Ajoutez du temps si besoin.
+            Indiquez le temps d'intervention souhaité.
           </p>
           <div className="grid grid-cols-4 gap-2">
             {[1, 2, 3, 4].map((h) => (
@@ -756,17 +756,13 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
               </button>
             ))}
           </div>
-          <p className="text-sm text-muted-foreground mt-2">
-            Estimation : <b>{formatPrice(computePrice(durationHours).total)} €</b>
-            {durationHours <= 1 ? " (tarif forfaitaire 1h, tout compris)" : ` (${durationHours}h × 26 €, tout compris)`}
-          </p>
-          <TaxCreditHint total={computePrice(durationHours).total} className="mt-1" />
+          <ServiceFeeHint className="mt-2" />
         </div>
       )}
       {!hasDuration && need !== "Retrait ou dépôt d'un colis" && (
         <div className="bg-accent rounded-2xl p-3 text-sm">
-          Tarif : <b>{formatPrice(BASE_RATE)} €</b> (forfait 1h, tout compris)
-          <TaxCreditHint total={BASE_RATE} className="mt-1" />
+          Frais de service Solélia : <b>{formatPrice(SERVICE_FEE)} €</b> (forfait fixe)
+          <ServiceFeeHint className="mt-1" />
         </div>
       )}
       {need === "Retrait ou dépôt d'un colis" && (
@@ -1162,21 +1158,22 @@ function FamilyWait({
   const accepted = request.status === "accepted" && request.student;
 
   const hours = request?.durationHours ?? 1;
-  const { total } = computePrice(hours);
 
   if (accepted && showPay && !paid) {
     return (
       <PaymentScreen
-        student={request.student!.firstName}
+        companion={request.student!}
         hours={hours}
-        onDone={() => {
+        onDone={(salaireNetHoraire) => {
           addOrderToAccount({
             id: request.id,
             date: Date.now(),
             need: request.need,
             address: request.address,
             hours,
-            total,
+            serviceFee: SERVICE_FEE,
+            salaireNetHoraire,
+            cesuActive: request.student!.cesuActive,
             studentName: request.student!.firstName,
           });
           setPaid(true);
