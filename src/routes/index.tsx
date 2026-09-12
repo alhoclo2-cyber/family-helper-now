@@ -1449,56 +1449,93 @@ function FamilyWait({
   );
 }
 
-function PaymentScreen({ student, hours, onDone, onBack }: { student: string; hours: number; onDone: () => void; onBack: () => void }) {
+function PaymentScreen({
+  companion,
+  hours,
+  onDone,
+  onBack,
+}: {
+  companion: Companion;
+  hours: number;
+  onDone: (salaireNetHoraire: number) => void;
+  onBack: () => void;
+}) {
   const [method, setMethod] = useState<"card" | "apple" | "paypal">("card");
   const [processing, setProcessing] = useState(false);
   const [card, setCard] = useState("");
   const [exp, setExp] = useState("");
   const [cvc, setCvc] = useState("");
-  const { total, intervention } = computePrice(hours);
+  const [salaire, setSalaire] = useState(String(companion.hourlyRate ?? DEFAULT_HOURLY_RATE).replace(".", ","));
+  const salaireNum = Number(salaire.replace(",", ".")) || 0;
 
   const pay = (e: React.FormEvent) => {
     e.preventDefault();
     setProcessing(true);
-    setTimeout(() => onDone(), 1500);
+    setTimeout(() => onDone(salaireNum), 1500);
   };
 
   return (
     <form onSubmit={pay} className="flex-1 flex flex-col px-5 py-6 gap-5">
       <button type="button" onClick={onBack} className="text-base text-muted-foreground text-left">← Retour</button>
       <div>
-        <h2 className="text-2xl font-black">Paiement</h2>
-        <p className="text-base text-muted-foreground mt-1">Mission acceptée par {student}</p>
+        <h2 className="text-2xl font-black">Récapitulatif</h2>
+        <p className="text-base text-muted-foreground mt-1">Mission acceptée par {companion.firstName}</p>
       </div>
 
       <div className="bg-card rounded-2xl p-5 border-2 border-border">
-        <div className="flex justify-between text-base">
-          <span className="text-muted-foreground">
-            Intervention {hours <= 1 ? "(forfait 1h)" : `(${hours}h × 26 €)`}
-          </span>
-          <span className="font-semibold">{formatPrice(intervention)} €</span>
+        <label className="block text-base font-bold">Salaire net horaire</label>
+        <p className="text-xs text-muted-foreground mt-1">
+          Salaire net conseillé (congés payés inclus). En tant que particulier employeur, vous pouvez modifier ce
+          montant.
+        </p>
+        <div className="flex items-center gap-2 mt-3">
+          <input
+            value={salaire}
+            onChange={(e) => setSalaire(e.target.value)}
+            inputMode="decimal"
+            className="flex-1 px-5 py-4 rounded-2xl border-2 border-border bg-background text-lg focus:border-primary outline-none"
+          />
+          <span className="text-lg font-bold">€/h</span>
         </div>
-        <div className="h-px bg-border my-3" />
-        <div className="flex justify-between text-base font-bold">
-          <span>Coût total de la mission</span>
-          <span>{formatPrice(total)} €</span>
+        <p className="text-xs text-muted-foreground mt-2">
+          Durée prévue : {hours}h — salaire estimé {formatPrice(salaireNum * hours)} €
+        </p>
+        <div className="h-px bg-border my-4" />
+        <div className="flex justify-between text-xl font-black">
+          <span>À régler aujourd'hui</span>
+          <span>{formatPrice(SERVICE_FEE)} €</span>
         </div>
-        <div className="flex justify-between text-sm mt-2">
-          <span className="text-muted-foreground">Crédit d'impôt SAP (50 %) déduit immédiatement</span>
-          <span className="font-semibold text-success">– {formatPrice(computePrice(hours).credit)} €</span>
-        </div>
-        <div className="h-px bg-border my-3" />
-        <div className="mt-1 bg-success/10 border-2 border-success/40 rounded-xl p-3">
-          <div className="flex justify-between text-xl font-black">
-            <span className="text-success">À payer aujourd'hui</span>
-            <span className="text-success">{formatPrice(computePrice(hours).dueNow)} €</span>
-          </div>
-          <p className="text-[11px] text-muted-foreground mt-1">
-            Paiement en CESU préfinancé — vous ne réglez que 50 % du montant à la commande. Attestation fiscale
-            envoyée chaque janvier.
+        <p className="text-[11px] text-muted-foreground mt-1">
+          Frais de service mandataire Solélia — forfait fixe, quelle que soit la durée.
+        </p>
+      </div>
+
+      {companion.cesuActive ? (
+        <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-4 text-left">
+          <p className="text-sm font-black text-success">
+            ✅ Votre compagnon est agréé CESU+ Avance Immédiate !
+          </p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Vous réglez aujourd'hui {formatPrice(SERVICE_FEE)} € de frais de service. Grâce à l'Avance Immédiate de
+            l'URSSAF, vous bénéficiez automatiquement de vos 50 % de crédit d'impôt. L'URSSAF prélèvera directement sur
+            votre compte, sous 48 à 72h après la mission, le reste à charge estimé de la prestation (montant calculé
+            lors du prélèvement URSSAF), et versera la rémunération à votre compagnon. Vous n'avez aucun salaire à lui
+            verser la main à la main.
           </p>
         </div>
-      </div>
+      ) : (
+        <div className="bg-accent border-2 border-primary rounded-2xl p-4 text-left">
+          <p className="text-sm font-black">⏳ Votre compagnon est en cours d'activation CESU+</p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Vous réglez aujourd'hui {formatPrice(SERVICE_FEE)} € de frais de service. Ce compagnon finalise son compte
+            CESU+ : pour cette mission, vous réglerez directement son salaire conseillé de{" "}
+            <b className="text-foreground">{formatPrice(salaireNum * hours)} €</b> sur place le jour de l'intervention
+            (espèces, chèque ou virement immédiat). Solélia transmet la déclaration à l'URSSAF ; vous bénéficierez de
+            vos 50 % de déduction fiscale lors de votre déclaration d'impôts annuelle.
+          </p>
+        </div>
+      )}
+
 
       <div className="grid grid-cols-3 gap-2">
         {([
