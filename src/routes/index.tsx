@@ -2825,8 +2825,8 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
                     {o.studentName && <p className="text-xs mt-1">🎓 {o.studentName}</p>}
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="font-black">{formatPrice(o.total)} €</p>
-                    <p className="text-[11px] text-success">–50 % SAP</p>
+                    <p className="font-black">{formatPrice(o.serviceFee)} €</p>
+                    <p className="text-[11px] text-muted-foreground">frais de service</p>
                   </div>
                 </div>
               </div>
