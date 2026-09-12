@@ -184,7 +184,9 @@ type Order = {
   need: NeedType;
   address: string;
   hours: number;
-  total: number;
+  serviceFee: number; // frais de service réglés sur la plateforme
+  salaireNetHoraire: number; // salaire net horaire retenu par le client
+  cesuActive: boolean; // statut CESU+ du compagnon au moment de la réservation
   studentName?: string;
 };
 
@@ -232,10 +234,11 @@ function addOrderToAccount(order: Order) {
   saveFamilyAccount({ ...a, orders: [order, ...a.orders] });
 }
 
-function TaxCreditHint({ total, className = "" }: { total: number; className?: string }) {
+function ServiceFeeHint({ className = "" }: { className?: string }) {
   return (
     <div className={`text-xs text-muted-foreground ${className}`}>
-      💚 Vous ne payez que <b className="text-success">{formatPrice(total * (1 - TAX_CREDIT_RATE))} €</b> à la commande (crédit d'impôt SAP –50 % déduit immédiatement)
+      💚 Vous réglez uniquement <b className="text-success">{formatPrice(SERVICE_FEE)} €</b> de frais de service sur
+      Solélia. Le salaire du compagnon est fixé et réglé séparément.
     </div>
   );
 }
