@@ -2664,8 +2664,8 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
           </p>
         </div>
         <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-3 text-sm">
-          💳 <b>CESU préfinancé</b> — crédit d'impôt SAP de 50 % déduit immédiatement : vous ne réglez que la moitié
-          du tarif, et retrouvez votre attestation fiscale annuelle ici.
+          💳 <b>Modèle mandataire</b> — {formatPrice(SERVICE_FEE)} € de frais de service par mission. Votre
+          attestation fiscale officielle est délivrée par l'URSSAF.
         </div>
         <input
           required
@@ -2701,14 +2701,13 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
 
   if (showYear !== null) {
     const orders = byYear.get(showYear) ?? [];
-    const totalYear = orders.reduce((s, o) => s + o.total, 0);
-    const creditYear = totalYear * TAX_CREDIT_RATE;
+    const feesYear = orders.reduce((s, o) => s + o.serviceFee, 0);
     return (
       <div className="flex-1 flex flex-col px-5 py-6 gap-4">
         <button onClick={() => setShowYear(null)} className="text-base text-muted-foreground text-left">← Retour au compte</button>
         <div>
-          <h2 className="text-2xl font-black">Récapitulatif fiscal {showYear}</h2>
-          <p className="text-sm text-muted-foreground mt-1">Attestation Services à la Personne</p>
+          <h2 className="text-2xl font-black">Missions {showYear}</h2>
+          <p className="text-sm text-muted-foreground mt-1">Frais de service réglés sur Solélia</p>
         </div>
         <div className="bg-card rounded-2xl p-5 border-2 border-border">
           <p className="text-sm text-muted-foreground">Titulaire</p>
@@ -2717,21 +2716,15 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
         </div>
         <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-5">
           <div className="flex justify-between text-base">
-            <span className="text-muted-foreground">Total dépensé en {showYear}</span>
-            <span className="font-black">{formatPrice(totalYear)} €</span>
+            <span className="text-muted-foreground">Frais de service en {showYear}</span>
+            <span className="font-black">{formatPrice(feesYear)} €</span>
           </div>
           <div className="flex justify-between text-base mt-2">
             <span className="text-muted-foreground">Nombre de missions</span>
             <span className="font-semibold">{orders.length}</span>
           </div>
           <div className="h-px bg-success/30 my-3" />
-          <div className="flex justify-between text-lg font-black text-success">
-            <span>💰 Crédit d'impôt (50 %)</span>
-            <span>{formatPrice(creditYear)} €</span>
-          </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            Montant à reporter sur votre déclaration de revenus (case 7DB) pour bénéficier du crédit d'impôt SAP.
-          </p>
+          <p className="text-sm font-bold">Votre attestation fiscale officielle est délivrée par l'URSSAF.</p>
         </div>
         <div>
           <p className="font-bold mb-2">Détail des missions</p>
@@ -2740,10 +2733,14 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
               <div key={o.id} className="bg-card rounded-xl p-3 border-2 border-border text-sm">
                 <div className="flex justify-between font-semibold">
                   <span>{o.need}</span>
-                  <span>{formatPrice(o.total)} €</span>
+                  <span>{formatPrice(o.serviceFee)} €</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {new Date(o.date).toLocaleDateString("fr-FR")} · {o.address}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Salaire net retenu : {formatPrice(o.salaireNetHoraire)} €/h · {o.hours}h ·{" "}
+                  {o.cesuActive ? "CESU+ Avance Immédiate" : "Salaire réglé sur place"}
                 </p>
               </div>
             ))}
@@ -2753,7 +2750,7 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
     );
   }
 
-  const totalAll = account.orders.reduce((s, o) => s + o.total, 0);
+  const totalAll = account.orders.reduce((s, o) => s + o.serviceFee, 0);
   const currentYear = new Date().getFullYear();
 
   return (
@@ -2772,22 +2769,24 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
       <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-4">
         <p className="text-sm font-bold text-success">🇫🇷 Services à la personne</p>
         <p className="text-xs text-muted-foreground mt-1">
-          Total dépensé : <b className="text-foreground">{formatPrice(totalAll)} €</b> ·
-          Crédit d'impôt estimé : <b className="text-success">{formatPrice(totalAll * TAX_CREDIT_RATE)} €</b>
+          Frais de service réglés : <b className="text-foreground">{formatPrice(totalAll)} €</b>
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Votre attestation fiscale officielle est délivrée par l'URSSAF.
         </p>
       </div>
 
       <div>
-        <p className="font-bold mb-2">📊 Récapitulatif fiscal annuel</p>
+        <p className="font-bold mb-2">📊 Historique par année</p>
         {years.length === 0 ? (
           <div className="bg-card rounded-2xl p-4 border-2 border-border text-sm text-muted-foreground text-center">
-            Vous n'avez pas encore de commande. Votre récapitulatif {currentYear} sera généré automatiquement en janvier {currentYear + 1}.
+            Vous n'avez pas encore de commande.
           </div>
         ) : (
           <div className="flex flex-col gap-2">
             {years.map((y) => {
               const orders = byYear.get(y)!;
-              const total = orders.reduce((s, o) => s + o.total, 0);
+              const total = orders.reduce((s, o) => s + o.serviceFee, 0);
               return (
                 <button
                   key={y}
