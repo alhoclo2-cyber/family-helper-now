@@ -25,13 +25,15 @@ export type Companion = {
   distanceKm: number;
   radiusKm: number;
   city: string;
+  cesuActive: boolean; // compte CESU+ Avance Immédiate actif
+  hourlyRate: number; // salaire net horaire conseillé (congés payés inclus)
 };
 
 export const COMPANIONS: Companion[] = [
-  { id: "c1", firstName: "Léa", photo: "https://i.pravatar.cc/200?img=47", rating: 4.9, missions: 8, thumbs: 7, distanceKm: 1.2, radiusKm: 3, city: "Paris" },
-  { id: "c2", firstName: "Thomas", photo: "https://i.pravatar.cc/200?img=12", rating: 4.8, missions: 34, thumbs: 29, distanceKm: 2.4, radiusKm: 5, city: "Paris" },
-  { id: "c3", firstName: "Camille", photo: "https://i.pravatar.cc/200?img=32", rating: 5.0, missions: 96, thumbs: 88, distanceKm: 4.1, radiusKm: 8, city: "Paris" },
-  { id: "c4", firstName: "Malik", photo: "https://i.pravatar.cc/200?img=15", rating: 4.9, missions: 212, thumbs: 197, distanceKm: 2.9, radiusKm: 6, city: "Paris" },
+  { id: "c1", firstName: "Léa", photo: "https://i.pravatar.cc/200?img=47", rating: 4.9, missions: 8, thumbs: 7, distanceKm: 1.2, radiusKm: 3, city: "Paris", cesuActive: true, hourlyRate: 11.5 },
+  { id: "c2", firstName: "Thomas", photo: "https://i.pravatar.cc/200?img=12", rating: 4.8, missions: 34, thumbs: 29, distanceKm: 2.4, radiusKm: 5, city: "Paris", cesuActive: false, hourlyRate: 11.5 },
+  { id: "c3", firstName: "Camille", photo: "https://i.pravatar.cc/200?img=32", rating: 5.0, missions: 96, thumbs: 88, distanceKm: 4.1, radiusKm: 8, city: "Paris", cesuActive: true, hourlyRate: 11.5 },
+  { id: "c4", firstName: "Malik", photo: "https://i.pravatar.cc/200?img=15", rating: 4.9, missions: 212, thumbs: 197, distanceKm: 2.9, radiusKm: 6, city: "Paris", cesuActive: true, hourlyRate: 12 },
 ];
 
 export type ExperienceBadge = {

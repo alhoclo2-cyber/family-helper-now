@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useAccess, useSession } from "@/lib/auth";
 import { AuthCard } from "@/components/AuthCard";
-import { store, useStore, randomStudent, COMPANIONS, experienceBadge, type NeedType, type Request } from "@/lib/store";
+import { store, useStore, randomStudent, COMPANIONS, experienceBadge, type NeedType, type Request, type Companion } from "@/lib/store";
 import { CguAcceptBlock, CguPanel } from "@/components/Cgu";
 import { CesuRecurrenceModal } from "@/components/CesuRecurrence";
 import {
@@ -168,19 +168,9 @@ function formatSchedule(ts: number) {
   });
 }
 
-const BASE_RATE = 26; // tarif horaire TTC — paiement en CESU préfinancé
-const TAX_CREDIT_RATE = 0.5; // SAP : crédit d'impôt de 50 % (avance immédiate)
-
-function computePrice(hours: number) {
-  const total = hours <= 1 ? BASE_RATE : BASE_RATE * hours;
-  return {
-    total,
-    intervention: total,
-    afterCredit: total * (1 - TAX_CREDIT_RATE),
-    credit: total * TAX_CREDIT_RATE,
-    dueNow: total * (1 - TAX_CREDIT_RATE), // le client ne règle que 50 % à la commande
-  };
-}
+/** Modèle mandataire : seul montant réglé sur la plateforme */
+const SERVICE_FEE = 6; // frais de service mandataire Solélia (forfait fixe)
+const DEFAULT_HOURLY_RATE = 11.5; // salaire net horaire conseillé, congés payés inclus
 
 function formatPrice(n: number) {
   return n.toFixed(2).replace(".", ",");
@@ -194,7 +184,9 @@ type Order = {
   need: NeedType;
   address: string;
   hours: number;
-  total: number;
+  serviceFee: number; // frais de service réglés sur la plateforme
+  salaireNetHoraire: number; // salaire net horaire retenu par le client
+  cesuActive: boolean; // statut CESU+ du compagnon au moment de la réservation
   studentName?: string;
 };
 
@@ -242,10 +234,11 @@ function addOrderToAccount(order: Order) {
   saveFamilyAccount({ ...a, orders: [order, ...a.orders] });
 }
 
-function TaxCreditHint({ total, className = "" }: { total: number; className?: string }) {
+function ServiceFeeHint({ className = "" }: { className?: string }) {
   return (
     <div className={`text-xs text-muted-foreground ${className}`}>
-      💚 Vous ne payez que <b className="text-success">{formatPrice(total * (1 - TAX_CREDIT_RATE))} €</b> à la commande (crédit d'impôt SAP –50 % déduit immédiatement)
+      💚 Vous réglez uniquement <b className="text-success">{formatPrice(SERVICE_FEE)} €</b> de frais de service sur
+      Solélia. Le salaire du compagnon est fixé et réglé séparément.
     </div>
   );
 }
@@ -350,19 +343,19 @@ function FamilyFlow() {
           </span>
         </button>
         <div className="w-full bg-success/10 border-2 border-success/40 rounded-2xl p-4 text-left">
-          <p className="text-sm font-bold text-success text-center">💳 Paiement CESU+ & Crédit d'Impôt (SAP)</p>
+          <p className="text-sm font-bold text-success text-center">💳 Solélia, votre mandataire</p>
           <ul className="text-xs text-muted-foreground mt-2 space-y-1 list-disc pl-4">
             <li>
-              <b className="text-foreground">Service à la Personne (SAP)</b> : vous bénéficiez de 50 % de crédit d'impôt sur l'ensemble de vos prestations.
+              <b className="text-foreground">Frais de service uniques</b> : {formatPrice(SERVICE_FEE)} € par mission,
+              quels que soient la durée et le compagnon choisi.
             </li>
             <li>
-              <b className="text-foreground">Avance Immédiate (CESU+)</b> : dès que le compte du compagnon est validé par l'URSSAF, vous ne payez que la moitié du tarif à la commande.
+              <b className="text-foreground">Vous êtes particulier employeur</b> : le salaire net conseillé est de{" "}
+              {formatPrice(DEFAULT_HOURLY_RATE)} €/h (congés payés inclus) et reste modifiable.
             </li>
             <li>
-              <b className="text-foreground">1ʳᵉ mission avec un nouveau compagnon</b> : règlement au tarif plein le temps que l'URSSAF crée son compte (délai de 2 à 4 semaines). Vos 50 % seront déduits lors de votre déclaration d'impôts.
-            </li>
-            <li>
-              <b className="text-foreground">Zéro démarche</b> : nous gérons l'ensemble des déclarations URSSAF. Votre attestation fiscale annuelle est disponible chaque janvier sur votre compte.
+              <b className="text-foreground">Zéro démarche</b> : Solélia transmet les déclarations à l'URSSAF.
+              Votre attestation fiscale officielle est délivrée par l'URSSAF.
             </li>
           </ul>
         </div>
@@ -747,7 +740,7 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
         <div>
           <label className="block text-lg font-bold mb-2">Durée souhaitée</label>
           <p className="text-sm text-muted-foreground mb-3">
-            Le tarif de base couvre 1 heure. Ajoutez du temps si besoin.
+            Indiquez le temps d'intervention souhaité.
           </p>
           <div className="grid grid-cols-4 gap-2">
             {[1, 2, 3, 4].map((h) => (
@@ -763,17 +756,13 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
               </button>
             ))}
           </div>
-          <p className="text-sm text-muted-foreground mt-2">
-            Estimation : <b>{formatPrice(computePrice(durationHours).total)} €</b>
-            {durationHours <= 1 ? " (tarif forfaitaire 1h, tout compris)" : ` (${durationHours}h × 26 €, tout compris)`}
-          </p>
-          <TaxCreditHint total={computePrice(durationHours).total} className="mt-1" />
+          <ServiceFeeHint className="mt-2" />
         </div>
       )}
       {!hasDuration && need !== "Retrait ou dépôt d'un colis" && (
         <div className="bg-accent rounded-2xl p-3 text-sm">
-          Tarif : <b>{formatPrice(BASE_RATE)} €</b> (forfait 1h, tout compris)
-          <TaxCreditHint total={BASE_RATE} className="mt-1" />
+          Frais de service Solélia : <b>{formatPrice(SERVICE_FEE)} €</b> (forfait fixe)
+          <ServiceFeeHint className="mt-1" />
         </div>
       )}
       {need === "Retrait ou dépôt d'un colis" && (
@@ -1169,21 +1158,22 @@ function FamilyWait({
   const accepted = request.status === "accepted" && request.student;
 
   const hours = request?.durationHours ?? 1;
-  const { total } = computePrice(hours);
 
   if (accepted && showPay && !paid) {
     return (
       <PaymentScreen
-        student={request.student!.firstName}
+        companion={request.student!}
         hours={hours}
-        onDone={() => {
+        onDone={(salaireNetHoraire) => {
           addOrderToAccount({
             id: request.id,
             date: Date.now(),
             need: request.need,
             address: request.address,
             hours,
-            total,
+            serviceFee: SERVICE_FEE,
+            salaireNetHoraire,
+            cesuActive: request.student!.cesuActive,
             studentName: request.student!.firstName,
           });
           setPaid(true);
@@ -1419,14 +1409,14 @@ function FamilyWait({
             <>
               <div className="w-full bg-success/10 border-2 border-success/40 rounded-2xl p-3 text-left">
                 <p className="text-sm font-bold text-success">
-                  💚 Mission {formatPrice(total)} € — vous ne réglez que {formatPrice(computePrice(hours).dueNow)} € (crédit d'impôt SAP –50 % déduit)
+                  💚 Frais de service Solélia : {formatPrice(SERVICE_FEE)} € — seul montant réglé sur la plateforme
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Récapitulatif annuel disponible en janvier depuis votre compte.
+                  Le salaire de votre compagnon est fixé à l'étape suivante.
                 </p>
               </div>
               <button onClick={() => setShowPay(true)} className="btn-huge bg-primary text-primary-foreground w-full">
-                💳 Finaliser & payer — {formatPrice(computePrice(hours).dueNow)} €
+                💳 Finaliser — {formatPrice(SERVICE_FEE)} €
               </button>
               <p className="text-xs text-muted-foreground">
                 Les coordonnées du compagnon seront révélées après paiement.
@@ -1459,56 +1449,93 @@ function FamilyWait({
   );
 }
 
-function PaymentScreen({ student, hours, onDone, onBack }: { student: string; hours: number; onDone: () => void; onBack: () => void }) {
+function PaymentScreen({
+  companion,
+  hours,
+  onDone,
+  onBack,
+}: {
+  companion: Companion;
+  hours: number;
+  onDone: (salaireNetHoraire: number) => void;
+  onBack: () => void;
+}) {
   const [method, setMethod] = useState<"card" | "apple" | "paypal">("card");
   const [processing, setProcessing] = useState(false);
   const [card, setCard] = useState("");
   const [exp, setExp] = useState("");
   const [cvc, setCvc] = useState("");
-  const { total, intervention } = computePrice(hours);
+  const [salaire, setSalaire] = useState(String(companion.hourlyRate ?? DEFAULT_HOURLY_RATE).replace(".", ","));
+  const salaireNum = Number(salaire.replace(",", ".")) || 0;
 
   const pay = (e: React.FormEvent) => {
     e.preventDefault();
     setProcessing(true);
-    setTimeout(() => onDone(), 1500);
+    setTimeout(() => onDone(salaireNum), 1500);
   };
 
   return (
     <form onSubmit={pay} className="flex-1 flex flex-col px-5 py-6 gap-5">
       <button type="button" onClick={onBack} className="text-base text-muted-foreground text-left">← Retour</button>
       <div>
-        <h2 className="text-2xl font-black">Paiement</h2>
-        <p className="text-base text-muted-foreground mt-1">Mission acceptée par {student}</p>
+        <h2 className="text-2xl font-black">Récapitulatif</h2>
+        <p className="text-base text-muted-foreground mt-1">Mission acceptée par {companion.firstName}</p>
       </div>
 
       <div className="bg-card rounded-2xl p-5 border-2 border-border">
-        <div className="flex justify-between text-base">
-          <span className="text-muted-foreground">
-            Intervention {hours <= 1 ? "(forfait 1h)" : `(${hours}h × 26 €)`}
-          </span>
-          <span className="font-semibold">{formatPrice(intervention)} €</span>
+        <label className="block text-base font-bold">Salaire net horaire</label>
+        <p className="text-xs text-muted-foreground mt-1">
+          Salaire net conseillé (congés payés inclus). En tant que particulier employeur, vous pouvez modifier ce
+          montant.
+        </p>
+        <div className="flex items-center gap-2 mt-3">
+          <input
+            value={salaire}
+            onChange={(e) => setSalaire(e.target.value)}
+            inputMode="decimal"
+            className="flex-1 px-5 py-4 rounded-2xl border-2 border-border bg-background text-lg focus:border-primary outline-none"
+          />
+          <span className="text-lg font-bold">€/h</span>
         </div>
-        <div className="h-px bg-border my-3" />
-        <div className="flex justify-between text-base font-bold">
-          <span>Coût total de la mission</span>
-          <span>{formatPrice(total)} €</span>
+        <p className="text-xs text-muted-foreground mt-2">
+          Durée prévue : {hours}h — salaire estimé {formatPrice(salaireNum * hours)} €
+        </p>
+        <div className="h-px bg-border my-4" />
+        <div className="flex justify-between text-xl font-black">
+          <span>À régler aujourd'hui</span>
+          <span>{formatPrice(SERVICE_FEE)} €</span>
         </div>
-        <div className="flex justify-between text-sm mt-2">
-          <span className="text-muted-foreground">Crédit d'impôt SAP (50 %) déduit immédiatement</span>
-          <span className="font-semibold text-success">– {formatPrice(computePrice(hours).credit)} €</span>
-        </div>
-        <div className="h-px bg-border my-3" />
-        <div className="mt-1 bg-success/10 border-2 border-success/40 rounded-xl p-3">
-          <div className="flex justify-between text-xl font-black">
-            <span className="text-success">À payer aujourd'hui</span>
-            <span className="text-success">{formatPrice(computePrice(hours).dueNow)} €</span>
-          </div>
-          <p className="text-[11px] text-muted-foreground mt-1">
-            Paiement en CESU préfinancé — vous ne réglez que 50 % du montant à la commande. Attestation fiscale
-            envoyée chaque janvier.
+        <p className="text-[11px] text-muted-foreground mt-1">
+          Frais de service mandataire Solélia — forfait fixe, quelle que soit la durée.
+        </p>
+      </div>
+
+      {companion.cesuActive ? (
+        <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-4 text-left">
+          <p className="text-sm font-black text-success">
+            ✅ Votre compagnon est agréé CESU+ Avance Immédiate !
+          </p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Vous réglez aujourd'hui {formatPrice(SERVICE_FEE)} € de frais de service. Grâce à l'Avance Immédiate de
+            l'URSSAF, vous bénéficiez automatiquement de vos 50 % de crédit d'impôt. L'URSSAF prélèvera directement sur
+            votre compte, sous 48 à 72h après la mission, le reste à charge estimé de la prestation (montant calculé
+            lors du prélèvement URSSAF), et versera la rémunération à votre compagnon. Vous n'avez aucun salaire à lui
+            verser la main à la main.
           </p>
         </div>
-      </div>
+      ) : (
+        <div className="bg-accent border-2 border-primary rounded-2xl p-4 text-left">
+          <p className="text-sm font-black">⏳ Votre compagnon est en cours d'activation CESU+</p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Vous réglez aujourd'hui {formatPrice(SERVICE_FEE)} € de frais de service. Ce compagnon finalise son compte
+            CESU+ : pour cette mission, vous réglerez directement son salaire conseillé de{" "}
+            <b className="text-foreground">{formatPrice(salaireNum * hours)} €</b> sur place le jour de l'intervention
+            (espèces, chèque ou virement immédiat). Solélia transmet la déclaration à l'URSSAF ; vous bénéficierez de
+            vos 50 % de déduction fiscale lors de votre déclaration d'impôts annuelle.
+          </p>
+        </div>
+      )}
+
 
       <div className="grid grid-cols-3 gap-2">
         {([
@@ -1552,7 +1579,7 @@ function PaymentScreen({ student, hours, onDone, onBack }: { student: string; ho
 
       <div className="flex-1" />
       <button type="submit" disabled={processing} className="btn-huge bg-success text-success-foreground disabled:opacity-60">
-        {processing ? "Traitement…" : `Payer ${formatPrice(total)} €`}
+        {processing ? "Traitement…" : `Payer ${formatPrice(SERVICE_FEE)} € et confirmer la mission`}
       </button>
       <p className="text-xs text-muted-foreground text-center">🔒 Paiement sécurisé — démo</p>
     </form>
@@ -2637,8 +2664,8 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
           </p>
         </div>
         <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-3 text-sm">
-          💳 <b>CESU préfinancé</b> — crédit d'impôt SAP de 50 % déduit immédiatement : vous ne réglez que la moitié
-          du tarif, et retrouvez votre attestation fiscale annuelle ici.
+          💳 <b>Modèle mandataire</b> — {formatPrice(SERVICE_FEE)} € de frais de service par mission. Votre
+          attestation fiscale officielle est délivrée par l'URSSAF.
         </div>
         <input
           required
@@ -2674,14 +2701,13 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
 
   if (showYear !== null) {
     const orders = byYear.get(showYear) ?? [];
-    const totalYear = orders.reduce((s, o) => s + o.total, 0);
-    const creditYear = totalYear * TAX_CREDIT_RATE;
+    const feesYear = orders.reduce((s, o) => s + o.serviceFee, 0);
     return (
       <div className="flex-1 flex flex-col px-5 py-6 gap-4">
         <button onClick={() => setShowYear(null)} className="text-base text-muted-foreground text-left">← Retour au compte</button>
         <div>
-          <h2 className="text-2xl font-black">Récapitulatif fiscal {showYear}</h2>
-          <p className="text-sm text-muted-foreground mt-1">Attestation Services à la Personne</p>
+          <h2 className="text-2xl font-black">Missions {showYear}</h2>
+          <p className="text-sm text-muted-foreground mt-1">Frais de service réglés sur Solélia</p>
         </div>
         <div className="bg-card rounded-2xl p-5 border-2 border-border">
           <p className="text-sm text-muted-foreground">Titulaire</p>
@@ -2690,21 +2716,15 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
         </div>
         <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-5">
           <div className="flex justify-between text-base">
-            <span className="text-muted-foreground">Total dépensé en {showYear}</span>
-            <span className="font-black">{formatPrice(totalYear)} €</span>
+            <span className="text-muted-foreground">Frais de service en {showYear}</span>
+            <span className="font-black">{formatPrice(feesYear)} €</span>
           </div>
           <div className="flex justify-between text-base mt-2">
             <span className="text-muted-foreground">Nombre de missions</span>
             <span className="font-semibold">{orders.length}</span>
           </div>
           <div className="h-px bg-success/30 my-3" />
-          <div className="flex justify-between text-lg font-black text-success">
-            <span>💰 Crédit d'impôt (50 %)</span>
-            <span>{formatPrice(creditYear)} €</span>
-          </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            Montant à reporter sur votre déclaration de revenus (case 7DB) pour bénéficier du crédit d'impôt SAP.
-          </p>
+          <p className="text-sm font-bold">Votre attestation fiscale officielle est délivrée par l'URSSAF.</p>
         </div>
         <div>
           <p className="font-bold mb-2">Détail des missions</p>
@@ -2713,10 +2733,14 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
               <div key={o.id} className="bg-card rounded-xl p-3 border-2 border-border text-sm">
                 <div className="flex justify-between font-semibold">
                   <span>{o.need}</span>
-                  <span>{formatPrice(o.total)} €</span>
+                  <span>{formatPrice(o.serviceFee)} €</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {new Date(o.date).toLocaleDateString("fr-FR")} · {o.address}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Salaire net retenu : {formatPrice(o.salaireNetHoraire)} €/h · {o.hours}h ·{" "}
+                  {o.cesuActive ? "CESU+ Avance Immédiate" : "Salaire réglé sur place"}
                 </p>
               </div>
             ))}
@@ -2726,7 +2750,7 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
     );
   }
 
-  const totalAll = account.orders.reduce((s, o) => s + o.total, 0);
+  const totalAll = account.orders.reduce((s, o) => s + o.serviceFee, 0);
   const currentYear = new Date().getFullYear();
 
   return (
@@ -2745,22 +2769,24 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
       <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-4">
         <p className="text-sm font-bold text-success">🇫🇷 Services à la personne</p>
         <p className="text-xs text-muted-foreground mt-1">
-          Total dépensé : <b className="text-foreground">{formatPrice(totalAll)} €</b> ·
-          Crédit d'impôt estimé : <b className="text-success">{formatPrice(totalAll * TAX_CREDIT_RATE)} €</b>
+          Frais de service réglés : <b className="text-foreground">{formatPrice(totalAll)} €</b>
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Votre attestation fiscale officielle est délivrée par l'URSSAF.
         </p>
       </div>
 
       <div>
-        <p className="font-bold mb-2">📊 Récapitulatif fiscal annuel</p>
+        <p className="font-bold mb-2">📊 Historique par année</p>
         {years.length === 0 ? (
           <div className="bg-card rounded-2xl p-4 border-2 border-border text-sm text-muted-foreground text-center">
-            Vous n'avez pas encore de commande. Votre récapitulatif {currentYear} sera généré automatiquement en janvier {currentYear + 1}.
+            Vous n'avez pas encore de commande.
           </div>
         ) : (
           <div className="flex flex-col gap-2">
             {years.map((y) => {
               const orders = byYear.get(y)!;
-              const total = orders.reduce((s, o) => s + o.total, 0);
+              const total = orders.reduce((s, o) => s + o.serviceFee, 0);
               return (
                 <button
                   key={y}
@@ -2799,8 +2825,8 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
                     {o.studentName && <p className="text-xs mt-1">🎓 {o.studentName}</p>}
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="font-black">{formatPrice(o.total)} €</p>
-                    <p className="text-[11px] text-success">–50 % SAP</p>
+                    <p className="font-black">{formatPrice(o.serviceFee)} €</p>
+                    <p className="text-[11px] text-muted-foreground">frais de service</p>
                   </div>
                 </div>
               </div>
