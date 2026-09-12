@@ -168,19 +168,9 @@ function formatSchedule(ts: number) {
   });
 }
 
-const BASE_RATE = 26; // tarif horaire TTC — paiement en CESU préfinancé
-const TAX_CREDIT_RATE = 0.5; // SAP : crédit d'impôt de 50 % (avance immédiate)
-
-function computePrice(hours: number) {
-  const total = hours <= 1 ? BASE_RATE : BASE_RATE * hours;
-  return {
-    total,
-    intervention: total,
-    afterCredit: total * (1 - TAX_CREDIT_RATE),
-    credit: total * TAX_CREDIT_RATE,
-    dueNow: total * (1 - TAX_CREDIT_RATE), // le client ne règle que 50 % à la commande
-  };
-}
+/** Modèle mandataire : seul montant réglé sur la plateforme */
+const SERVICE_FEE = 6; // frais de service mandataire Solélia (forfait fixe)
+const DEFAULT_HOURLY_RATE = 11.5; // salaire net horaire conseillé, congés payés inclus
 
 function formatPrice(n: number) {
   return n.toFixed(2).replace(".", ",");
