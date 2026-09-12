@@ -1409,14 +1409,14 @@ function FamilyWait({
             <>
               <div className="w-full bg-success/10 border-2 border-success/40 rounded-2xl p-3 text-left">
                 <p className="text-sm font-bold text-success">
-                  💚 Mission {formatPrice(total)} € — vous ne réglez que {formatPrice(computePrice(hours).dueNow)} € (crédit d'impôt SAP –50 % déduit)
+                  💚 Frais de service Solélia : {formatPrice(SERVICE_FEE)} € — seul montant réglé sur la plateforme
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Récapitulatif annuel disponible en janvier depuis votre compte.
+                  Le salaire de votre compagnon est fixé à l'étape suivante.
                 </p>
               </div>
               <button onClick={() => setShowPay(true)} className="btn-huge bg-primary text-primary-foreground w-full">
-                💳 Finaliser & payer — {formatPrice(computePrice(hours).dueNow)} €
+                💳 Finaliser — {formatPrice(SERVICE_FEE)} €
               </button>
               <p className="text-xs text-muted-foreground">
                 Les coordonnées du compagnon seront révélées après paiement.
