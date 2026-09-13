@@ -1164,15 +1164,18 @@ function FamilyWait({
   request,
   simulateNoAnswer,
   onSimulateNoAnswer,
+  onEditRequest,
   onDone,
 }: {
   request: Request | undefined;
   simulateNoAnswer: boolean;
   onSimulateNoAnswer: (v: boolean) => void;
+  onEditRequest: () => void;
   onDone: () => void;
 }) {
   const [paid, setPaid] = useState(false);
   const [showPay, setShowPay] = useState(false);
+  const [salaireDraft, setSalaireDraft] = useState<string | null>(null);
   const [restartedAt, setRestartedAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
@@ -1180,6 +1183,16 @@ function FamilyWait({
     const i = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(i);
   }, []);
+
+  // Après paiement confirmé : le retour arrière du navigateur ramène à l'accueil,
+  // jamais sur le formulaire ou l'écran de paiement.
+  useEffect(() => {
+    if (!paid) return;
+    window.history.pushState({ soleliaPaid: true }, "");
+    const onPop = () => onDone();
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [paid]);
 
   if (!request) return null;
   if (request.status === "cancelled") {
