@@ -257,6 +257,7 @@ function FamilyFlow() {
   const [step, setStep] = useState<"home" | "form" | "wait" | "account">("home");
   const [requestMode, setRequestMode] = useState<"asap" | "scheduled">("asap");
   const [simulateNoAnswer, setSimulateNoAnswer] = useState(false);
+  const [editRequest, setEditRequest] = useState<Request | null>(null);
   const currentId = useStore((s) => s.currentRequestId);
   const current = useStore((s) => s.requests.find((r) => r.id === s.currentRequestId));
   const account = useFamilyAccount();
@@ -379,7 +380,11 @@ function FamilyFlow() {
     if (!session)
       return (
         <div className="flex-1 flex flex-col px-5 py-6 gap-4">
-          <button type="button" onClick={() => setStep("home")} className="text-base text-muted-foreground text-left">
+          <button
+            type="button"
+            onClick={() => (editRequest ? (setEditRequest(null), setStep("wait")) : setStep("home"))}
+            className="text-base text-muted-foreground text-left"
+          >
             ← Retour
           </button>
           <AuthCard
@@ -389,7 +394,15 @@ function FamilyFlow() {
           />
         </div>
       );
-    return <FamilyForm mode={requestMode} onSubmit={() => setStep("wait")} onBack={() => setStep("home")} />;
+    return (
+      <FamilyForm
+        mode={editRequest ? (editRequest.scheduledAt ? "scheduled" : "asap") : requestMode}
+        initial={editRequest}
+        editId={editRequest?.id}
+        onSubmit={() => { setEditRequest(null); setStep("wait"); }}
+        onBack={() => (editRequest ? (setEditRequest(null), setStep("wait")) : setStep("home"))}
+      />
+    );
   }
 
   return (
@@ -397,7 +410,8 @@ function FamilyFlow() {
       request={current}
       simulateNoAnswer={simulateNoAnswer}
       onSimulateNoAnswer={setSimulateNoAnswer}
-      onDone={() => { store.clearCurrent(); setSimulateNoAnswer(false); setStep("home"); }}
+      onEditRequest={() => { if (current) { setEditRequest(current); setStep("form"); } }}
+      onDone={() => { store.clearCurrent(); setSimulateNoAnswer(false); setEditRequest(null); setStep("home"); }}
     />
   );
 }
