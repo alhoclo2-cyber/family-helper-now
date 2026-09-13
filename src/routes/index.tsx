@@ -1552,7 +1552,7 @@ function PaymentScreen({
         <div className="flex items-center gap-2 mt-3">
           <input
             value={salaire}
-            onChange={(e) => setSalaire(e.target.value)}
+            onChange={(e) => onSalaire(e.target.value)}
             inputMode="decimal"
             className="flex-1 px-5 py-4 rounded-2xl border-2 border-border bg-background text-lg focus:border-primary outline-none"
           />
