@@ -1510,11 +1510,15 @@ function FamilyWait({
 function PaymentScreen({
   companion,
   hours,
+  salaire,
+  onSalaire,
   onDone,
   onBack,
 }: {
   companion: Companion;
   hours: number;
+  salaire: string; // contrôlé par l'écran parent : conservé en cas de navigation arrière
+  onSalaire: (v: string) => void;
   onDone: (salaireNetHoraire: number) => void;
   onBack: () => void;
 }) {
@@ -1523,7 +1527,6 @@ function PaymentScreen({
   const [card, setCard] = useState("");
   const [exp, setExp] = useState("");
   const [cvc, setCvc] = useState("");
-  const [salaire, setSalaire] = useState(formatPrice(companion.hourlyRate ?? DEFAULT_HOURLY_RATE));
   const salaireNum = Number(salaire.replace(",", ".")) || 0;
 
   const pay = (e: React.FormEvent) => {
