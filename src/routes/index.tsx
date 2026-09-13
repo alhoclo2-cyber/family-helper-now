@@ -1220,6 +1220,8 @@ function FamilyWait({
       <PaymentScreen
         companion={request.student!}
         hours={hours}
+        salaire={salaireDraft ?? formatPrice(request.student!.hourlyRate ?? DEFAULT_HOURLY_RATE)}
+        onSalaire={setSalaireDraft}
         onDone={(salaireNetHoraire) => {
           addOrderToAccount({
             id: request.id,
