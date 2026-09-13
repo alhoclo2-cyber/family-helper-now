@@ -534,6 +534,8 @@ function FamilyForm({
       continuityCertified:
         isOutdoor ? continuity : need === "Compagnie/Présence" && commissions.length > 0 ? commissionCertified : undefined,
     });
+    // En cas de modification, l'ancienne demande est remplacée par la nouvelle.
+    if (editId) store.discardRequest(editId);
     onSubmit();
   };
 
