@@ -172,6 +172,14 @@ function formatSchedule(ts: number) {
 const SERVICE_FEE = 6; // frais de service mandataire Solélia (forfait fixe)
 const DEFAULT_HOURLY_RATE = 11.5; // salaire net horaire conseillé, congés payés inclus
 
+/**
+ * Anticipation du statut SAP : à passer à `true` manuellement une fois le
+ * numéro de déclaration SAP obtenu. Tant que false, aucun crédit d'impôt
+ * n'est calculé ni affiché sur les frais de service.
+ */
+const sapDeclarationActive = false;
+const SAP_DECLARATION_NUMBER = "SAP-EN-COURS"; // numéro de déclaration SAP (à renseigner)
+
 function formatPrice(n: number) {
   return n.toFixed(2).replace(".", ",");
 }
@@ -1465,7 +1473,7 @@ function PaymentScreen({
   const [card, setCard] = useState("");
   const [exp, setExp] = useState("");
   const [cvc, setCvc] = useState("");
-  const [salaire, setSalaire] = useState(String(companion.hourlyRate ?? DEFAULT_HOURLY_RATE).replace(".", ","));
+  const [salaire, setSalaire] = useState(formatPrice(companion.hourlyRate ?? DEFAULT_HOURLY_RATE));
   const salaireNum = Number(salaire.replace(",", ".")) || 0;
 
   const pay = (e: React.FormEvent) => {
