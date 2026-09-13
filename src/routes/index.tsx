@@ -2797,6 +2797,8 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
         </p>
       </div>
 
+      <AttestationFiscaleBlock account={account} currentYear={currentYear} />
+
       <div>
         <p className="font-bold mb-2">📊 Historique par année</p>
         {years.length === 0 ? (
