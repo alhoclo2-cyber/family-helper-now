@@ -257,6 +257,7 @@ function FamilyFlow() {
   const [step, setStep] = useState<"home" | "form" | "wait" | "account">("home");
   const [requestMode, setRequestMode] = useState<"asap" | "scheduled">("asap");
   const [simulateNoAnswer, setSimulateNoAnswer] = useState(false);
+  const [editRequest, setEditRequest] = useState<Request | null>(null);
   const currentId = useStore((s) => s.currentRequestId);
   const current = useStore((s) => s.requests.find((r) => r.id === s.currentRequestId));
   const account = useFamilyAccount();
@@ -379,7 +380,11 @@ function FamilyFlow() {
     if (!session)
       return (
         <div className="flex-1 flex flex-col px-5 py-6 gap-4">
-          <button type="button" onClick={() => setStep("home")} className="text-base text-muted-foreground text-left">
+          <button
+            type="button"
+            onClick={() => (editRequest ? (setEditRequest(null), setStep("wait")) : setStep("home"))}
+            className="text-base text-muted-foreground text-left"
+          >
             ← Retour
           </button>
           <AuthCard
@@ -389,7 +394,15 @@ function FamilyFlow() {
           />
         </div>
       );
-    return <FamilyForm mode={requestMode} onSubmit={() => setStep("wait")} onBack={() => setStep("home")} />;
+    return (
+      <FamilyForm
+        mode={editRequest ? (editRequest.scheduledAt ? "scheduled" : "asap") : requestMode}
+        initial={editRequest}
+        editId={editRequest?.id}
+        onSubmit={() => { setEditRequest(null); setStep("wait"); }}
+        onBack={() => (editRequest ? (setEditRequest(null), setStep("wait")) : setStep("home"))}
+      />
+    );
   }
 
   return (
@@ -397,22 +410,42 @@ function FamilyFlow() {
       request={current}
       simulateNoAnswer={simulateNoAnswer}
       onSimulateNoAnswer={setSimulateNoAnswer}
-      onDone={() => { store.clearCurrent(); setSimulateNoAnswer(false); setStep("home"); }}
+      onEditRequest={() => { if (current) { setEditRequest(current); setStep("form"); } }}
+      onDone={() => { store.clearCurrent(); setSimulateNoAnswer(false); setEditRequest(null); setStep("home"); }}
     />
   );
 }
 
 
-function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; onSubmit: () => void; onBack: () => void }) {
-  const [need, setNeed] = useState<NeedType>("Compagnie/Présence");
-  const [address, setAddress] = useState("");
-  const [phone, setPhone] = useState("");
-  const [durationHours, setDurationHours] = useState<number>(1);
-  const [parcelWeight, setParcelWeight] = useState<string>("moins de 2 kg");
-  const [parcelSize, setParcelSize] = useState<string>("Petit (enveloppe / boîte à chaussures)");
+function FamilyForm({
+  mode,
+  onSubmit,
+  onBack,
+  initial,
+  editId,
+}: {
+  mode: "asap" | "scheduled";
+  onSubmit: () => void;
+  onBack: () => void;
+  initial?: Request | null; // demande existante à modifier (données pré-remplies)
+  editId?: string; // id de la demande remplacée à la validation
+}) {
+  // Extraction des commissions stockées dans extraInfo lors d'une édition
+  const parsed = (() => {
+    const text = initial?.extraInfo ?? "";
+    const m = text.match(/^Commissions demandées dans le prolongement de la présence : (.*)(?:\n([\s\S]*))?$/);
+    if (!m) return { commissions: [] as string[], rest: text };
+    return { commissions: m[1].split(", ").filter(Boolean), rest: (m[2] ?? "").trim() };
+  })();
+  const [need, setNeed] = useState<NeedType>(initial?.need ?? "Compagnie/Présence");
+  const [address, setAddress] = useState(initial?.address ?? "");
+  const [phone, setPhone] = useState(initial?.phone ?? "");
+  const [durationHours, setDurationHours] = useState<number>(initial?.durationHours ?? 1);
+  const [parcelWeight, setParcelWeight] = useState<string>(initial?.parcelWeight ?? "moins de 2 kg");
+  const [parcelSize, setParcelSize] = useState<string>(initial?.parcelSize ?? "Petit (enveloppe / boîte à chaussures)");
   // default schedule: today + 2h, rounded to next hour
   const defaultSched = () => {
-    const d = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    const d = new Date(initial?.scheduledAt ?? Date.now() + 2 * 60 * 60 * 1000);
     d.setMinutes(0, 0, 0);
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -424,25 +457,25 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   })();
 
-  const [autoSearch, setAutoSearch] = useState(true);
-  const [pickedCompanion, setPickedCompanion] = useState<string>("");
+  const [autoSearch, setAutoSearch] = useState(initial?.autoSearch ?? true);
+  const [pickedCompanion, setPickedCompanion] = useState<string>(initial?.preferredCompanionId ?? "");
 
-  const [childLevel, setChildLevel] = useState<string>("Primaire");
-  const [childClass, setChildClass] = useState<string>("");
-  const [childAge, setChildAge] = useState<string>("");
-  const [childrenCount, setChildrenCount] = useState<string>("1 enfant");
-  const [escortDestination, setEscortDestination] = useState<string>("À l'école");
-  const [escortDetail, setEscortDetail] = useState<string>("");
-  const [otherDetail, setOtherDetail] = useState<string>("");
-  const [extraInfo, setExtraInfo] = useState<string>("");
-  const [continuity, setContinuity] = useState(false);
+  const [childLevel, setChildLevel] = useState<string>(initial?.childLevel ?? "Primaire");
+  const [childClass, setChildClass] = useState<string>(initial?.childClass ?? "");
+  const [childAge, setChildAge] = useState<string>(initial?.childAge ?? "");
+  const [childrenCount, setChildrenCount] = useState<string>(initial?.childrenCount ?? "1 enfant");
+  const [escortDestination, setEscortDestination] = useState<string>(initial?.escortDestination ?? "À l'école");
+  const [escortDetail, setEscortDetail] = useState<string>(initial?.escortDetail ?? "");
+  const [otherDetail, setOtherDetail] = useState<string>(initial?.otherDetail ?? "");
+  const [extraInfo, setExtraInfo] = useState<string>(parsed.rest);
+  const [continuity, setContinuity] = useState(initial?.continuityCertified ?? false);
   const [cguOk, setCguOk] = useState(false);
   const [testRecurrence, setTestRecurrence] = useState(false);
   const [showCesuAlert, setShowCesuAlert] = useState(false);
   const [companionName, setCompanionName] = useState("Léa");
   // Commissions extérieures rattachées à une présence à domicile (conformité SAP)
-  const [commissions, setCommissions] = useState<string[]>([]);
-  const [commissionCertified, setCommissionCertified] = useState(false);
+  const [commissions, setCommissions] = useState<string[]>(parsed.commissions);
+  const [commissionCertified, setCommissionCertified] = useState(parsed.commissions.length > 0);
 
   const needs: { v: NeedType; icon: string }[] = [
     { v: "Compagnie/Présence", icon: "🤝" },
@@ -515,6 +548,8 @@ function FamilyForm({ mode, onSubmit, onBack }: { mode: "asap" | "scheduled"; on
       continuityCertified:
         isOutdoor ? continuity : need === "Compagnie/Présence" && commissions.length > 0 ? commissionCertified : undefined,
     });
+    // En cas de modification, l'ancienne demande est remplacée par la nouvelle.
+    if (editId) store.discardRequest(editId);
     onSubmit();
   };
 
@@ -1129,15 +1164,18 @@ function FamilyWait({
   request,
   simulateNoAnswer,
   onSimulateNoAnswer,
+  onEditRequest,
   onDone,
 }: {
   request: Request | undefined;
   simulateNoAnswer: boolean;
   onSimulateNoAnswer: (v: boolean) => void;
+  onEditRequest: () => void;
   onDone: () => void;
 }) {
   const [paid, setPaid] = useState(false);
   const [showPay, setShowPay] = useState(false);
+  const [salaireDraft, setSalaireDraft] = useState<string | null>(null);
   const [restartedAt, setRestartedAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
@@ -1145,6 +1183,16 @@ function FamilyWait({
     const i = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(i);
   }, []);
+
+  // Après paiement confirmé : le retour arrière du navigateur ramène à l'accueil,
+  // jamais sur le formulaire ou l'écran de paiement.
+  useEffect(() => {
+    if (!paid) return;
+    window.history.pushState({ soleliaPaid: true }, "");
+    const onPop = () => onDone();
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [paid]);
 
   if (!request) return null;
   if (request.status === "cancelled") {
@@ -1172,6 +1220,8 @@ function FamilyWait({
       <PaymentScreen
         companion={request.student!}
         hours={hours}
+        salaire={salaireDraft ?? formatPrice(request.student!.hourlyRate ?? DEFAULT_HOURLY_RATE)}
+        onSalaire={setSalaireDraft}
         onDone={(salaireNetHoraire) => {
           addOrderToAccount({
             id: request.id,
@@ -1362,6 +1412,13 @@ function FamilyWait({
               🧪 Simuler l'absence de réponse ({isSos ? "30 min" : "2 h"})
             </button>
           )}
+          <button
+            type="button"
+            onClick={onEditRequest}
+            className="py-4 rounded-2xl border-2 border-primary text-primary font-bold text-sm w-full"
+          >
+            ← Modifier ma demande
+          </button>
           <button onClick={onDone} className="text-base text-muted-foreground underline">
             Retour à l'accueil
           </button>
@@ -1449,6 +1506,15 @@ function FamilyWait({
             </>
           )}
           {!!request.scheduledAt && <ScheduleManageBlock request={request} paid={paid} />}
+          {!paid && (
+            <button
+              type="button"
+              onClick={onEditRequest}
+              className="py-4 rounded-2xl border-2 border-primary text-primary font-bold text-sm w-full"
+            >
+              ← Modifier ma demande
+            </button>
+          )}
           <button onClick={onDone} className="text-base text-muted-foreground underline">Terminer</button>
         </>
       )}
@@ -1460,11 +1526,15 @@ function FamilyWait({
 function PaymentScreen({
   companion,
   hours,
+  salaire,
+  onSalaire,
   onDone,
   onBack,
 }: {
   companion: Companion;
   hours: number;
+  salaire: string; // contrôlé par l'écran parent : conservé en cas de navigation arrière
+  onSalaire: (v: string) => void;
   onDone: (salaireNetHoraire: number) => void;
   onBack: () => void;
 }) {
@@ -1473,7 +1543,6 @@ function PaymentScreen({
   const [card, setCard] = useState("");
   const [exp, setExp] = useState("");
   const [cvc, setCvc] = useState("");
-  const [salaire, setSalaire] = useState(formatPrice(companion.hourlyRate ?? DEFAULT_HOURLY_RATE));
   const salaireNum = Number(salaire.replace(",", ".")) || 0;
 
   const pay = (e: React.FormEvent) => {
@@ -1499,7 +1568,7 @@ function PaymentScreen({
         <div className="flex items-center gap-2 mt-3">
           <input
             value={salaire}
-            onChange={(e) => setSalaire(e.target.value)}
+            onChange={(e) => onSalaire(e.target.value)}
             inputMode="decimal"
             className="flex-1 px-5 py-4 rounded-2xl border-2 border-border bg-background text-lg focus:border-primary outline-none"
           />
