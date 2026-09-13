@@ -1508,6 +1508,19 @@ function PaymentScreen({
         <p className="text-xs text-muted-foreground mt-2">
           Durée prévue : {hours}h — salaire estimé {formatPrice(salaireNum * hours)} €
         </p>
+        <p className="text-xs text-muted-foreground mt-2">
+          ⚖️ En tant que particulier employeur, vous ne pouvez pas rémunérer en dessous du SMIC horaire net (congés
+          payés inclus).{" "}
+          <a
+            href="https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/montant-smic.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline font-semibold text-primary"
+          >
+            Consultez le taux en vigueur sur le site de l'URSSAF
+          </a>
+          .
+        </p>
         <div className="h-px bg-border my-4" />
         <div className="flex justify-between text-xl font-black">
           <span>À régler aujourd'hui</span>
