@@ -191,6 +191,11 @@ export const store = {
     };
     emit();
   },
+  // Supprime silencieusement une demande (remplacée par une version modifiée).
+  discardRequest: (id: string) => {
+    state = { ...state, requests: state.requests.filter((r) => r.id !== id) };
+    emit();
+  },
   acknowledgeRequest: (id: string) => {
     state = {
       ...state,
