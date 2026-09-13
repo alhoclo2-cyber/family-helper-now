@@ -172,6 +172,14 @@ function formatSchedule(ts: number) {
 const SERVICE_FEE = 6; // frais de service mandataire Solélia (forfait fixe)
 const DEFAULT_HOURLY_RATE = 11.5; // salaire net horaire conseillé, congés payés inclus
 
+/**
+ * Anticipation du statut SAP : à passer à `true` manuellement une fois le
+ * numéro de déclaration SAP obtenu. Tant que false, aucun crédit d'impôt
+ * n'est calculé ni affiché sur les frais de service.
+ */
+const sapDeclarationActive = false;
+const SAP_DECLARATION_NUMBER = "SAP-EN-COURS"; // numéro de déclaration SAP (à renseigner)
+
 function formatPrice(n: number) {
   return n.toFixed(2).replace(".", ",");
 }
@@ -1465,7 +1473,7 @@ function PaymentScreen({
   const [card, setCard] = useState("");
   const [exp, setExp] = useState("");
   const [cvc, setCvc] = useState("");
-  const [salaire, setSalaire] = useState(String(companion.hourlyRate ?? DEFAULT_HOURLY_RATE).replace(".", ","));
+  const [salaire, setSalaire] = useState(formatPrice(companion.hourlyRate ?? DEFAULT_HOURLY_RATE));
   const salaireNum = Number(salaire.replace(",", ".")) || 0;
 
   const pay = (e: React.FormEvent) => {
@@ -1499,6 +1507,19 @@ function PaymentScreen({
         </div>
         <p className="text-xs text-muted-foreground mt-2">
           Durée prévue : {hours}h — salaire estimé {formatPrice(salaireNum * hours)} €
+        </p>
+        <p className="text-xs text-muted-foreground mt-2">
+          ⚖️ En tant que particulier employeur, vous ne pouvez pas rémunérer en dessous du SMIC horaire net (congés
+          payés inclus).{" "}
+          <a
+            href="https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/montant-smic.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline font-semibold text-primary"
+          >
+            Consultez le taux en vigueur sur le site de l'URSSAF
+          </a>
+          .
         </p>
         <div className="h-px bg-border my-4" />
         <div className="flex justify-between text-xl font-black">
@@ -2636,6 +2657,65 @@ function StudentEnroll({
   );
 }
 
+function AttestationFiscaleBlock({ account, currentYear }: { account: FamilyAccount; currentYear: number }) {
+  const [generating, setGenerating] = useState(false);
+  const yearOrders = account.orders.filter((o) => new Date(o.date).getFullYear() === currentYear);
+  const feesYear = yearOrders.reduce((s, o) => s + o.serviceFee, 0);
+
+  const downloadPdf = async () => {
+    setGenerating(true);
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF();
+      doc.setFontSize(18);
+      doc.text("Solélia Accompagnement", 20, 20);
+      doc.setFontSize(14);
+      doc.text(`Attestation fiscale — frais de service ${currentYear}`, 20, 34);
+      doc.setFontSize(11);
+      doc.text(`Titulaire : ${account.fullName}`, 20, 50);
+      doc.text(`Email : ${account.email}`, 20, 58);
+      doc.text(`Nombre de missions : ${yearOrders.length}`, 20, 72);
+      doc.text(`Total des frais de service réglés : ${formatPrice(feesYear)} EUR`, 20, 80);
+      doc.text(`Numéro de déclaration SAP : ${SAP_DECLARATION_NUMBER}`, 20, 88);
+      doc.setFontSize(9);
+      doc.text(
+        "Ces frais de service ouvrent droit à un crédit d'impôt de 50 % au titre des services à la personne.",
+        20,
+        100,
+      );
+      doc.save(`solelia-attestation-fiscale-${currentYear}.pdf`);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  return (
+    <div className="bg-card border-2 border-border rounded-2xl p-4">
+      <p className="text-sm font-bold">🧾 Attestation fiscale — frais de service Solélia</p>
+      <p className="text-xs text-muted-foreground mt-2">
+        Année {currentYear} : <b className="text-foreground">{yearOrders.length} mission(s)</b> ·{" "}
+        <b className="text-foreground">{formatPrice(feesYear)} €</b> de frais de service réglés.
+      </p>
+      {sapDeclarationActive && (
+        <>
+          <p className="text-xs text-muted-foreground mt-2">
+            Ces frais de service ouvrent droit à un crédit d'impôt de 50 %. Une attestation fiscale annuelle vous sera
+            transmise avant fin février.
+          </p>
+          <button
+            type="button"
+            onClick={downloadPdf}
+            disabled={generating}
+            className="mt-3 w-full py-3 rounded-2xl border-2 border-primary text-primary font-bold text-sm disabled:opacity-50"
+          >
+            {generating ? "Génération…" : "📄 Télécharger l'attestation (PDF)"}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
   const account = useFamilyAccount();
   const [fullName, setFullName] = useState("");
@@ -2775,6 +2855,8 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
           Votre attestation fiscale officielle est délivrée par l'URSSAF.
         </p>
       </div>
+
+      <AttestationFiscaleBlock account={account} currentYear={currentYear} />
 
       <div>
         <p className="font-bold mb-2">📊 Historique par année</p>
