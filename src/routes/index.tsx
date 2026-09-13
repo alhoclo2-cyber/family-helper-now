@@ -1412,6 +1412,13 @@ function FamilyWait({
               🧪 Simuler l'absence de réponse ({isSos ? "30 min" : "2 h"})
             </button>
           )}
+          <button
+            type="button"
+            onClick={onEditRequest}
+            className="py-4 rounded-2xl border-2 border-primary text-primary font-bold text-sm w-full"
+          >
+            ← Modifier ma demande
+          </button>
           <button onClick={onDone} className="text-base text-muted-foreground underline">
             Retour à l'accueil
           </button>
@@ -1499,6 +1506,15 @@ function FamilyWait({
             </>
           )}
           {!!request.scheduledAt && <ScheduleManageBlock request={request} paid={paid} />}
+          {!paid && (
+            <button
+              type="button"
+              onClick={onEditRequest}
+              className="py-4 rounded-2xl border-2 border-primary text-primary font-bold text-sm w-full"
+            >
+              ← Modifier ma demande
+            </button>
+          )}
           <button onClick={onDone} className="text-base text-muted-foreground underline">Terminer</button>
         </>
       )}
