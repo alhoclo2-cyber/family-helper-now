@@ -987,8 +987,8 @@ function FamilyForm({
                 </button>
               ))}
               <p className="text-xs text-muted-foreground">
-                Sans réponse du compagnon choisi sous 2 heures, nous vous proposerons un autre compagnon ou une
-                recherche automatique.
+                Sans réponse du compagnon choisi sous 4 h (ou 8 h si le rendez-vous est à plus de 48 h), nous vous
+                proposerons un autre compagnon ou une recherche automatique.
               </p>
             </div>
           )}
