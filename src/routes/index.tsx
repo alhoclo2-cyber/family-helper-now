@@ -1250,7 +1250,8 @@ function FamilyWait({
     : undefined;
   const startedAt = restartedAt ?? request.createdAt;
   const waited = now - startedAt;
-  const limit = preferred ? PREFERRED_TIMEOUT_MS : SOS_TIMEOUT_MS;
+  const limit = responseTimeoutMs(request);
+  const limitLabel = !request.scheduledAt ? "20 min" : limit === SCHEDULED_SOON_TIMEOUT_MS ? "4 h" : "8 h";
   const timedOut = !accepted && (simulateNoAnswer || waited > limit);
   const nearbyCount = COMPANIONS.filter((c) => c.distanceKm <= c.radiusKm).length;
 
