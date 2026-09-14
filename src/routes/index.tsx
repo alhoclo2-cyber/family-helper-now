@@ -10,6 +10,8 @@ import { AuthCard } from "@/components/AuthCard";
 import { store, useStore, randomStudent, COMPANIONS, experienceBadge, type NeedType, type Request, type Companion } from "@/lib/store";
 import { CguAcceptBlock, CguPanel } from "@/components/Cgu";
 import { CesuRecurrenceModal } from "@/components/CesuRecurrence";
+import { startOfWeek, subWeeks } from "date-fns";
+import { checkContractRequirement, type ContractCheckResult } from "@/lib/contractCompliance";
 import {
   CompanionProfileHeader,
   ExperienceBadgeChip,
