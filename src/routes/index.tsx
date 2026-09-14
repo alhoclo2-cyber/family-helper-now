@@ -1411,7 +1411,7 @@ function FamilyWait({
               onClick={() => onSimulateNoAnswer(true)}
               className="text-xs underline text-muted-foreground"
             >
-              🧪 Simuler l'absence de réponse ({isSos ? "30 min" : "2 h"})
+              🧪 Simuler l'absence de réponse ({limitLabel})
             </button>
           )}
           <button
