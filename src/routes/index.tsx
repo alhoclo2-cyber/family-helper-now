@@ -10,6 +10,8 @@ import { AuthCard } from "@/components/AuthCard";
 import { store, useStore, randomStudent, COMPANIONS, experienceBadge, type NeedType, type Request, type Companion } from "@/lib/store";
 import { CguAcceptBlock, CguPanel } from "@/components/Cgu";
 import { CesuRecurrenceModal } from "@/components/CesuRecurrence";
+import { startOfWeek, subWeeks } from "date-fns";
+import { checkContractRequirement, type ContractCheckResult } from "@/lib/contractCompliance";
 import {
   CompanionProfileHeader,
   ExperienceBadgeChip,
@@ -271,7 +273,15 @@ function FamilyFlow() {
     const delay = preferredId ? 6000 : current?.scheduledAt ? 5000 : 3500;
     const t = setTimeout(() => {
       if (preferredId) store.acceptRequestBy(currentId, preferredId);
-      else store.acceptRequest(currentId, Math.floor(Math.random() * COMPANIONS.length));
+      else {
+        // Exclut les compagnons déjà écartés pour éviter de rouvrir la même alerte.
+        const pool = COMPANIONS.filter((c) => !(current?.declinedBy ?? []).includes(c.id));
+        const chosen =
+          pool.length > 0
+            ? pool[Math.floor(Math.random() * pool.length)]
+            : COMPANIONS[Math.floor(Math.random() * COMPANIONS.length)];
+        store.acceptRequestBy(currentId, chosen.id);
+      }
     }, delay);
     return () => clearTimeout(t);
   }, [step, current?.status, current?.preferredCompanionId, current?.scheduledAt, currentId, simulateNoAnswer]);
@@ -470,9 +480,12 @@ function FamilyForm({
   const [extraInfo, setExtraInfo] = useState<string>(parsed.rest);
   const [continuity, setContinuity] = useState(initial?.continuityCertified ?? false);
   const [cguOk, setCguOk] = useState(false);
-  const [testRecurrence, setTestRecurrence] = useState(false);
-  const [showCesuAlert, setShowCesuAlert] = useState(false);
-  const [companionName, setCompanionName] = useState("Léa");
+  const [complianceCheck, setComplianceCheck] = useState<ContractCheckResult | null>(null);
+  const [whenError, setWhenError] = useState(false);
+  // Panneau de simulation (tests)
+  const [simCompanion, setSimCompanion] = useState<string>("");
+  const [simWeeks, setSimWeeks] = useState(0);
+  const [simHours, setSimHours] = useState(0);
   // Commissions extérieures rattachées à une présence à domicile (conformité SAP)
   const [commissions, setCommissions] = useState<string[]>(parsed.commissions);
   const [commissionCertified, setCommissionCertified] = useState(parsed.commissions.length > 0);
@@ -513,7 +526,8 @@ function FamilyForm({
   const isOutdoor =
     need === "Retrait ou dépôt d'un colis" || need === "Pharmacie" || need === "Courses urgentes";
 
-  const createAndGo = () => {
+  const createAndGo = (companionOverride?: string) => {
+    const companion = companionOverride ?? pickedCompanion;
     const scheduledAt = mode === "scheduled" ? new Date(when).getTime() : null;
     const dh = hasDuration ? durationHours : 1;
     const isParcel = need === "Retrait ou dépôt d'un colis";
@@ -524,7 +538,7 @@ function FamilyForm({
       scheduledAt,
       flow: mode === "scheduled" ? "scheduled" : "sos",
       autoSearch: mode === "scheduled" ? autoSearch : true,
-      preferredCompanionId: mode === "scheduled" && !autoSearch && pickedCompanion ? pickedCompanion : undefined,
+      preferredCompanionId: mode === "scheduled" && !autoSearch && companion ? companion : undefined,
       durationHours: dh,
 
       parcelWeight: isParcel ? parcelWeight : undefined,
@@ -553,6 +567,56 @@ function FamilyForm({
     onSubmit();
   };
 
+  // Injecte les missions fictives du panneau de simulation puis lance le contrôle réel.
+  const runComplianceCheck = (companionId: string): ContractCheckResult | null => {
+    const bookingTs = new Date(when).getTime();
+    const target = simCompanion || companionId;
+    const sims: Request[] = [];
+    const weekStart = startOfWeek(new Date(bookingTs), { weekStartsOn: 1 });
+    const companionObj = COMPANIONS.find((c) => c.id === target);
+    if (companionObj) {
+      for (let i = 1; i <= simWeeks; i++) {
+        const d = subWeeks(weekStart, i).getTime() + 24 * 60 * 60 * 1000;
+        sims.push({
+          id: `sim-w${i}`,
+          need: "Compagnie/Présence",
+          address: "Simulation",
+          city: "Simulation",
+          phone: "",
+          seniorName: "Vous",
+          createdAt: d,
+          scheduledAt: d,
+          durationHours: 1,
+          status: "accepted",
+          student: companionObj,
+        });
+      }
+      if (simHours > 0) {
+        const d = weekStart.getTime() + 60 * 60 * 1000;
+        sims.push({
+          id: "sim-h",
+          need: "Compagnie/Présence",
+          address: "Simulation",
+          city: "Simulation",
+          phone: "",
+          seniorName: "Vous",
+          createdAt: d,
+          scheduledAt: d,
+          durationHours: simHours,
+          status: "accepted",
+          student: companionObj,
+        });
+      }
+    }
+    store.setSimulatedRequests(sims);
+    return checkContractRequirement(
+      companionId,
+      bookingTs,
+      hasDuration ? durationHours : 1,
+      store.getState().requests,
+    );
+  };
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!address.trim() || !phone.trim()) return;
@@ -563,9 +627,19 @@ function FamilyForm({
     if (mode === "scheduled" && !autoSearch && !pickedCompanion) return;
     if (!cguOk) return;
 
-    if (testRecurrence) {
-      setShowCesuAlert(true);
+    // Un rendez-vous doit être pris au moins 24 h à l'avance.
+    if (mode === "scheduled" && new Date(when).getTime() - Date.now() < 24 * 60 * 60 * 1000) {
+      setWhenError(true);
       return;
+    }
+    setWhenError(false);
+
+    if (mode === "scheduled" && !autoSearch && pickedCompanion) {
+      const check = runComplianceCheck(pickedCompanion);
+      if (check?.requiresContract) {
+        setComplianceCheck(check);
+        return;
+      }
     }
     createAndGo();
   };
@@ -857,9 +931,20 @@ function FamilyForm({
             type="datetime-local"
             value={when}
             min={minWhen}
-            onChange={(e) => setWhen(e.target.value)}
-            className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
+            onChange={(e) => {
+              setWhen(e.target.value);
+              setWhenError(false);
+            }}
+            className={`w-full px-5 py-4 rounded-2xl border-2 bg-card text-lg outline-none ${
+              whenError ? "border-destructive" : "border-border focus:border-primary"
+            }`}
           />
+          {whenError && (
+            <p className="text-xs font-semibold text-destructive mt-1">
+              Un rendez-vous doit être réservé au moins 24 h à l'avance. Pour un besoin plus proche, utilisez
+              « Besoin rapidement », sans délai minimum.
+            </p>
+          )}
         </div>
       )}
       {mode === "scheduled" && (
@@ -910,8 +995,8 @@ function FamilyForm({
                 </button>
               ))}
               <p className="text-xs text-muted-foreground">
-                Sans réponse du compagnon choisi sous 2 heures, nous vous proposerons un autre compagnon ou une
-                recherche automatique.
+                Sans réponse du compagnon choisi sous 4 h (ou 8 h si le rendez-vous est à plus de 48 h), nous vous
+                proposerons un autre compagnon ou une recherche automatique.
               </p>
             </div>
           )}
@@ -963,15 +1048,48 @@ function FamilyForm({
         </label>
       )}
       <CguAcceptBlock checked={cguOk} onChange={setCguOk} role="client" />
-      <button
-        type="button"
-        onClick={() => setTestRecurrence((v) => !v)}
-        className={`text-xs underline text-left ${testRecurrence ? "text-primary font-bold" : "text-muted-foreground"}`}
-      >
-        {testRecurrence
-          ? "🧪 Mode test actif — 4e semaine consécutive avec Léa (désactiver)"
-          : "🧪 Simuler 4e semaine consécutive avec ce compagnon"}
-      </button>
+      {mode === "scheduled" && !!pickedCompanion && (
+        <div className="rounded-2xl border-2 border-dashed border-border p-3 text-left">
+          <p className="text-xs font-bold">🧪 Simulation d'historique (test)</p>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Injecte des missions fictives déjà réalisées avec ce compagnon pour tester le contrôle de conformité.
+          </p>
+          <label className="block text-xs font-semibold mt-3">Compagnon simulé</label>
+          <select
+            value={simCompanion || pickedCompanion}
+            onChange={(e) => setSimCompanion(e.target.value)}
+            className="w-full mt-1 px-3 py-2 rounded-xl border-2 border-border bg-card text-sm"
+          >
+            {COMPANIONS.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.firstName}
+              </option>
+            ))}
+          </select>
+          <label className="block text-xs font-semibold mt-3">
+            Semaines consécutives déjà réalisées : {simWeeks}
+          </label>
+          <input
+            type="range"
+            min={0}
+            max={6}
+            value={simWeeks}
+            onChange={(e) => setSimWeeks(Number(e.target.value))}
+            className="w-full"
+          />
+          <label className="block text-xs font-semibold mt-2">
+            Heures déjà réalisées cette semaine : {simHours} h
+          </label>
+          <input
+            type="range"
+            min={0}
+            max={12}
+            value={simHours}
+            onChange={(e) => setSimHours(Number(e.target.value))}
+            className="w-full"
+          />
+        </div>
+      )}
       <div className="flex-1" />
       <button
         type="submit"
@@ -980,15 +1098,25 @@ function FamilyForm({
       >
         {mode === "asap" ? "Lancer la recherche" : "Valider la réservation"}
       </button>
-      {showCesuAlert && (
+      {complianceCheck && (
         <CesuRecurrenceModal
-          companionName={companionName}
-          onClose={() => setShowCesuAlert(false)}
-          onSwitchCompanion={(n) => {
-            setCompanionName(n);
-            setTestRecurrence(false);
-            setShowCesuAlert(false);
+          companionId={pickedCompanion}
+          companionName={COMPANIONS.find((c) => c.id === pickedCompanion)?.firstName ?? "ce compagnon"}
+          check={complianceCheck}
+          onClose={() => setComplianceCheck(null)}
+          onContinue={() => {
+            setComplianceCheck(null);
             createAndGo();
+          }}
+          onSwitchCompanion={(id) => {
+            setPickedCompanion(id);
+            const next = runComplianceCheck(id);
+            if (next?.requiresContract) {
+              setComplianceCheck(next);
+            } else {
+              setComplianceCheck(null);
+              createAndGo(id);
+            }
           }}
         />
       )}
@@ -1157,8 +1285,18 @@ function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolea
 }
 
 
-const SOS_TIMEOUT_MS = 30 * 60 * 1000; // 30 min sans réponse sur une urgence
-const PREFERRED_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 h sans réponse du compagnon choisi
+const SOS_TIMEOUT_MS = 20 * 60 * 1000; // 20 min sans réponse sur un besoin rapide
+const SCHEDULED_SOON_TIMEOUT_MS = 4 * 60 * 60 * 1000; // rendez-vous à moins de 48 h
+const SCHEDULED_LATER_TIMEOUT_MS = 8 * 60 * 60 * 1000; // rendez-vous à plus de 48 h
+
+// Délai de réponse attendu : 20 min en besoin rapide, 4 h ou 8 h en rendez-vous
+// selon que l'échéance est à moins ou plus de 48 h.
+function responseTimeoutMs(request: Request) {
+  if (!request.scheduledAt) return SOS_TIMEOUT_MS;
+  return request.scheduledAt - Date.now() < 48 * 60 * 60 * 1000
+    ? SCHEDULED_SOON_TIMEOUT_MS
+    : SCHEDULED_LATER_TIMEOUT_MS;
+}
 
 function FamilyWait({
   request,
@@ -1174,6 +1312,7 @@ function FamilyWait({
   onDone: () => void;
 }) {
   const [paid, setPaid] = useState(false);
+  const [contractOk, setContractOk] = useState(false);
   const [showPay, setShowPay] = useState(false);
   const [salaireDraft, setSalaireDraft] = useState<string | null>(null);
   const [restartedAt, setRestartedAt] = useState<number | null>(null);
@@ -1215,6 +1354,18 @@ function FamilyWait({
 
   const hours = request?.durationHours ?? 1;
 
+  // Contrôle de conformité (contrat de travail écrit) au moment de l'acceptation.
+  const rawCheck =
+    accepted && request.student && !request.acknowledged && !contractOk
+      ? checkContractRequirement(
+          request.student.id,
+          request.scheduledAt ?? request.createdAt,
+          hours,
+          store.getState().requests.filter((r) => r.id !== request.id),
+        )
+      : null;
+  const complianceCheck = rawCheck?.requiresContract ? rawCheck : null;
+
   if (accepted && showPay && !paid) {
     return (
       <PaymentScreen
@@ -1248,7 +1399,8 @@ function FamilyWait({
     : undefined;
   const startedAt = restartedAt ?? request.createdAt;
   const waited = now - startedAt;
-  const limit = preferred ? PREFERRED_TIMEOUT_MS : SOS_TIMEOUT_MS;
+  const limit = responseTimeoutMs(request);
+  const limitLabel = !request.scheduledAt ? "20 min" : limit === SCHEDULED_SOON_TIMEOUT_MS ? "4 h" : "8 h";
   const timedOut = !accepted && (simulateNoAnswer || waited > limit);
   const nearbyCount = COMPANIONS.filter((c) => c.distanceKm <= c.radiusKm).length;
 
@@ -1286,7 +1438,7 @@ function FamilyWait({
               <div>
                 <p className="text-2xl font-bold">Demande envoyée à {preferred.firstName}</p>
                 <p className="text-base text-muted-foreground mt-2">
-                  Réponse attendue sous 2 heures. Sans réponse, nous vous proposerons une alternative.
+                  Réponse attendue sous {limitLabel}. Sans réponse, nous vous proposerons une alternative.
                 </p>
               </div>
             </>
@@ -1316,14 +1468,16 @@ function FamilyWait({
             )}
             <p className="text-sm text-muted-foreground mt-3">
               ⏱️ En attente depuis {Math.max(0, Math.floor(waited / 60000))} min
-              {isSos ? " (délai maximum 30 min)" : preferred ? " (délai maximum 2 h)" : ""}
+              {` (délai maximum ${limitLabel})`}
             </p>
           </div>
 
           {timedOut && (
             <div className="w-full rounded-2xl border-2 border-warning bg-warning/10 p-4 text-left">
               <p className="text-sm font-black">
-                {isSos ? "⏰ Aucune réponse après 30 minutes" : `⏰ ${preferred?.firstName ?? "Le compagnon"} n'a pas répondu sous 2 h`}
+                {isSos
+                  ? "⏰ Aucune réponse après 20 minutes"
+                  : `⏰ ${preferred?.firstName ?? "Aucun compagnon"} n'a pas répondu sous ${limitLabel}`}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 {isSos
@@ -1409,7 +1563,7 @@ function FamilyWait({
               onClick={() => onSimulateNoAnswer(true)}
               className="text-xs underline text-muted-foreground"
             >
-              🧪 Simuler l'absence de réponse ({isSos ? "30 min" : "2 h"})
+              🧪 Simuler l'absence de réponse ({limitLabel})
             </button>
           )}
           <button
@@ -1457,7 +1611,20 @@ function FamilyWait({
             thumbs={request.student!.thumbs}
           />
 
-          {!request.acknowledged ? (
+          {complianceCheck ? (
+            <CesuRecurrenceModal
+              companionId={request.student!.id}
+              companionName={request.student!.firstName}
+              check={complianceCheck}
+              onClose={() => setContractOk(true)}
+              onContinue={() => setContractOk(true)}
+              onSwitchCompanion={() => {
+                store.declineRequest(request.id, request.student!.id);
+                store.releaseRequest(request.id);
+                setContractOk(false);
+              }}
+            />
+          ) : !request.acknowledged ? (
             <div className="w-full rounded-2xl border-2 border-primary bg-accent p-4 text-left">
               <p className="text-sm font-black">📩 Accusé de réception</p>
               <p className="text-xs text-muted-foreground mt-1">

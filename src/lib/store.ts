@@ -196,6 +196,14 @@ export const store = {
     state = { ...state, requests: state.requests.filter((r) => r.id !== id) };
     emit();
   },
+  // Panneau de test : remplace les demandes fictives (id préfixé "sim-").
+  setSimulatedRequests: (reqs: Request[]) => {
+    state = {
+      ...state,
+      requests: [...reqs, ...state.requests.filter((r) => !r.id.startsWith("sim-"))],
+    };
+    emit();
+  },
   acknowledgeRequest: (id: string) => {
     state = {
       ...state,
