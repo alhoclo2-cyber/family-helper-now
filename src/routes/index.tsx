@@ -1288,7 +1288,7 @@ function FamilyWait({
               <div>
                 <p className="text-2xl font-bold">Demande envoyée à {preferred.firstName}</p>
                 <p className="text-base text-muted-foreground mt-2">
-                  Réponse attendue sous 2 heures. Sans réponse, nous vous proposerons une alternative.
+                  Réponse attendue sous {limitLabel}. Sans réponse, nous vous proposerons une alternative.
                 </p>
               </div>
             </>
