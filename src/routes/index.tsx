@@ -1217,6 +1217,18 @@ function FamilyWait({
 
   const hours = request?.durationHours ?? 1;
 
+  // Contrôle de conformité (contrat de travail écrit) au moment de l'acceptation.
+  const rawCheck =
+    accepted && request.student && !request.acknowledged && !contractOk
+      ? checkContractRequirement(
+          request.student.id,
+          request.scheduledAt ?? request.createdAt,
+          hours,
+          store.getState().requests.filter((r) => r.id !== request.id),
+        )
+      : null;
+  const complianceCheck = rawCheck?.requiresContract ? rawCheck : null;
+
   if (accepted && showPay && !paid) {
     return (
       <PaymentScreen
