@@ -1159,8 +1159,18 @@ function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolea
 }
 
 
-const SOS_TIMEOUT_MS = 30 * 60 * 1000; // 30 min sans réponse sur une urgence
-const PREFERRED_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 h sans réponse du compagnon choisi
+const SOS_TIMEOUT_MS = 20 * 60 * 1000; // 20 min sans réponse sur un besoin rapide
+const SCHEDULED_SOON_TIMEOUT_MS = 4 * 60 * 60 * 1000; // rendez-vous à moins de 48 h
+const SCHEDULED_LATER_TIMEOUT_MS = 8 * 60 * 60 * 1000; // rendez-vous à plus de 48 h
+
+// Délai de réponse attendu : 20 min en besoin rapide, 4 h ou 8 h en rendez-vous
+// selon que l'échéance est à moins ou plus de 48 h.
+function responseTimeoutMs(request: Request) {
+  if (!request.scheduledAt) return SOS_TIMEOUT_MS;
+  return request.scheduledAt - Date.now() < 48 * 60 * 60 * 1000
+    ? SCHEDULED_SOON_TIMEOUT_MS
+    : SCHEDULED_LATER_TIMEOUT_MS;
+}
 
 function FamilyWait({
   request,
