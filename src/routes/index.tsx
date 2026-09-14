@@ -965,15 +965,48 @@ function FamilyForm({
         </label>
       )}
       <CguAcceptBlock checked={cguOk} onChange={setCguOk} role="client" />
-      <button
-        type="button"
-        onClick={() => setTestRecurrence((v) => !v)}
-        className={`text-xs underline text-left ${testRecurrence ? "text-primary font-bold" : "text-muted-foreground"}`}
-      >
-        {testRecurrence
-          ? "🧪 Mode test actif — 4e semaine consécutive avec Léa (désactiver)"
-          : "🧪 Simuler 4e semaine consécutive avec ce compagnon"}
-      </button>
+      {mode === "scheduled" && !!pickedCompanion && (
+        <div className="rounded-2xl border-2 border-dashed border-border p-3 text-left">
+          <p className="text-xs font-bold">🧪 Simulation d'historique (test)</p>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Injecte des missions fictives déjà réalisées avec ce compagnon pour tester le contrôle de conformité.
+          </p>
+          <label className="block text-xs font-semibold mt-3">Compagnon simulé</label>
+          <select
+            value={simCompanion || pickedCompanion}
+            onChange={(e) => setSimCompanion(e.target.value)}
+            className="w-full mt-1 px-3 py-2 rounded-xl border-2 border-border bg-card text-sm"
+          >
+            {COMPANIONS.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.firstName}
+              </option>
+            ))}
+          </select>
+          <label className="block text-xs font-semibold mt-3">
+            Semaines consécutives déjà réalisées : {simWeeks}
+          </label>
+          <input
+            type="range"
+            min={0}
+            max={6}
+            value={simWeeks}
+            onChange={(e) => setSimWeeks(Number(e.target.value))}
+            className="w-full"
+          />
+          <label className="block text-xs font-semibold mt-2">
+            Heures déjà réalisées cette semaine : {simHours} h
+          </label>
+          <input
+            type="range"
+            min={0}
+            max={12}
+            value={simHours}
+            onChange={(e) => setSimHours(Number(e.target.value))}
+            className="w-full"
+          />
+        </div>
+      )}
       <div className="flex-1" />
       <button
         type="submit"
@@ -982,15 +1015,25 @@ function FamilyForm({
       >
         {mode === "asap" ? "Lancer la recherche" : "Valider la réservation"}
       </button>
-      {showCesuAlert && (
+      {complianceCheck && (
         <CesuRecurrenceModal
-          companionName={companionName}
-          onClose={() => setShowCesuAlert(false)}
-          onSwitchCompanion={(n) => {
-            setCompanionName(n);
-            setTestRecurrence(false);
-            setShowCesuAlert(false);
+          companionId={pickedCompanion}
+          companionName={COMPANIONS.find((c) => c.id === pickedCompanion)?.firstName ?? "ce compagnon"}
+          check={complianceCheck}
+          onClose={() => setComplianceCheck(null)}
+          onContinue={() => {
+            setComplianceCheck(null);
             createAndGo();
+          }}
+          onSwitchCompanion={(id) => {
+            setPickedCompanion(id);
+            const next = runComplianceCheck(id);
+            if (next?.requiresContract) {
+              setComplianceCheck(next);
+            } else {
+              setComplianceCheck(null);
+              createAndGo(id);
+            }
           }}
         />
       )}
