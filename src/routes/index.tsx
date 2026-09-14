@@ -1186,6 +1186,7 @@ function FamilyWait({
   onDone: () => void;
 }) {
   const [paid, setPaid] = useState(false);
+  const [contractOk, setContractOk] = useState(false);
   const [showPay, setShowPay] = useState(false);
   const [salaireDraft, setSalaireDraft] = useState<string | null>(null);
   const [restartedAt, setRestartedAt] = useState<number | null>(null);
