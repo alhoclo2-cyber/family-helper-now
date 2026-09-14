@@ -923,9 +923,20 @@ function FamilyForm({
             type="datetime-local"
             value={when}
             min={minWhen}
-            onChange={(e) => setWhen(e.target.value)}
-            className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
+            onChange={(e) => {
+              setWhen(e.target.value);
+              setWhenError(false);
+            }}
+            className={`w-full px-5 py-4 rounded-2xl border-2 bg-card text-lg outline-none ${
+              whenError ? "border-destructive" : "border-border focus:border-primary"
+            }`}
           />
+          {whenError && (
+            <p className="text-xs font-semibold text-destructive mt-1">
+              Un rendez-vous doit être réservé au moins 24 h à l'avance. Pour un besoin plus proche, utilisez
+              « Besoin rapidement », sans délai minimum.
+            </p>
+          )}
         </div>
       )}
       {mode === "scheduled" && (
