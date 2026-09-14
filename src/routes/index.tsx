@@ -1459,7 +1459,20 @@ function FamilyWait({
             thumbs={request.student!.thumbs}
           />
 
-          {!request.acknowledged ? (
+          {complianceCheck ? (
+            <CesuRecurrenceModal
+              companionId={request.student!.id}
+              companionName={request.student!.firstName}
+              check={complianceCheck}
+              onClose={() => setContractOk(true)}
+              onContinue={() => setContractOk(true)}
+              onSwitchCompanion={() => {
+                store.declineRequest(request.id, request.student!.id);
+                store.releaseRequest(request.id);
+                setContractOk(false);
+              }}
+            />
+          ) : !request.acknowledged ? (
             <div className="w-full rounded-2xl border-2 border-primary bg-accent p-4 text-left">
               <p className="text-sm font-black">📩 Accusé de réception</p>
               <p className="text-xs text-muted-foreground mt-1">
