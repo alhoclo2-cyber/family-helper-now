@@ -515,7 +515,8 @@ function FamilyForm({
   const isOutdoor =
     need === "Retrait ou dépôt d'un colis" || need === "Pharmacie" || need === "Courses urgentes";
 
-  const createAndGo = () => {
+  const createAndGo = (companionOverride?: string) => {
+    const companion = companionOverride ?? pickedCompanion;
     const scheduledAt = mode === "scheduled" ? new Date(when).getTime() : null;
     const dh = hasDuration ? durationHours : 1;
     const isParcel = need === "Retrait ou dépôt d'un colis";
@@ -526,7 +527,7 @@ function FamilyForm({
       scheduledAt,
       flow: mode === "scheduled" ? "scheduled" : "sos",
       autoSearch: mode === "scheduled" ? autoSearch : true,
-      preferredCompanionId: mode === "scheduled" && !autoSearch && pickedCompanion ? pickedCompanion : undefined,
+      preferredCompanionId: mode === "scheduled" && !autoSearch && companion ? companion : undefined,
       durationHours: dh,
 
       parcelWeight: isParcel ? parcelWeight : undefined,
@@ -555,6 +556,56 @@ function FamilyForm({
     onSubmit();
   };
 
+  // Injecte les missions fictives du panneau de simulation puis lance le contrôle réel.
+  const runComplianceCheck = (companionId: string): ContractCheckResult | null => {
+    const bookingTs = new Date(when).getTime();
+    const target = simCompanion || companionId;
+    const sims: Request[] = [];
+    const weekStart = startOfWeek(new Date(bookingTs), { weekStartsOn: 1 });
+    const companionObj = COMPANIONS.find((c) => c.id === target);
+    if (companionObj) {
+      for (let i = 1; i <= simWeeks; i++) {
+        const d = subWeeks(weekStart, i).getTime() + 24 * 60 * 60 * 1000;
+        sims.push({
+          id: `sim-w${i}`,
+          need: "Compagnie/Présence",
+          address: "Simulation",
+          city: "Simulation",
+          phone: "",
+          seniorName: "Vous",
+          createdAt: d,
+          scheduledAt: d,
+          durationHours: 1,
+          status: "accepted",
+          student: companionObj,
+        });
+      }
+      if (simHours > 0) {
+        const d = weekStart.getTime() + 60 * 60 * 1000;
+        sims.push({
+          id: "sim-h",
+          need: "Compagnie/Présence",
+          address: "Simulation",
+          city: "Simulation",
+          phone: "",
+          seniorName: "Vous",
+          createdAt: d,
+          scheduledAt: d,
+          durationHours: simHours,
+          status: "accepted",
+          student: companionObj,
+        });
+      }
+    }
+    store.setSimulatedRequests(sims);
+    return checkContractRequirement(
+      companionId,
+      bookingTs,
+      hasDuration ? durationHours : 1,
+      store.getState().requests,
+    );
+  };
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!address.trim() || !phone.trim()) return;
@@ -565,9 +616,19 @@ function FamilyForm({
     if (mode === "scheduled" && !autoSearch && !pickedCompanion) return;
     if (!cguOk) return;
 
-    if (testRecurrence) {
-      setShowCesuAlert(true);
+    // Un rendez-vous doit être pris au moins 24 h à l'avance.
+    if (mode === "scheduled" && new Date(when).getTime() - Date.now() < 24 * 60 * 60 * 1000) {
+      setWhenError(true);
       return;
+    }
+    setWhenError(false);
+
+    if (mode === "scheduled" && !autoSearch && pickedCompanion) {
+      const check = runComplianceCheck(pickedCompanion);
+      if (check?.requiresContract) {
+        setComplianceCheck(check);
+        return;
+      }
     }
     createAndGo();
   };
