@@ -472,9 +472,12 @@ function FamilyForm({
   const [extraInfo, setExtraInfo] = useState<string>(parsed.rest);
   const [continuity, setContinuity] = useState(initial?.continuityCertified ?? false);
   const [cguOk, setCguOk] = useState(false);
-  const [testRecurrence, setTestRecurrence] = useState(false);
-  const [showCesuAlert, setShowCesuAlert] = useState(false);
-  const [companionName, setCompanionName] = useState("Léa");
+  const [complianceCheck, setComplianceCheck] = useState<ContractCheckResult | null>(null);
+  const [whenError, setWhenError] = useState(false);
+  // Panneau de simulation (tests)
+  const [simCompanion, setSimCompanion] = useState<string>("");
+  const [simWeeks, setSimWeeks] = useState(0);
+  const [simHours, setSimHours] = useState(0);
   // Commissions extérieures rattachées à une présence à domicile (conformité SAP)
   const [commissions, setCommissions] = useState<string[]>(parsed.commissions);
   const [commissionCertified, setCommissionCertified] = useState(parsed.commissions.length > 0);
