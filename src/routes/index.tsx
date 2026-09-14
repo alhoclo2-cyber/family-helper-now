@@ -273,7 +273,15 @@ function FamilyFlow() {
     const delay = preferredId ? 6000 : current?.scheduledAt ? 5000 : 3500;
     const t = setTimeout(() => {
       if (preferredId) store.acceptRequestBy(currentId, preferredId);
-      else store.acceptRequest(currentId, Math.floor(Math.random() * COMPANIONS.length));
+      else {
+        // Exclut les compagnons déjà écartés pour éviter de rouvrir la même alerte.
+        const pool = COMPANIONS.filter((c) => !(current?.declinedBy ?? []).includes(c.id));
+        const chosen =
+          pool.length > 0
+            ? pool[Math.floor(Math.random() * pool.length)]
+            : COMPANIONS[Math.floor(Math.random() * COMPANIONS.length)];
+        store.acceptRequestBy(currentId, chosen.id);
+      }
     }, delay);
     return () => clearTimeout(t);
   }, [step, current?.status, current?.preferredCompanionId, current?.scheduledAt, currentId, simulateNoAnswer]);
