@@ -1325,7 +1325,9 @@ function FamilyWait({
           {timedOut && (
             <div className="w-full rounded-2xl border-2 border-warning bg-warning/10 p-4 text-left">
               <p className="text-sm font-black">
-                {isSos ? "⏰ Aucune réponse après 30 minutes" : `⏰ ${preferred?.firstName ?? "Le compagnon"} n'a pas répondu sous 2 h`}
+                {isSos
+                  ? "⏰ Aucune réponse après 20 minutes"
+                  : `⏰ ${preferred?.firstName ?? "Aucun compagnon"} n'a pas répondu sous ${limitLabel}`}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 {isSos
