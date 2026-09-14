@@ -1318,7 +1318,7 @@ function FamilyWait({
             )}
             <p className="text-sm text-muted-foreground mt-3">
               ⏱️ En attente depuis {Math.max(0, Math.floor(waited / 60000))} min
-              {isSos ? " (délai maximum 30 min)" : preferred ? " (délai maximum 2 h)" : ""}
+              {` (délai maximum ${limitLabel})`}
             </p>
           </div>
 
