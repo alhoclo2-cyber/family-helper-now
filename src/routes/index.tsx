@@ -77,11 +77,13 @@ function Header({ mode, setMode, session }: { mode: Mode; setMode: (m: Mode) => 
   return (
     <header className="px-5 pt-6 pb-4 border-b border-border">
       <div className="flex items-center gap-2 mb-4">
-        <img
-          src={soleliaLogoAsset.url}
-          alt="Solélia"
-          className="h-10 w-10 rounded-2xl object-cover"
-        />
+        <span className="h-10 w-10 shrink-0 overflow-hidden rounded-full" aria-hidden="true">
+          <img
+            src={soleliaLogoAsset.url}
+            alt=""
+            className="h-full w-full scale-125 object-cover"
+          />
+        </span>
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-black leading-none">Solélia Accompagnement</h1>
           <p className="text-xs text-muted-foreground mt-0.5">Présence et accompagnement à domicile</p>
@@ -122,6 +124,9 @@ function Header({ mode, setMode, session }: { mode: Mode; setMode: (m: Mode) => 
 }
 
 function NeedLabel({ need }: { need: NeedType }) {
+  if (need === "Accompagnement sorties extérieures") {
+    return <div className="text-sm font-semibold leading-tight">{need}</div>;
+  }
   const paren = need.match(/^(.*?)\s*\((.*)\)$/);
   if (paren) {
     return (
@@ -298,20 +303,24 @@ function FamilyFlow() {
         >
           {account ? `👤 ${account.fullName.split(" ")[0]}` : "👤 Mon compte"}
         </button>
-        <div
-          className="text-center space-y-1"
-          style={{ fontFamily: "'Parisienne', cursive", color: "#4A1525" }}
-        >
-          <p className="text-base">Pour rompre l'isolement,</p>
-          <p className="text-base">Accompagner les enfants,</p>
-          <p className="text-base">Soutenir une personne temporairement ou durablement fragilisée,</p>
-          <p className="text-base">Et être présent dans les moments où l'on a simplement besoin de quelqu'un.</p>
+        <div className="flex flex-col items-center gap-1">
+          <div
+            className="text-center space-y-1 text-lg leading-snug"
+            style={{ fontFamily: "'Parisienne', cursive", color: "#4A1525" }}
+          >
+            <p>Pour rompre l'isolement,</p>
+            <p>Accompagner les enfants,</p>
+            <p>Soutenir une personne temporairement ou durablement fragilisée,</p>
+            <p>Et être présent dans les moments où l'on a simplement besoin de quelqu'un.</p>
+          </div>
+          <div className="h-24 w-full max-w-[320px] overflow-hidden" aria-hidden="true">
+            <img
+              src={floralBorderAsset.url}
+              alt=""
+              className="h-full w-full object-cover opacity-90"
+            />
+          </div>
         </div>
-        <img
-          src={floralBorderAsset.url}
-          alt="Liseret floral"
-          className="w-full max-w-[320px] h-auto object-contain opacity-90"
-        />
         <div className="w-full flex flex-wrap justify-center gap-2">
           {[
             { emoji: "👵", label: "Nos aînés" },
