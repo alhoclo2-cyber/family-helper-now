@@ -313,11 +313,13 @@ function FamilyFlow() {
             <p>Soutenir une personne temporairement ou durablement fragilisée,</p>
             <p>Et être présent dans les moments où l'on a simplement besoin de quelqu'un.</p>
           </div>
-          <img
-            src={floralBorderAsset.url}
-            alt="Liseret floral"
-            className="w-full max-w-[320px] h-auto object-contain opacity-90"
-          />
+          <div className="h-24 w-full max-w-[320px] overflow-hidden" aria-hidden="true">
+            <img
+              src={floralBorderAsset.url}
+              alt=""
+              className="h-full w-full object-cover opacity-90"
+            />
+          </div>
         </div>
         <div className="w-full flex flex-wrap justify-center gap-2">
           {[
