@@ -1616,10 +1616,12 @@ function FamilyWait({
               companionId={request.student!.id}
               companionName={request.student!.firstName}
               check={complianceCheck}
-              onClose={() => setContractOk(true)}
+              dismissible={false}
+              onClose={() => {}}
               onContinue={() => setContractOk(true)}
-              onSwitchCompanion={() => {
+              onSwitchCompanion={(companionId) => {
                 store.declineRequest(request.id, request.student!.id);
+                store.updateRequest(request.id, { preferredCompanionId: companionId });
                 store.releaseRequest(request.id);
                 setContractOk(false);
               }}
