@@ -1253,9 +1253,39 @@ function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolea
           <p className="text-sm font-bold">{free ? "Annulation gratuite" : "Annulation tardive"}</p>
           <p className="text-sm text-muted-foreground mt-1">
             {free
-              ? "Vous annulez plus de 48 h avant le rendez-vous : remboursement intégral sous 3 jours ouvrés."
-              : `Il reste moins de 48 h avant le rendez-vous : ${paid ? "le paiement ne sera pas remboursé." : "le montant réglé ne sera pas remboursé."}`}
+              ? "Vous annulez plus de 24 h avant le rendez-vous : remboursement intégral sous 3 jours ouvrés."
+              : `Il reste moins de 24 h avant le rendez-vous : ${paid ? "le paiement ne sera pas remboursé." : "le montant réglé ne sera pas remboursé."}`}
           </p>
+          <label className="block text-xs font-semibold mt-3">Motif de l'annulation</label>
+          <select
+            value={reason}
+            onChange={(e) => {
+              setReason(e.target.value);
+              if (e.target.value !== "Autre raison") setOtherDetail("");
+            }}
+            className="w-full mt-1 px-3 py-2 rounded-xl border-2 border-border bg-card text-sm"
+          >
+            <option value="">Sélectionnez un motif</option>
+            {FAMILY_CANCEL_REASONS.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
+          {reason === "Autre raison" && (
+            <div className="mt-2">
+              <p className="text-xs text-muted-foreground">
+                ⚠️ Ce texte sera visible par le compagnon. Restez factuel.
+              </p>
+              <textarea
+                value={otherDetail}
+                onChange={(e) => setOtherDetail(e.target.value.slice(0, 150))}
+                maxLength={150}
+                rows={2}
+                placeholder="Précisez en quelques mots (150 caractères max)"
+                className="w-full mt-1 px-3 py-2 rounded-xl border-2 border-border bg-card text-sm"
+              />
+              <p className="text-[11px] text-muted-foreground text-right mt-0.5">{otherDetail.length}/150</p>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-2 mt-3">
             <button
               type="button"
@@ -1266,8 +1296,12 @@ function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolea
             </button>
             <button
               type="button"
-              onClick={() => store.cancelRequest(request.id, free)}
-              className="py-3 rounded-2xl bg-destructive text-destructive-foreground font-bold text-sm"
+              disabled={!reason || (reason === "Autre raison" && !otherDetail.trim())}
+              onClick={() => {
+                const finalReason = reason === "Autre raison" && otherDetail.trim() ? otherDetail.trim() : reason;
+                store.cancelRequest(request.id, free, finalReason);
+              }}
+              className="py-3 rounded-2xl bg-destructive text-destructive-foreground font-bold text-sm disabled:opacity-50"
             >
               Confirmer l'annulation
             </button>
