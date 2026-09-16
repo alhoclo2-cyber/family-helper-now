@@ -1550,7 +1550,7 @@ function FamilyWait({
                 {isSos ? (
                   <button
                     type="button"
-                    onClick={() => { store.cancelRequest(request.id, true); }}
+                    onClick={() => { store.cancelRequest(request.id, true, "Modification des critères de la demande"); }}
                     className="py-4 rounded-2xl border-2 border-border bg-card font-bold text-sm"
                   >
                     ✏️ Modifier mes critères
