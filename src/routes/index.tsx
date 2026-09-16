@@ -1171,9 +1171,11 @@ function toLocalInput(ts: number) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-// Bloc unique : modifier OU annuler un rendez-vous (fenêtre de 48 h).
+// Bloc unique : modifier OU annuler un rendez-vous (fenêtre de 24 h).
 function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolean }) {
   const [confirm, setConfirm] = useState(false);
+  const [reason, setReason] = useState("");
+  const [otherDetail, setOtherDetail] = useState("");
   const [editing, setEditing] = useState(false);
   const [reschedule, setReschedule] = useState<"idle" | "checking" | "refused" | "confirmed">("idle");
   const [newWhen, setNewWhen] = useState<string>(() =>
