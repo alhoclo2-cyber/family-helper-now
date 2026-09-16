@@ -2256,14 +2256,30 @@ function CompanionCancelBlock({ request }: { request: Request }) {
 
 function StudentDetail({ request, onBack }: { request: Request; onBack: () => void }) {
   const accepted = request.status === "accepted";
-  const strikes = useStrikes();
-  const banned = strikes >= 3;
   const [taken, setTaken] = useState(false);
   const accept = () => {
-    if (banned) return;
     const ok = store.acceptRequest(request.id);
     if (!ok) setTaken(true);
   };
+
+  if (request.status === "cancelled") {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
+        <div className="text-6xl">🔔</div>
+        <h2 className="text-2xl font-black">Rendez-vous annulé par la famille</h2>
+        <p className="text-base text-muted-foreground">Ne vous déplacez pas pour cette mission.</p>
+        {request.cancelReason && (
+          <div className="w-full bg-card rounded-2xl p-4 border-2 border-border text-left">
+            <p className="text-sm text-muted-foreground">Motif indiqué par la famille</p>
+            <p className="text-base font-semibold mt-1">{request.cancelReason}</p>
+          </div>
+        )}
+        <button onClick={onBack} className="btn-huge bg-primary text-primary-foreground w-full">
+          Retour aux demandes
+        </button>
+      </div>
+    );
+  }
 
 
 
