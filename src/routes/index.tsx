@@ -1664,6 +1664,7 @@ function FamilyWait({
             firstName={request.student!.firstName}
             missions={request.student!.missions}
             thumbs={request.student!.thumbs}
+            missedCount={request.student!.missedCount}
           />
 
           {complianceCheck ? (
