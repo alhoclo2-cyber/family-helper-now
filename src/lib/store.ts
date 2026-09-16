@@ -229,14 +229,33 @@ export const store = {
     emit();
   },
 
-  // La famille annule sa demande. Remboursement uniquement si > 48h avant le RDV.
-  cancelRequest: (id: string, refunded: boolean) => {
+  // La famille annule sa demande. Remboursement uniquement si > 24h avant le RDV.
+  cancelRequest: (id: string, refunded: boolean, reason: string) => {
     state = {
       ...state,
       requests: state.requests.map((r) =>
-        r.id === id ? { ...r, status: "cancelled" as const, cancelledBy: "family" as const, refunded } : r,
+        r.id === id
+          ? { ...r, status: "cancelled" as const, cancelledBy: "family" as const, refunded, cancelReason: reason }
+          : r,
       ),
     };
+    emit();
+  },
+  // Le compagnon se désiste avec un motif transmis à la famille.
+  releaseRequestWithReason: (id: string, companionName: string, reason: string) => {
+    state = {
+      ...state,
+      requests: state.requests.map((r) =>
+        r.id === id
+          ? { ...r, status: "searching" as const, student: undefined, companionCancelNotice: { companionName, reason } }
+          : r,
+      ),
+    };
+    emit();
+  },
+  recordMissedAppointment: (companionId: string) => {
+    const c = COMPANIONS.find((x) => x.id === companionId);
+    if (c) c.missedCount += 1;
     emit();
   },
   // Le compagnon se désiste : la mission repart en recherche d'un autre compagnon.
