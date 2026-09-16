@@ -27,13 +27,14 @@ export type Companion = {
   city: string;
   cesuActive: boolean; // compte CESU+ Avance Immédiate actif
   hourlyRate: number; // salaire net horaire conseillé (congés payés inclus)
+  missedCount: number; // nombre de RDV non honorés, visible par les familles
 };
 
 export const COMPANIONS: Companion[] = [
-  { id: "c1", firstName: "Léa", photo: "https://i.pravatar.cc/200?img=47", rating: 4.9, missions: 8, thumbs: 7, distanceKm: 1.2, radiusKm: 3, city: "Paris", cesuActive: true, hourlyRate: 11.5 },
-  { id: "c2", firstName: "Thomas", photo: "https://i.pravatar.cc/200?img=12", rating: 4.8, missions: 34, thumbs: 29, distanceKm: 2.4, radiusKm: 5, city: "Paris", cesuActive: false, hourlyRate: 11.5 },
-  { id: "c3", firstName: "Camille", photo: "https://i.pravatar.cc/200?img=32", rating: 5.0, missions: 96, thumbs: 88, distanceKm: 4.1, radiusKm: 8, city: "Paris", cesuActive: true, hourlyRate: 11.5 },
-  { id: "c4", firstName: "Malik", photo: "https://i.pravatar.cc/200?img=15", rating: 4.9, missions: 212, thumbs: 197, distanceKm: 2.9, radiusKm: 6, city: "Paris", cesuActive: true, hourlyRate: 12 },
+  { id: "c1", firstName: "Léa", photo: "https://i.pravatar.cc/200?img=47", rating: 4.9, missions: 8, thumbs: 7, distanceKm: 1.2, radiusKm: 3, city: "Paris", cesuActive: true, hourlyRate: 11.5, missedCount: 0 },
+  { id: "c2", firstName: "Thomas", photo: "https://i.pravatar.cc/200?img=12", rating: 4.8, missions: 34, thumbs: 29, distanceKm: 2.4, radiusKm: 5, city: "Paris", cesuActive: false, hourlyRate: 11.5, missedCount: 0 },
+  { id: "c3", firstName: "Camille", photo: "https://i.pravatar.cc/200?img=32", rating: 5.0, missions: 96, thumbs: 88, distanceKm: 4.1, radiusKm: 8, city: "Paris", cesuActive: true, hourlyRate: 11.5, missedCount: 0 },
+  { id: "c4", firstName: "Malik", photo: "https://i.pravatar.cc/200?img=15", rating: 4.9, missions: 212, thumbs: 197, distanceKm: 2.9, radiusKm: 6, city: "Paris", cesuActive: true, hourlyRate: 12, missedCount: 0 },
 ];
 
 export type ExperienceBadge = {
@@ -88,6 +89,8 @@ export type Request = {
   status: "searching" | "accepted" | "cancelled";
   cancelledBy?: "family" | "companion";
   refunded?: boolean;
+  cancelReason?: string; // motif final retenu pour l'annulation par la famille
+  companionCancelNotice?: { companionName: string; reason: string } | null; // dernier motif d'un compagnon qui s'est désisté
   student?: Companion;
 };
 
@@ -226,14 +229,33 @@ export const store = {
     emit();
   },
 
-  // La famille annule sa demande. Remboursement uniquement si > 48h avant le RDV.
-  cancelRequest: (id: string, refunded: boolean) => {
+  // La famille annule sa demande. Remboursement uniquement si > 24h avant le RDV.
+  cancelRequest: (id: string, refunded: boolean, reason: string) => {
     state = {
       ...state,
       requests: state.requests.map((r) =>
-        r.id === id ? { ...r, status: "cancelled" as const, cancelledBy: "family" as const, refunded } : r,
+        r.id === id
+          ? { ...r, status: "cancelled" as const, cancelledBy: "family" as const, refunded, cancelReason: reason }
+          : r,
       ),
     };
+    emit();
+  },
+  // Le compagnon se désiste avec un motif transmis à la famille.
+  releaseRequestWithReason: (id: string, companionName: string, reason: string) => {
+    state = {
+      ...state,
+      requests: state.requests.map((r) =>
+        r.id === id
+          ? { ...r, status: "searching" as const, student: undefined, companionCancelNotice: { companionName, reason } }
+          : r,
+      ),
+    };
+    emit();
+  },
+  recordMissedAppointment: (companionId: string) => {
+    const c = COMPANIONS.find((x) => x.id === companionId);
+    if (c) c.missedCount += 1;
     emit();
   },
   // Le compagnon se désiste : la mission repart en recherche d'un autre compagnon.

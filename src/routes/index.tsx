@@ -954,6 +954,10 @@ function FamilyForm({
               « Besoin rapidement », sans délai minimum.
             </p>
           )}
+          <p className="text-xs text-muted-foreground mt-2">
+            🌙 Les horaires de nuit légaux (21h à 7h, Art. L3122-2 du Code du travail) peuvent faire l'objet d'un accord
+            salarial différent entre vous et votre compagnon, qui reste libre d'accepter ou non une mission de nuit.
+          </p>
         </div>
       )}
       {mode === "scheduled" && (
@@ -1134,19 +1138,25 @@ function FamilyForm({
 }
 
 
-const CANCEL_WINDOW_MS = 48 * 60 * 60 * 1000;
+const CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000;
 const canFreeCancel = (scheduledAt?: number | null) =>
   !!scheduledAt && scheduledAt - Date.now() > CANCEL_WINDOW_MS;
 
-// Simulation de disponibilité des compagnons sur un nouveau créneau.
-// Aucun compagnon entre 21 h et 7 h, ni à moins de 48 h ; sinon 1 créneau sur 4 est complet.
+// Simulation de disponibilité des compagnons sur un nouveau créneau :
+// pas de créneau à moins de 24 h ; sinon 1 créneau sur 4 est complet.
 function companionAvailableAt(ts: number) {
   if (Number.isNaN(ts)) return false;
   if (ts - Date.now() <= CANCEL_WINDOW_MS) return false;
-  const h = new Date(ts).getHours();
-  if (h < 7 || h >= 21) return false;
   return Math.floor(ts / 60_000) % 4 !== 0;
 }
+
+const FAMILY_CANCEL_REASONS = [
+  "Je n'ai plus besoin de cette prestation",
+  "Mon emploi du temps a changé",
+  "J'ai trouvé une autre solution",
+  "Contretemps / imprévu personnel",
+  "Autre raison",
+];
 
 // Masque le numéro de rue : "12 rue des Lilas, 75014 Paris" -> "rue des Lilas, 75014 Paris"
 function maskAddress(address: string) {
@@ -1161,9 +1171,11 @@ function toLocalInput(ts: number) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-// Bloc unique : modifier OU annuler un rendez-vous (fenêtre de 48 h).
+// Bloc unique : modifier OU annuler un rendez-vous (fenêtre de 24 h).
 function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolean }) {
   const [confirm, setConfirm] = useState(false);
+  const [reason, setReason] = useState("");
+  const [otherDetail, setOtherDetail] = useState("");
   const [editing, setEditing] = useState(false);
   const [reschedule, setReschedule] = useState<"idle" | "checking" | "refused" | "confirmed">("idle");
   const [newWhen, setNewWhen] = useState<string>(() =>
@@ -1191,7 +1203,7 @@ function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolea
               <p className="text-sm font-bold text-destructive">Modification refusée</p>
               <p className="text-sm text-muted-foreground mt-1">
                 Aucun compagnon n'est disponible sur ce nouveau créneau. Votre rendez-vous initial est maintenu.
-                Essayez un autre horaire (entre 7 h et 21 h, à plus de 48 h).
+                Essayez un autre horaire (à plus de 24 h).
               </p>
             </div>
           )}
@@ -1241,9 +1253,39 @@ function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolea
           <p className="text-sm font-bold">{free ? "Annulation gratuite" : "Annulation tardive"}</p>
           <p className="text-sm text-muted-foreground mt-1">
             {free
-              ? "Vous annulez plus de 48 h avant le rendez-vous : remboursement intégral sous 3 jours ouvrés."
-              : `Il reste moins de 48 h avant le rendez-vous : ${paid ? "le paiement ne sera pas remboursé." : "le montant réglé ne sera pas remboursé."}`}
+              ? "Vous annulez plus de 24 h avant le rendez-vous : remboursement intégral sous 3 jours ouvrés."
+              : `Il reste moins de 24 h avant le rendez-vous : ${paid ? "le paiement ne sera pas remboursé." : "le montant réglé ne sera pas remboursé."}`}
           </p>
+          <label className="block text-xs font-semibold mt-3">Motif de l'annulation</label>
+          <select
+            value={reason}
+            onChange={(e) => {
+              setReason(e.target.value);
+              if (e.target.value !== "Autre raison") setOtherDetail("");
+            }}
+            className="w-full mt-1 px-3 py-2 rounded-xl border-2 border-border bg-card text-sm"
+          >
+            <option value="">Sélectionnez un motif</option>
+            {FAMILY_CANCEL_REASONS.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
+          {reason === "Autre raison" && (
+            <div className="mt-2">
+              <p className="text-xs text-muted-foreground">
+                ⚠️ Ce texte sera visible par le compagnon. Restez factuel.
+              </p>
+              <textarea
+                value={otherDetail}
+                onChange={(e) => setOtherDetail(e.target.value.slice(0, 150))}
+                maxLength={150}
+                rows={2}
+                placeholder="Précisez en quelques mots (150 caractères max)"
+                className="w-full mt-1 px-3 py-2 rounded-xl border-2 border-border bg-card text-sm"
+              />
+              <p className="text-[11px] text-muted-foreground text-right mt-0.5">{otherDetail.length}/150</p>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-2 mt-3">
             <button
               type="button"
@@ -1254,8 +1296,12 @@ function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolea
             </button>
             <button
               type="button"
-              onClick={() => store.cancelRequest(request.id, free)}
-              className="py-3 rounded-2xl bg-destructive text-destructive-foreground font-bold text-sm"
+              disabled={!reason || (reason === "Autre raison" && !otherDetail.trim())}
+              onClick={() => {
+                const finalReason = reason === "Autre raison" && otherDetail.trim() ? otherDetail.trim() : reason;
+                store.cancelRequest(request.id, free, finalReason);
+              }}
+              className="py-3 rounded-2xl bg-destructive text-destructive-foreground font-bold text-sm disabled:opacity-50"
             >
               Confirmer l'annulation
             </button>
@@ -1282,12 +1328,12 @@ function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolea
       )}
       {!free && !editing && (
         <p className="text-xs text-muted-foreground mt-2">
-          ⏳ Moins de 48 h avant le rendez-vous : la modification n'est plus possible.
+          ⏳ Moins de 24 h avant le rendez-vous : la modification n'est plus possible.
         </p>
       )}
       <p className="text-xs text-muted-foreground mt-2">
-        Modification et annulation gratuites jusqu'à 48 h avant le rendez-vous, sous réserve qu'un compagnon soit
-        disponible sur le nouveau créneau. Passé 48 h, la mission reste due.
+        Modification et annulation gratuites jusqu'à 24 h avant le rendez-vous, sous réserve qu'un compagnon soit
+        disponible sur le nouveau créneau. Passé 24 h, la mission reste due.
       </p>
     </div>
   );
@@ -1350,8 +1396,8 @@ function FamilyWait({
         <p className="text-2xl font-black">Rendez-vous annulé</p>
         <p className="text-base text-muted-foreground">
           {request.refunded
-            ? "Annulation à plus de 48 h : vous serez intégralement remboursé sous 3 jours ouvrés."
-            : "Annulation à moins de 48 h : conformément aux conditions, le paiement n'est pas remboursé."}
+            ? "Annulation à plus de 24 h : vous serez intégralement remboursé sous 3 jours ouvrés."
+            : "Annulation à moins de 24 h : conformément aux conditions, le paiement n'est pas remboursé."}
         </p>
         <button onClick={onDone} className="btn-huge bg-primary text-primary-foreground w-full">
           Retour à l'accueil
@@ -1422,6 +1468,23 @@ function FamilyWait({
     <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-6 text-center">
       {!accepted ? (
         <>
+          {request.companionCancelNotice && (
+            <div className="w-full rounded-2xl border-2 border-warning bg-warning/10 p-4 text-left">
+              <p className="text-sm font-black">
+                🔔 {request.companionCancelNotice.companionName} a annulé
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Motif indiqué : « {request.companionCancelNotice.reason} ». Nous recherchons un autre compagnon.
+              </p>
+              <button
+                type="button"
+                onClick={() => store.updateRequest(request.id, { companionCancelNotice: null })}
+                className="mt-3 py-3 rounded-2xl border-2 border-border bg-card font-bold text-sm w-full"
+              >
+                J'ai compris
+              </button>
+            </div>
+          )}
           {isSos ? (
             <>
               <div className="relative h-32 w-32">
@@ -1504,7 +1567,7 @@ function FamilyWait({
                 {isSos ? (
                   <button
                     type="button"
-                    onClick={() => { store.cancelRequest(request.id, true); }}
+                    onClick={() => { store.cancelRequest(request.id, true, "Modification des critères de la demande"); }}
                     className="py-4 rounded-2xl border-2 border-border bg-card font-bold text-sm"
                   >
                     ✏️ Modifier mes critères
@@ -1618,6 +1681,7 @@ function FamilyWait({
             firstName={request.student!.firstName}
             missions={request.student!.missions}
             thumbs={request.student!.thumbs}
+            missedCount={request.student!.missedCount}
           />
 
           {complianceCheck ? (
@@ -1921,7 +1985,6 @@ function StudentFlow() {
   const [openId, setOpenId] = useState<string | null>(null);
   const allSearching = useStore((s) => s.requests.filter((r) => r.status === "searching"));
   const active = useStore((s) => (openId ? s.requests.find((r) => r.id === openId) : undefined));
-  const strikes = useStrikes();
   const settings = useCompanionSettings();
 
   // Distance simulée stable par demande (démo)
@@ -2055,39 +2118,22 @@ function StudentFlow() {
   );
 }
 
-/* --- Compagnon : annulation d'un RDV & règles de radiation --- */
+/* --- Compagnon : annulation d'un RDV --- */
 
-const STRIKES_KEY = "sos-companion-strikes";
-function loadStrikes(): number {
-  if (typeof window === "undefined") return 0;
-  return Number(localStorage.getItem(STRIKES_KEY) || 0);
-}
-function saveStrikes(n: number) {
-  try {
-    localStorage.setItem(STRIKES_KEY, String(n));
-    window.dispatchEvent(new Event("sos-strikes-changed"));
-  } catch {}
-}
-function useStrikes(): number {
-  const [n, setN] = useState(0);
-  useEffect(() => {
-    const refresh = () => setN(loadStrikes());
-    refresh();
-    window.addEventListener("sos-strikes-changed", refresh);
-    window.addEventListener("storage", refresh);
-    return () => {
-      window.removeEventListener("sos-strikes-changed", refresh);
-      window.removeEventListener("storage", refresh);
-    };
-  }, []);
-  return n;
-}
+const COMPANION_CANCEL_REASONS = [
+  "Empêchement personnel",
+  "Raison de santé",
+  "Contretemps de dernière minute",
+  "Le créneau ne correspond finalement pas à ma disponibilité",
+  "Autre raison",
+];
 
 
 function CompanionCancelBlock({ request }: { request: Request }) {
   const [confirm, setConfirm] = useState(false);
   const [done, setDone] = useState<"released" | "strike" | null>(null);
-  const strikes = useStrikes();
+  const [reason, setReason] = useState("");
+  const [otherDetail, setOtherDetail] = useState("");
   const inTime = canFreeCancel(request.scheduledAt);
   // Simulation : un autre compagnon est disponible sur ce créneau.
   const replacementAvailable = true;
@@ -2107,8 +2153,7 @@ function CompanionCancelBlock({ request }: { request: Request }) {
       <div className="rounded-2xl border-2 border-destructive bg-destructive/10 p-4 text-left">
         <p className="text-sm font-bold text-destructive">Rendez-vous non honoré enregistré</p>
         <p className="text-sm text-muted-foreground mt-1">
-          Sans justificatif valable, ce désistement compte comme un manquement ({strikes}/3). À 3 manquements,
-          votre compte est radié.
+          Ce manquement est désormais visible par les familles sur votre profil.
         </p>
       </div>
     );
@@ -2129,7 +2174,7 @@ function CompanionCancelBlock({ request }: { request: Request }) {
             <>
               <p className="text-sm font-bold">Annulation possible</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Plus de 48 h avant le rendez-vous et un autre compagnon est disponible : la mission repart en
+                Plus de 24 h avant le rendez-vous et un autre compagnon est disponible : la mission repart en
                 recherche, sans pénalité.
               </p>
             </>
@@ -2139,10 +2184,40 @@ function CompanionCancelBlock({ request }: { request: Request }) {
               <p className="text-sm text-muted-foreground mt-1">
                 {inTime
                   ? "Aucun autre compagnon n'est disponible sur ce créneau."
-                  : "Il reste moins de 48 h avant le rendez-vous."}{" "}
-                Sans justificatif valable, ce désistement sera compté comme un rendez-vous non honoré (3 = radiation).
+                  : "Il reste moins de 24 h avant le rendez-vous."}{" "}
+                Ce désistement sera enregistré comme un rendez-vous non honoré, visible par les familles.
               </p>
             </>
+          )}
+          <label className="block text-xs font-semibold mt-3">Motif de l'annulation</label>
+          <select
+            value={reason}
+            onChange={(e) => {
+              setReason(e.target.value);
+              if (e.target.value !== "Autre raison") setOtherDetail("");
+            }}
+            className="w-full mt-1 px-3 py-2 rounded-xl border-2 border-border bg-card text-sm"
+          >
+            <option value="">Sélectionnez un motif</option>
+            {COMPANION_CANCEL_REASONS.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
+          {reason === "Autre raison" && (
+            <div className="mt-2">
+              <p className="text-xs text-muted-foreground">
+                ⚠️ Ce texte sera visible par la famille. Restez factuel.
+              </p>
+              <textarea
+                value={otherDetail}
+                onChange={(e) => setOtherDetail(e.target.value.slice(0, 150))}
+                maxLength={150}
+                rows={2}
+                placeholder="Précisez en quelques mots (150 caractères max)"
+                className="w-full mt-1 px-3 py-2 rounded-xl border-2 border-border bg-card text-sm"
+              />
+              <p className="text-[11px] text-muted-foreground text-right mt-0.5">{otherDetail.length}/150</p>
+            </div>
           )}
           <div className="grid grid-cols-2 gap-2 mt-3">
             <button
@@ -2154,16 +2229,20 @@ function CompanionCancelBlock({ request }: { request: Request }) {
             </button>
             <button
               type="button"
+              disabled={!reason || (reason === "Autre raison" && !otherDetail.trim())}
               onClick={() => {
-                store.releaseRequest(request.id);
+                if (!reason || (reason === "Autre raison" && !otherDetail.trim())) return;
+                const finalReason = reason === "Autre raison" && otherDetail.trim() ? otherDetail.trim() : reason;
+                const companion = request.student!;
+                store.releaseRequestWithReason(request.id, companion.firstName, finalReason);
                 if (inTime && replacementAvailable) {
                   setDone("released");
                 } else {
-                  saveStrikes(loadStrikes() + 1);
+                  store.recordMissedAppointment(companion.id);
                   setDone("strike");
                 }
               }}
-              className="py-3 rounded-2xl bg-destructive text-destructive-foreground font-bold text-sm"
+              className="py-3 rounded-2xl bg-destructive text-destructive-foreground font-bold text-sm disabled:opacity-50"
             >
               Confirmer
             </button>
@@ -2177,14 +2256,30 @@ function CompanionCancelBlock({ request }: { request: Request }) {
 
 function StudentDetail({ request, onBack }: { request: Request; onBack: () => void }) {
   const accepted = request.status === "accepted";
-  const strikes = useStrikes();
-  const banned = strikes >= 3;
   const [taken, setTaken] = useState(false);
   const accept = () => {
-    if (banned) return;
     const ok = store.acceptRequest(request.id);
     if (!ok) setTaken(true);
   };
+
+  if (request.status === "cancelled") {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
+        <div className="text-6xl">🔔</div>
+        <h2 className="text-2xl font-black">Rendez-vous annulé par la famille</h2>
+        <p className="text-base text-muted-foreground">Ne vous déplacez pas pour cette mission.</p>
+        {request.cancelReason && (
+          <div className="w-full bg-card rounded-2xl p-4 border-2 border-border text-left">
+            <p className="text-sm text-muted-foreground">Motif indiqué par la famille</p>
+            <p className="text-base font-semibold mt-1">{request.cancelReason}</p>
+          </div>
+        )}
+        <button onClick={onBack} className="btn-huge bg-primary text-primary-foreground w-full">
+          Retour aux demandes
+        </button>
+      </div>
+    );
+  }
 
 
 
@@ -2272,12 +2367,8 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
             </div>
           )}
           <div className="flex-1" />
-          <button
-            onClick={accept}
-            disabled={banned}
-            className="btn-huge bg-success text-success-foreground disabled:opacity-50"
-          >
-            {banned ? "🚫 Compte radié" : "✅ Accepter la mission"}
+          <button onClick={accept} className="btn-huge bg-success text-success-foreground">
+            ✅ Accepter la mission
           </button>
         </>
       ) : (
