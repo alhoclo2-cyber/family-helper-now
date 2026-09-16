@@ -89,6 +89,8 @@ export type Request = {
   status: "searching" | "accepted" | "cancelled";
   cancelledBy?: "family" | "companion";
   refunded?: boolean;
+  cancelReason?: string; // motif final retenu pour l'annulation par la famille
+  companionCancelNotice?: { companionName: string; reason: string } | null; // dernier motif d'un compagnon qui s'est désisté
   student?: Companion;
 };
 
