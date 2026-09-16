@@ -1468,6 +1468,23 @@ function FamilyWait({
     <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-6 text-center">
       {!accepted ? (
         <>
+          {request.companionCancelNotice && (
+            <div className="w-full rounded-2xl border-2 border-warning bg-warning/10 p-4 text-left">
+              <p className="text-sm font-black">
+                🔔 {request.companionCancelNotice.companionName} a annulé
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Motif indiqué : « {request.companionCancelNotice.reason} ». Nous recherchons un autre compagnon.
+              </p>
+              <button
+                type="button"
+                onClick={() => store.updateRequest(request.id, { companionCancelNotice: null })}
+                className="mt-3 py-3 rounded-2xl border-2 border-border bg-card font-bold text-sm w-full"
+              >
+                J'ai compris
+              </button>
+            </div>
+          )}
           {isSos ? (
             <>
               <div className="relative h-32 w-32">
