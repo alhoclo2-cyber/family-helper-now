@@ -30,10 +30,12 @@ export function CompanionProfileHeader({
   firstName,
   missions,
   thumbs,
+  missedCount,
 }: {
   firstName: string;
   missions: number;
   thumbs: number;
+  missedCount: number;
 }) {
   const b = experienceBadge(missions);
   return (
