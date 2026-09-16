@@ -2119,33 +2119,15 @@ function StudentFlow() {
   );
 }
 
-/* --- Compagnon : annulation d'un RDV & règles de radiation --- */
+/* --- Compagnon : annulation d'un RDV --- */
 
-const STRIKES_KEY = "sos-companion-strikes";
-function loadStrikes(): number {
-  if (typeof window === "undefined") return 0;
-  return Number(localStorage.getItem(STRIKES_KEY) || 0);
-}
-function saveStrikes(n: number) {
-  try {
-    localStorage.setItem(STRIKES_KEY, String(n));
-    window.dispatchEvent(new Event("sos-strikes-changed"));
-  } catch {}
-}
-function useStrikes(): number {
-  const [n, setN] = useState(0);
-  useEffect(() => {
-    const refresh = () => setN(loadStrikes());
-    refresh();
-    window.addEventListener("sos-strikes-changed", refresh);
-    window.addEventListener("storage", refresh);
-    return () => {
-      window.removeEventListener("sos-strikes-changed", refresh);
-      window.removeEventListener("storage", refresh);
-    };
-  }, []);
-  return n;
-}
+const COMPANION_CANCEL_REASONS = [
+  "Empêchement personnel",
+  "Raison de santé",
+  "Contretemps de dernière minute",
+  "Le créneau ne correspond finalement pas à ma disponibilité",
+  "Autre raison",
+];
 
 
 function CompanionCancelBlock({ request }: { request: Request }) {
