@@ -2174,7 +2174,7 @@ function CompanionCancelBlock({ request }: { request: Request }) {
             <>
               <p className="text-sm font-bold">Annulation possible</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Plus de 48 h avant le rendez-vous et un autre compagnon est disponible : la mission repart en
+                Plus de 24 h avant le rendez-vous et un autre compagnon est disponible : la mission repart en
                 recherche, sans pénalité.
               </p>
             </>
@@ -2184,10 +2184,40 @@ function CompanionCancelBlock({ request }: { request: Request }) {
               <p className="text-sm text-muted-foreground mt-1">
                 {inTime
                   ? "Aucun autre compagnon n'est disponible sur ce créneau."
-                  : "Il reste moins de 48 h avant le rendez-vous."}{" "}
-                Sans justificatif valable, ce désistement sera compté comme un rendez-vous non honoré (3 = radiation).
+                  : "Il reste moins de 24 h avant le rendez-vous."}{" "}
+                Ce désistement sera enregistré comme un rendez-vous non honoré, visible par les familles.
               </p>
             </>
+          )}
+          <label className="block text-xs font-semibold mt-3">Motif de l'annulation</label>
+          <select
+            value={reason}
+            onChange={(e) => {
+              setReason(e.target.value);
+              if (e.target.value !== "Autre raison") setOtherDetail("");
+            }}
+            className="w-full mt-1 px-3 py-2 rounded-xl border-2 border-border bg-card text-sm"
+          >
+            <option value="">Sélectionnez un motif</option>
+            {COMPANION_CANCEL_REASONS.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
+          {reason === "Autre raison" && (
+            <div className="mt-2">
+              <p className="text-xs text-muted-foreground">
+                ⚠️ Ce texte sera visible par la famille. Restez factuel.
+              </p>
+              <textarea
+                value={otherDetail}
+                onChange={(e) => setOtherDetail(e.target.value.slice(0, 150))}
+                maxLength={150}
+                rows={2}
+                placeholder="Précisez en quelques mots (150 caractères max)"
+                className="w-full mt-1 px-3 py-2 rounded-xl border-2 border-border bg-card text-sm"
+              />
+              <p className="text-[11px] text-muted-foreground text-right mt-0.5">{otherDetail.length}/150</p>
+            </div>
           )}
           <div className="grid grid-cols-2 gap-2 mt-3">
             <button
@@ -2199,16 +2229,20 @@ function CompanionCancelBlock({ request }: { request: Request }) {
             </button>
             <button
               type="button"
+              disabled={!reason || (reason === "Autre raison" && !otherDetail.trim())}
               onClick={() => {
-                store.releaseRequest(request.id);
+                if (!reason || (reason === "Autre raison" && !otherDetail.trim())) return;
+                const finalReason = reason === "Autre raison" && otherDetail.trim() ? otherDetail.trim() : reason;
+                const companion = request.student!;
+                store.releaseRequestWithReason(request.id, companion.firstName, finalReason);
                 if (inTime && replacementAvailable) {
                   setDone("released");
                 } else {
-                  saveStrikes(loadStrikes() + 1);
+                  store.recordMissedAppointment(companion.id);
                   setDone("strike");
                 }
               }}
-              className="py-3 rounded-2xl bg-destructive text-destructive-foreground font-bold text-sm"
+              className="py-3 rounded-2xl bg-destructive text-destructive-foreground font-bold text-sm disabled:opacity-50"
             >
               Confirmer
             </button>
