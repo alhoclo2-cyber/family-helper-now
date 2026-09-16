@@ -2132,7 +2132,8 @@ const COMPANION_CANCEL_REASONS = [
 function CompanionCancelBlock({ request }: { request: Request }) {
   const [confirm, setConfirm] = useState(false);
   const [done, setDone] = useState<"released" | "strike" | null>(null);
-  const strikes = useStrikes();
+  const [reason, setReason] = useState("");
+  const [otherDetail, setOtherDetail] = useState("");
   const inTime = canFreeCancel(request.scheduledAt);
   // Simulation : un autre compagnon est disponible sur ce créneau.
   const replacementAvailable = true;
