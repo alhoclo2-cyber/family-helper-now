@@ -1328,12 +1328,12 @@ function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolea
       )}
       {!free && !editing && (
         <p className="text-xs text-muted-foreground mt-2">
-          ⏳ Moins de 48 h avant le rendez-vous : la modification n'est plus possible.
+          ⏳ Moins de 24 h avant le rendez-vous : la modification n'est plus possible.
         </p>
       )}
       <p className="text-xs text-muted-foreground mt-2">
-        Modification et annulation gratuites jusqu'à 48 h avant le rendez-vous, sous réserve qu'un compagnon soit
-        disponible sur le nouveau créneau. Passé 48 h, la mission reste due.
+        Modification et annulation gratuites jusqu'à 24 h avant le rendez-vous, sous réserve qu'un compagnon soit
+        disponible sur le nouveau créneau. Passé 24 h, la mission reste due.
       </p>
     </div>
   );
