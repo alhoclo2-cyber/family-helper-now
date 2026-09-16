@@ -1396,8 +1396,8 @@ function FamilyWait({
         <p className="text-2xl font-black">Rendez-vous annulé</p>
         <p className="text-base text-muted-foreground">
           {request.refunded
-            ? "Annulation à plus de 48 h : vous serez intégralement remboursé sous 3 jours ouvrés."
-            : "Annulation à moins de 48 h : conformément aux conditions, le paiement n'est pas remboursé."}
+            ? "Annulation à plus de 24 h : vous serez intégralement remboursé sous 3 jours ouvrés."
+            : "Annulation à moins de 24 h : conformément aux conditions, le paiement n'est pas remboursé."}
         </p>
         <button onClick={onDone} className="btn-huge bg-primary text-primary-foreground w-full">
           Retour à l'accueil
