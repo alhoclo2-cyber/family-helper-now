@@ -2153,8 +2153,7 @@ function CompanionCancelBlock({ request }: { request: Request }) {
       <div className="rounded-2xl border-2 border-destructive bg-destructive/10 p-4 text-left">
         <p className="text-sm font-bold text-destructive">Rendez-vous non honoré enregistré</p>
         <p className="text-sm text-muted-foreground mt-1">
-          Sans justificatif valable, ce désistement compte comme un manquement ({strikes}/3). À 3 manquements,
-          votre compte est radié.
+          Ce manquement est désormais visible par les familles sur votre profil.
         </p>
       </div>
     );
