@@ -1203,7 +1203,7 @@ function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolea
               <p className="text-sm font-bold text-destructive">Modification refusée</p>
               <p className="text-sm text-muted-foreground mt-1">
                 Aucun compagnon n'est disponible sur ce nouveau créneau. Votre rendez-vous initial est maintenu.
-                Essayez un autre horaire (entre 7 h et 21 h, à plus de 48 h).
+                Essayez un autre horaire (à plus de 24 h).
               </p>
             </div>
           )}
