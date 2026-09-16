@@ -954,6 +954,10 @@ function FamilyForm({
               « Besoin rapidement », sans délai minimum.
             </p>
           )}
+          <p className="text-xs text-muted-foreground mt-2">
+            🌙 Les horaires de nuit légaux (21h à 7h, Art. L3122-2 du Code du travail) peuvent faire l'objet d'un accord
+            salarial différent entre vous et votre compagnon, qui reste libre d'accepter ou non une mission de nuit.
+          </p>
         </div>
       )}
       {mode === "scheduled" && (
