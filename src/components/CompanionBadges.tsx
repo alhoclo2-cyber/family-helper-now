@@ -54,6 +54,14 @@ export function CompanionProfileHeader({
           {firstName} dans la recherche.
         </p>
       </div>
+      <div className="mt-3 border-t-2 border-border pt-3">
+        <p className="text-sm font-black">Ponctualité</p>
+        <p className="text-sm mt-1">
+          {missedCount > 0
+            ? `⚠️ ${missedCount} rendez-vous non honoré${missedCount > 1 ? "s" : ""}`
+            : "✅ Aucun rendez-vous non honoré"}
+        </p>
+      </div>
     </section>
   );
 }
