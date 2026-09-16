@@ -2367,12 +2367,8 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
             </div>
           )}
           <div className="flex-1" />
-          <button
-            onClick={accept}
-            disabled={banned}
-            className="btn-huge bg-success text-success-foreground disabled:opacity-50"
-          >
-            {banned ? "🚫 Compte radié" : "✅ Accepter la mission"}
+          <button onClick={accept} className="btn-huge bg-success text-success-foreground">
+            ✅ Accepter la mission
           </button>
         </>
       ) : (
