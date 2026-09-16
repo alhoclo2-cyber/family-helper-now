@@ -1138,19 +1138,25 @@ function FamilyForm({
 }
 
 
-const CANCEL_WINDOW_MS = 48 * 60 * 60 * 1000;
+const CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000;
 const canFreeCancel = (scheduledAt?: number | null) =>
   !!scheduledAt && scheduledAt - Date.now() > CANCEL_WINDOW_MS;
 
-// Simulation de disponibilité des compagnons sur un nouveau créneau.
-// Aucun compagnon entre 21 h et 7 h, ni à moins de 48 h ; sinon 1 créneau sur 4 est complet.
+// Simulation de disponibilité des compagnons sur un nouveau créneau :
+// pas de créneau à moins de 24 h ; sinon 1 créneau sur 4 est complet.
 function companionAvailableAt(ts: number) {
   if (Number.isNaN(ts)) return false;
   if (ts - Date.now() <= CANCEL_WINDOW_MS) return false;
-  const h = new Date(ts).getHours();
-  if (h < 7 || h >= 21) return false;
   return Math.floor(ts / 60_000) % 4 !== 0;
 }
+
+const FAMILY_CANCEL_REASONS = [
+  "Je n'ai plus besoin de cette prestation",
+  "Mon emploi du temps a changé",
+  "J'ai trouvé une autre solution",
+  "Contretemps / imprévu personnel",
+  "Autre raison",
+];
 
 // Masque le numéro de rue : "12 rue des Lilas, 75014 Paris" -> "rue des Lilas, 75014 Paris"
 function maskAddress(address: string) {
