@@ -488,7 +488,7 @@ function FamilyForm({
   const [escortDetail, setEscortDetail] = useState<string>(initial?.escortDetail ?? "");
   const [otherDetail, setOtherDetail] = useState<string>(initial?.otherDetail ?? "");
   const [extraInfo, setExtraInfo] = useState<string>(parsed.rest);
-  const [continuity, setContinuity] = useState(initial?.continuityCertified ?? false);
+  
   const [cguOk, setCguOk] = useState(false);
   const [complianceCheck, setComplianceCheck] = useState<ContractCheckResult | null>(null);
   const [whenError, setWhenError] = useState(false);
@@ -2083,7 +2083,7 @@ function StudentFlow() {
                       <p className="text-base text-muted-foreground mt-1">📍 {maskAddress(r.address)}</p>
                       <p className="text-sm text-muted-foreground">🧭 ≈ {distanceOf(r.id)} km de chez vous</p>
 
-                      {r.durationHours && r.durationHours > 1 && (
+                      {r.durationHours != null && (
                         <p className="text-sm mt-1 font-semibold">⏱️ Durée : {r.durationHours}h</p>
                       )}
                       {r.childAge && <p className="text-sm mt-1 font-semibold">🎂 Enfant : {r.childAge} ans</p>}
@@ -2299,7 +2299,7 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
       <div className="bg-card rounded-3xl p-6 border-2 border-border">
         <p className="text-sm text-muted-foreground uppercase tracking-wide font-bold">Besoin</p>
         <p className="text-2xl font-bold mt-1">{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</p>
-        {request.durationHours && request.durationHours > 1 && (
+        {request.durationHours != null && (
           <p className="text-base font-semibold mt-2">⏱️ Durée demandée : {request.durationHours}h</p>
         )}
         {(request.childLevel || request.childrenCount || request.escortDestination || request.otherDetail || request.childAge) && (
