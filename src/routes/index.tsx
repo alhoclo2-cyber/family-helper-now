@@ -148,7 +148,7 @@ function NeedLabel({ need }: { need: NeedType }) {
   return <div className="text-base font-semibold leading-tight">{need}</div>;
 }
 
-function ServiceLimitsNotice({ className = "" }: { className?: string }) {
+function ServiceLimitsNotice({ className = "", extra }: { className?: string; extra?: string }) {
   return (
     <div className={`mt-3 rounded-2xl border-2 border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed ${className}`}>
       <p className="font-bold mb-1">⚠️ Services non autorisés</p>
@@ -160,6 +160,7 @@ function ServiceLimitsNotice({ className = "" }: { className?: string }) {
         (transport de substances interdites, manipulation d'argent liquide, garde d'enfant de moins de 3 ans,
         port de charges lourdes, intervention sur animaux malades).
       </p>
+      {extra && <p className="mt-2 font-semibold">{extra}</p>}
     </div>
   );
 }
@@ -487,7 +488,7 @@ function FamilyForm({
   const [escortDetail, setEscortDetail] = useState<string>(initial?.escortDetail ?? "");
   const [otherDetail, setOtherDetail] = useState<string>(initial?.otherDetail ?? "");
   const [extraInfo, setExtraInfo] = useState<string>(parsed.rest);
-  const [continuity, setContinuity] = useState(initial?.continuityCertified ?? false);
+  
   const [cguOk, setCguOk] = useState(false);
   const [complianceCheck, setComplianceCheck] = useState<ContractCheckResult | null>(null);
   const [whenError, setWhenError] = useState(false);
@@ -501,6 +502,8 @@ function FamilyForm({
 
   const needs: { v: NeedType; icon: string }[] = [
     { v: "Compagnie/Présence", icon: "🤝" },
+    { v: "Ménage/Rangement intérieur", icon: "🧹" },
+    { v: "Jardinage/Rangement extérieur", icon: "🌿" },
     { v: "Aide au repas", icon: "🍽️" },
     { v: "Accompagnement sorties extérieures", icon: "🌳" },
     { v: "Aide aux devoirs (primaire au lycée)", icon: "📚" },
@@ -524,21 +527,13 @@ function FamilyForm({
   const isChildcare = need === "Garde d'enfants (à partir de 3 ans)";
   const isEscortChild = need === "Accompagner un enfant (à partir de 3 ans)";
   const isChildNeed = isHomework || isChildcare || isEscortChild;
-  const hasDuration =
-    need === "Compagnie/Présence" ||
-    need === "Accompagnement sorties extérieures" ||
-    isHomework ||
-    isChildcare ||
-    isEscortChild ||
-    need === "Autre (à préciser)";
-
-  const isOutdoor =
-    need === "Retrait ou dépôt d'un colis" || need === "Pharmacie" || need === "Courses urgentes";
+  const isCleaning = need === "Ménage/Rangement intérieur";
+  const isGardening = need === "Jardinage/Rangement extérieur";
 
   const createAndGo = (companionOverride?: string) => {
     const companion = companionOverride ?? pickedCompanion;
     const scheduledAt = mode === "scheduled" ? new Date(when).getTime() : null;
-    const dh = hasDuration ? durationHours : 1;
+    const dh = durationHours;
     const isParcel = need === "Retrait ou dépôt d'un colis";
     store.createRequest({
       need,
@@ -569,7 +564,7 @@ function FamilyForm({
           .filter(Boolean)
           .join("\n") || undefined,
       continuityCertified:
-        isOutdoor ? continuity : need === "Compagnie/Présence" && commissions.length > 0 ? commissionCertified : undefined,
+        need === "Compagnie/Présence" && commissions.length > 0 ? commissionCertified : undefined,
     });
     // En cas de modification, l'ancienne demande est remplacée par la nouvelle.
     if (editId) store.discardRequest(editId);
@@ -621,7 +616,7 @@ function FamilyForm({
     return checkContractRequirement(
       companionId,
       bookingTs,
-      hasDuration ? durationHours : 1,
+      durationHours,
       store.getState().requests,
     );
   };
@@ -630,7 +625,7 @@ function FamilyForm({
     e.preventDefault();
     if (!address.trim() || !phone.trim()) return;
     if (need === "Autre (à préciser)" && !otherDetail.trim()) return;
-    if (isOutdoor && !continuity) return;
+    
     if (need === "Compagnie/Présence" && commissions.length > 0 && !commissionCertified) return;
     if (isChildNeed && (!childAge.trim() || Number(childAge) < 3)) return;
     if (mode === "scheduled" && !autoSearch && !pickedCompanion) return;
@@ -862,35 +857,65 @@ function FamilyForm({
           )}
         </div>
       )}
-      {hasDuration && (
-        <div>
-          <label className="block text-lg font-bold mb-2">Durée souhaitée</label>
-          <p className="text-sm text-muted-foreground mb-3">
-            Indiquez le temps d'intervention souhaité.
-          </p>
-          <div className="grid grid-cols-4 gap-2">
-            {[1, 2, 3, 4].map((h) => (
-              <button
-                key={h}
-                type="button"
-                onClick={() => setDurationHours(h)}
-                className={`py-3 rounded-2xl border-2 text-base font-bold transition-all ${
-                  durationHours === h ? "border-primary bg-accent" : "border-border bg-card"
-                }`}
-              >
-                {h}h
-              </button>
-            ))}
+      {isGardening && (
+        <div className="rounded-2xl border-2 border-border bg-accent p-3 text-xs leading-relaxed">
+          🌿 Petits travaux de jardinage : plafond fiscal spécifique de 5 000 € par an et par foyer fiscal
+          pour le crédit d'impôt (distinct du plafond global des autres services à la personne).
+        </div>
+      )}
+      {(isCleaning || isGardening) && (
+        <ServiceLimitsNotice
+          extra={
+            isGardening
+              ? "Le compagnon ne peut utiliser aucun outil motorisé dangereux (tronçonneuse, taille-haie thermique, débroussailleuse), ne peut intervenir en hauteur (élagage, taille d'arbres) ni utiliser de produits phytosanitaires professionnels. Seuls les petits travaux d'entretien courant sont autorisés (tonte, désherbage manuel, arrosage, petit rangement)."
+              : "Le compagnon ne peut effectuer aucun nettoyage en hauteur sans équipement adapté (vitres extérieures, lustres), ni utiliser de produits d'entretien professionnels ou dangereux. Seul l'entretien courant du logement est autorisé (rangement, dépoussiérage, sols, vaisselle, linge)."
+          }
+        />
+      )}
+      <div>
+        <label className="block text-lg font-bold mb-2">Durée souhaitée</label>
+        <p className="text-sm text-muted-foreground mb-3">
+          Indiquez le temps d'intervention souhaité.
+        </p>
+        <div className="grid grid-cols-3 gap-2">
+          {[1, 2, 3, 4].map((h) => (
+            <button
+              key={h}
+              type="button"
+              onClick={() => setDurationHours(h)}
+              className={`py-3 rounded-2xl border-2 text-base font-bold transition-all ${
+                durationHours === h ? "border-primary bg-accent" : "border-border bg-card"
+              }`}
+            >
+              {h}h
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setDurationHours((d) => (d >= 5 ? d : 5))}
+            className={`py-3 rounded-2xl border-2 text-base font-bold transition-all ${
+              durationHours >= 5 ? "border-primary bg-accent" : "border-border bg-card"
+            }`}
+          >
+            5h et plus
+          </button>
+        </div>
+        {durationHours >= 5 && (
+          <div className="mt-3">
+            <p className="text-sm font-semibold mb-1">Durée précise : {durationHours}h</p>
+            <input
+              type="range"
+              min={5}
+              max={12}
+              step={1}
+              value={durationHours}
+              onChange={(e) => setDurationHours(Number(e.target.value))}
+              className="w-full accent-primary"
+            />
           </div>
-          <ServiceFeeHint className="mt-2" />
-        </div>
-      )}
-      {!hasDuration && need !== "Retrait ou dépôt d'un colis" && (
-        <div className="bg-accent rounded-2xl p-3 text-sm">
-          Frais de service Solélia : <b>{formatPrice(SERVICE_FEE)} €</b> (forfait fixe)
-          <ServiceFeeHint className="mt-1" />
-        </div>
-      )}
+        )}
+        <ServiceFeeHint className="mt-2" />
+      </div>
       {need === "Retrait ou dépôt d'un colis" && (
         <div className="flex flex-col gap-4">
           <div>
@@ -1045,21 +1070,6 @@ function FamilyForm({
           className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
         />
       </div>
-      {isOutdoor && (
-        <label className="flex items-start gap-3 rounded-2xl border-2 border-warning bg-warning/10 p-4 text-sm">
-          <input
-            type="checkbox"
-            checked={continuity}
-            onChange={(e) => setContinuity(e.target.checked)}
-            className="mt-1 h-5 w-5 shrink-0"
-          />
-          <span>
-            Je certifie que cette course, ce retrait de colis ou ce passage en pharmacie s'inscrit dans la
-            <b> continuité de l'aide à domicile</b> qui m'est apportée, et ne constitue pas une prestation de
-            livraison autonome (à défaut, risque de requalification en service de livraison).
-          </span>
-        </label>
-      )}
       <CguAcceptBlock checked={cguOk} onChange={setCguOk} role="client" />
       {mode === "scheduled" && !!pickedCompanion && (
         <div className="rounded-2xl border-2 border-dashed border-border p-3 text-left">
@@ -2073,7 +2083,7 @@ function StudentFlow() {
                       <p className="text-base text-muted-foreground mt-1">📍 {maskAddress(r.address)}</p>
                       <p className="text-sm text-muted-foreground">🧭 ≈ {distanceOf(r.id)} km de chez vous</p>
 
-                      {r.durationHours && r.durationHours > 1 && (
+                      {r.durationHours != null && (
                         <p className="text-sm mt-1 font-semibold">⏱️ Durée : {r.durationHours}h</p>
                       )}
                       {r.childAge && <p className="text-sm mt-1 font-semibold">🎂 Enfant : {r.childAge} ans</p>}
@@ -2289,7 +2299,7 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
       <div className="bg-card rounded-3xl p-6 border-2 border-border">
         <p className="text-sm text-muted-foreground uppercase tracking-wide font-bold">Besoin</p>
         <p className="text-2xl font-bold mt-1">{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</p>
-        {request.durationHours && request.durationHours > 1 && (
+        {request.durationHours != null && (
           <p className="text-base font-semibold mt-2">⏱️ Durée demandée : {request.durationHours}h</p>
         )}
         {(request.childLevel || request.childrenCount || request.escortDestination || request.otherDetail || request.childAge) && (
