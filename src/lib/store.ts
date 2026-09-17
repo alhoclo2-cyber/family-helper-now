@@ -5,6 +5,8 @@ export type NeedType =
   | "Compagnie/Présence"
   | "Courses urgentes"
   | "Pharmacie"
+  | "Ménage/Rangement intérieur"
+  | "Jardinage/Rangement extérieur"
   | "Aide au repas"
   | "Accompagnement sorties extérieures"
   | "Sortir ou nourrir animal de compagnie"
