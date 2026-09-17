@@ -876,6 +876,7 @@ function FamilyForm({
       )}
       {(isCleaning || isGardening) && (
         <ServiceLimitsNotice
+          hideBase
           extra={
             isGardening
               ? "Le compagnon ne peut utiliser aucun outil motorisé dangereux (tronçonneuse, taille-haie thermique, débroussailleuse), ne peut intervenir en hauteur (élagage, taille d'arbres) ni utiliser de produits phytosanitaires professionnels. Seuls les petits travaux d'entretien courant sont autorisés (tonte, désherbage manuel, arrosage, petit rangement)."
