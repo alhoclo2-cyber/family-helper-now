@@ -530,6 +530,10 @@ function FamilyForm({
   const isCleaning = need === "Ménage/Rangement intérieur";
   const isGardening = need === "Jardinage/Rangement extérieur";
 
+  const [continuity, setContinuity] = useState(initial?.continuityCertified ?? false);
+  const isOutdoor =
+    need === "Retrait ou dépôt d'un colis" || need === "Pharmacie" || need === "Courses urgentes";
+
   const createAndGo = (companionOverride?: string) => {
     const companion = companionOverride ?? pickedCompanion;
     const scheduledAt = mode === "scheduled" ? new Date(when).getTime() : null;
@@ -564,7 +568,11 @@ function FamilyForm({
           .filter(Boolean)
           .join("\n") || undefined,
       continuityCertified:
-        need === "Compagnie/Présence" && commissions.length > 0 ? commissionCertified : undefined,
+        isOutdoor
+          ? continuity
+          : need === "Compagnie/Présence" && commissions.length > 0
+            ? commissionCertified
+            : undefined,
     });
     // En cas de modification, l'ancienne demande est remplacée par la nouvelle.
     if (editId) store.discardRequest(editId);
@@ -627,6 +635,7 @@ function FamilyForm({
     if (need === "Autre (à préciser)" && !otherDetail.trim()) return;
     
     if (need === "Compagnie/Présence" && commissions.length > 0 && !commissionCertified) return;
+    if (isOutdoor && !continuity) return;
     if (isChildNeed && (!childAge.trim() || Number(childAge) < 3)) return;
     if (mode === "scheduled" && !autoSearch && !pickedCompanion) return;
     if (!cguOk) return;
@@ -1070,6 +1079,21 @@ function FamilyForm({
           className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
         />
       </div>
+      {isOutdoor && (
+        <label className="flex items-start gap-3 rounded-2xl border-2 border-warning bg-warning/10 p-4 text-sm">
+          <input
+            type="checkbox"
+            checked={continuity}
+            onChange={(e) => setContinuity(e.target.checked)}
+            className="mt-1 h-5 w-5 shrink-0"
+          />
+          <span>
+            Je certifie que cette course, ce retrait de colis ou ce passage en pharmacie s'inscrit dans la
+            <b> continuité de l'aide à domicile</b> qui m'est apportée, et ne constitue pas une prestation de
+            livraison autonome (à défaut, risque de requalification en service de livraison).
+          </span>
+        </label>
+      )}
       <CguAcceptBlock checked={cguOk} onChange={setCguOk} role="client" />
       {mode === "scheduled" && !!pickedCompanion && (
         <div className="rounded-2xl border-2 border-dashed border-border p-3 text-left">
