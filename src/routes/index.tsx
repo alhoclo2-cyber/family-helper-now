@@ -148,7 +148,7 @@ function NeedLabel({ need }: { need: NeedType }) {
   return <div className="text-base font-semibold leading-tight">{need}</div>;
 }
 
-function ServiceLimitsNotice({ className = "" }: { className?: string }) {
+function ServiceLimitsNotice({ className = "", extra }: { className?: string; extra?: string }) {
   return (
     <div className={`mt-3 rounded-2xl border-2 border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed ${className}`}>
       <p className="font-bold mb-1">⚠️ Services non autorisés</p>
@@ -160,6 +160,7 @@ function ServiceLimitsNotice({ className = "" }: { className?: string }) {
         (transport de substances interdites, manipulation d'argent liquide, garde d'enfant de moins de 3 ans,
         port de charges lourdes, intervention sur animaux malades).
       </p>
+      {extra && <p className="mt-2 font-semibold">{extra}</p>}
     </div>
   );
 }
@@ -501,6 +502,8 @@ function FamilyForm({
 
   const needs: { v: NeedType; icon: string }[] = [
     { v: "Compagnie/Présence", icon: "🤝" },
+    { v: "Ménage/Rangement intérieur", icon: "🧹" },
+    { v: "Jardinage/Rangement extérieur", icon: "🌿" },
     { v: "Aide au repas", icon: "🍽️" },
     { v: "Accompagnement sorties extérieures", icon: "🌳" },
     { v: "Aide aux devoirs (primaire au lycée)", icon: "📚" },
@@ -524,21 +527,13 @@ function FamilyForm({
   const isChildcare = need === "Garde d'enfants (à partir de 3 ans)";
   const isEscortChild = need === "Accompagner un enfant (à partir de 3 ans)";
   const isChildNeed = isHomework || isChildcare || isEscortChild;
-  const hasDuration =
-    need === "Compagnie/Présence" ||
-    need === "Accompagnement sorties extérieures" ||
-    isHomework ||
-    isChildcare ||
-    isEscortChild ||
-    need === "Autre (à préciser)";
-
-  const isOutdoor =
-    need === "Retrait ou dépôt d'un colis" || need === "Pharmacie" || need === "Courses urgentes";
+  const isCleaning = need === "Ménage/Rangement intérieur";
+  const isGardening = need === "Jardinage/Rangement extérieur";
 
   const createAndGo = (companionOverride?: string) => {
     const companion = companionOverride ?? pickedCompanion;
     const scheduledAt = mode === "scheduled" ? new Date(when).getTime() : null;
-    const dh = hasDuration ? durationHours : 1;
+    const dh = durationHours;
     const isParcel = need === "Retrait ou dépôt d'un colis";
     store.createRequest({
       need,
@@ -621,7 +616,7 @@ function FamilyForm({
     return checkContractRequirement(
       companionId,
       bookingTs,
-      hasDuration ? durationHours : 1,
+      durationHours,
       store.getState().requests,
     );
   };
@@ -862,35 +857,65 @@ function FamilyForm({
           )}
         </div>
       )}
-      {hasDuration && (
-        <div>
-          <label className="block text-lg font-bold mb-2">Durée souhaitée</label>
-          <p className="text-sm text-muted-foreground mb-3">
-            Indiquez le temps d'intervention souhaité.
-          </p>
-          <div className="grid grid-cols-4 gap-2">
-            {[1, 2, 3, 4].map((h) => (
-              <button
-                key={h}
-                type="button"
-                onClick={() => setDurationHours(h)}
-                className={`py-3 rounded-2xl border-2 text-base font-bold transition-all ${
-                  durationHours === h ? "border-primary bg-accent" : "border-border bg-card"
-                }`}
-              >
-                {h}h
-              </button>
-            ))}
+      {isGardening && (
+        <div className="rounded-2xl border-2 border-border bg-accent p-3 text-xs leading-relaxed">
+          🌿 Petits travaux de jardinage : plafond fiscal spécifique de 5 000 € par an et par foyer fiscal
+          pour le crédit d'impôt (distinct du plafond global des autres services à la personne).
+        </div>
+      )}
+      {(isCleaning || isGardening) && (
+        <ServiceLimitsNotice
+          extra={
+            isGardening
+              ? "Le compagnon ne peut utiliser aucun outil motorisé dangereux (tronçonneuse, taille-haie thermique, débroussailleuse), ne peut intervenir en hauteur (élagage, taille d'arbres) ni utiliser de produits phytosanitaires professionnels. Seuls les petits travaux d'entretien courant sont autorisés (tonte, désherbage manuel, arrosage, petit rangement)."
+              : "Le compagnon ne peut effectuer aucun nettoyage en hauteur sans équipement adapté (vitres extérieures, lustres), ni utiliser de produits d'entretien professionnels ou dangereux. Seul l'entretien courant du logement est autorisé (rangement, dépoussiérage, sols, vaisselle, linge)."
+          }
+        />
+      )}
+      <div>
+        <label className="block text-lg font-bold mb-2">Durée souhaitée</label>
+        <p className="text-sm text-muted-foreground mb-3">
+          Indiquez le temps d'intervention souhaité.
+        </p>
+        <div className="grid grid-cols-3 gap-2">
+          {[1, 2, 3, 4].map((h) => (
+            <button
+              key={h}
+              type="button"
+              onClick={() => setDurationHours(h)}
+              className={`py-3 rounded-2xl border-2 text-base font-bold transition-all ${
+                durationHours === h ? "border-primary bg-accent" : "border-border bg-card"
+              }`}
+            >
+              {h}h
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setDurationHours((d) => (d >= 5 ? d : 5))}
+            className={`py-3 rounded-2xl border-2 text-base font-bold transition-all ${
+              durationHours >= 5 ? "border-primary bg-accent" : "border-border bg-card"
+            }`}
+          >
+            5h et plus
+          </button>
+        </div>
+        {durationHours >= 5 && (
+          <div className="mt-3">
+            <p className="text-sm font-semibold mb-1">Durée précise : {durationHours}h</p>
+            <input
+              type="range"
+              min={5}
+              max={12}
+              step={1}
+              value={durationHours}
+              onChange={(e) => setDurationHours(Number(e.target.value))}
+              className="w-full accent-primary"
+            />
           </div>
-          <ServiceFeeHint className="mt-2" />
-        </div>
-      )}
-      {!hasDuration && need !== "Retrait ou dépôt d'un colis" && (
-        <div className="bg-accent rounded-2xl p-3 text-sm">
-          Frais de service Solélia : <b>{formatPrice(SERVICE_FEE)} €</b> (forfait fixe)
-          <ServiceFeeHint className="mt-1" />
-        </div>
-      )}
+        )}
+        <ServiceFeeHint className="mt-2" />
+      </div>
       {need === "Retrait ou dépôt d'un colis" && (
         <div className="flex flex-col gap-4">
           <div>
