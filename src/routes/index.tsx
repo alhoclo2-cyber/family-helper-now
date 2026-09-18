@@ -486,8 +486,13 @@ function FamilyForm({
   const [childClass, setChildClass] = useState<string>(initial?.childClass ?? "");
   const [childAge, setChildAge] = useState<string>(initial?.childAge ?? "");
   const [childAges, setChildAges] = useState<string[]>(initial?.childAges ?? [""]);
-  const [childrenCount, setChildrenCount] = useState<string>(initial?.childrenCount ?? "1 enfant");
-  const [childCountExact, setChildCountExact] = useState<string>("");
+  const [childrenCount, setChildrenCount] = useState<string>(
+    initial?.childrenCount === "2 enfants"
+      ? "2 enfants"
+      : initial?.childrenCount && initial.childrenCount !== "1 enfant"
+        ? "3 enfants"
+        : "1 enfant",
+  );
   const [escortDestination, setEscortDestination] = useState<string>(initial?.escortDestination ?? "À l'école");
   const [escortDetail, setEscortDetail] = useState<string>(initial?.escortDetail ?? "");
   const [otherDetail, setOtherDetail] = useState<string>(initial?.otherDetail ?? "");
@@ -537,7 +542,7 @@ function FamilyForm({
       ? 1
       : childrenCount === "2 enfants"
         ? 2
-        : Math.min(8, Math.max(3, Number(childCountExact) || 3));
+        : 3;
   // Synchronise le tableau des âges avec le nombre d'enfants (tronque ou complète).
   const syncAges = (n: number) =>
     setChildAges((prev) => {
@@ -573,11 +578,7 @@ function FamilyForm({
       childClass: isHomework && childClass.trim() ? childClass.trim() : undefined,
       childAge: isHomework && childAge.trim() ? childAge.trim() : undefined,
       childAges: isMultiChild ? childAges.slice(0, childCountNum).map((a) => a.trim()) : undefined,
-      childrenCount: isMultiChild
-        ? childrenCount === "3 enfants et +"
-          ? `${childCountNum} enfants`
-          : childrenCount
-        : undefined,
+      childrenCount: isMultiChild ? childrenCount : undefined,
       escortDestination: isEscortChild ? escortDestination : undefined,
       escortDetail: isEscortChild && escortDestination === "Autre" ? escortDetail : undefined,
       otherDetail: isOther ? otherDetail : undefined,
@@ -872,7 +873,7 @@ function FamilyForm({
             <div>
               <label className="block text-lg font-bold mb-2">Nombre d'enfants</label>
               <div className="grid grid-cols-3 gap-2">
-                {["1 enfant", "2 enfants", "3 enfants et +"].map((c) => (
+                {["1 enfant", "2 enfants", "3 enfants"].map((c) => (
                   <button
                     key={c}
                     type="button"
@@ -883,7 +884,7 @@ function FamilyForm({
                           ? 1
                           : c === "2 enfants"
                             ? 2
-                            : Math.min(8, Math.max(3, Number(childCountExact) || 3)),
+                            : 3,
                       );
                     }}
                     className={`py-3 px-2 rounded-2xl border-2 text-sm font-bold transition-all ${
@@ -894,23 +895,6 @@ function FamilyForm({
                   </button>
                 ))}
               </div>
-              {childrenCount === "3 enfants et +" && (
-                <div className="mt-3">
-                  <label className="block text-sm font-bold mb-1">Nombre exact d'enfants</label>
-                  <input
-                    type="number"
-                    min={3}
-                    max={8}
-                    value={childCountExact}
-                    placeholder="3"
-                    onChange={(e) => {
-                      setChildCountExact(e.target.value);
-                      syncAges(Math.min(8, Math.max(3, Number(e.target.value) || 3)));
-                    }}
-                    className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
-                  />
-                </div>
-              )}
             </div>
           )}
           {isEscortChild && (
@@ -1157,12 +1141,12 @@ function FamilyForm({
         />
       </div>
       <div>
-        <label className="block text-lg font-bold mb-2">Informations complémentaires</label>
+        <label className="block text-lg font-bold mb-2">Indications sur la mission</label>
         <textarea
           value={extraInfo}
           onChange={(e) => setExtraInfo(e.target.value)}
           rows={3}
-          placeholder="Précisions utiles au compagnon : code d'entrée, étage, préférences, matériel à prévoir…"
+          placeholder="Ex. faire réviser les tables de multiplication, commencer par une promenade, étendre la machine à laver…"
           className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
         />
       </div>
