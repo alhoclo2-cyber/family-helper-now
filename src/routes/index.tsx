@@ -497,6 +497,7 @@ function FamilyForm({
   const [escortDetail, setEscortDetail] = useState<string>(initial?.escortDetail ?? "");
   const [otherDetail, setOtherDetail] = useState<string>(initial?.otherDetail ?? "");
   const [extraInfo, setExtraInfo] = useState<string>(parsed.rest);
+  const [missionInfo, setMissionInfo] = useState<string>(initial?.missionInfo ?? "");
   
   const [cguOk, setCguOk] = useState(false);
   const [complianceCheck, setComplianceCheck] = useState<ContractCheckResult | null>(null);
@@ -591,6 +592,7 @@ function FamilyForm({
         ]
           .filter(Boolean)
           .join("\n") || undefined,
+      missionInfo: missionInfo.trim() || undefined,
       continuityCertified:
         isOutdoor
           ? continuity
@@ -1065,6 +1067,16 @@ function FamilyForm({
           </p>
         </div>
       )}
+      <div>
+        <label className="block text-lg font-bold mb-2">Précisions sur la mission</label>
+        <textarea
+          value={missionInfo}
+          onChange={(e) => setMissionInfo(e.target.value)}
+          rows={3}
+          placeholder="Ex. faire réviser les tables de multiplication à mon fils, commencer par une promenade en arrivant, j'ai mis une machine à laver en route, pensez à l'étendre…"
+          className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
+        />
+      </div>
       {mode === "scheduled" && (
         <div>
           <label className="block text-lg font-bold mb-2">Qui doit venir ?</label>
@@ -1141,12 +1153,12 @@ function FamilyForm({
         />
       </div>
       <div>
-        <label className="block text-lg font-bold mb-2">Indications sur la mission</label>
+        <label className="block text-lg font-bold mb-2">Informations complémentaires</label>
         <textarea
           value={extraInfo}
           onChange={(e) => setExtraInfo(e.target.value)}
           rows={3}
-          placeholder="Ex. faire réviser les tables de multiplication, commencer par une promenade, étendre la machine à laver…"
+          placeholder="Ex. code d'entrée 1234A, 2e étage, sonner à gauche…"
           className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
         />
       </div>
@@ -2208,6 +2220,7 @@ function StudentFlow() {
                         </p>
                       )}
                       {r.extraInfo && <p className="text-sm mt-1 text-muted-foreground">📝 {r.extraInfo}</p>}
+                      {r.missionInfo && <p className="text-sm mt-1 text-muted-foreground">🗒️ {r.missionInfo}</p>}
 
                       {r.childrenCount && <p className="text-sm mt-1 font-semibold">🧸 {r.childrenCount}</p>}
                       {r.otherDetail && (
@@ -2445,6 +2458,12 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
           <div className="mt-3 bg-accent rounded-xl p-3">
             <p className="text-xs text-muted-foreground font-bold uppercase">Informations complémentaires</p>
             <p className="text-base mt-1">{request.extraInfo}</p>
+          </div>
+        )}
+        {request.missionInfo && (
+          <div className="mt-3 bg-accent rounded-xl p-3">
+            <p className="text-xs text-muted-foreground font-bold uppercase">Précisions sur la mission</p>
+            <p className="text-base mt-1">{request.missionInfo}</p>
           </div>
         )}
 
