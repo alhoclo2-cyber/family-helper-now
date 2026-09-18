@@ -1547,6 +1547,8 @@ function FamilyWait({
       <PaymentScreen
         companion={request.student!}
         hours={hours}
+        need={request.need}
+        childAges={request.childAges}
         salaire={salaireDraft ?? formatPrice(request.student!.hourlyRate ?? DEFAULT_HOURLY_RATE)}
         onSalaire={setSalaireDraft}
         onDone={(salaireNetHoraire) => {
@@ -1890,6 +1892,8 @@ function PaymentScreen({
   companion,
   hours,
   salaire,
+  need,
+  childAges,
   onSalaire,
   onDone,
   onBack,
@@ -1897,6 +1901,8 @@ function PaymentScreen({
   companion: Companion;
   hours: number;
   salaire: string; // contrôlé par l'écran parent : conservé en cas de navigation arrière
+  need: NeedType;
+  childAges?: string[];
   onSalaire: (v: string) => void;
   onDone: (salaireNetHoraire: number) => void;
   onBack: () => void;
@@ -1940,6 +1946,15 @@ function PaymentScreen({
         <p className="text-xs text-muted-foreground mt-2">
           Durée prévue : {hours}h — salaire estimé {formatPrice(salaireNum * hours)} €
         </p>
+        {(need === "Garde d'enfants (à partir de 3 ans)" ||
+          need === "Accompagner un enfant (à partir de 3 ans)") &&
+          (childAges?.length ?? 0) > 1 && (
+            <p className="text-xs text-muted-foreground mt-2">
+              👶 Pour {childAges!.length} enfants, il est habituel de majorer le salaire d'environ 1 €/h par
+              enfant supplémentaire (soit environ {formatPrice(salaireNum + (childAges!.length - 1))} €/h avec
+              votre montant actuel). Ce montant reste indicatif et modifiable.
+            </p>
+          )}
         <p className="text-xs text-muted-foreground mt-2">
           ⚖️ En tant que particulier employeur, vous ne pouvez pas rémunérer en dessous du SMIC horaire net (congés
           payés inclus).{" "}
