@@ -2198,6 +2198,11 @@ function StudentFlow() {
                         <p className="text-sm mt-1 font-semibold">⏱️ Durée : {r.durationHours}h</p>
                       )}
                       {r.childAge && <p className="text-sm mt-1 font-semibold">🎂 Enfant : {r.childAge} ans</p>}
+                      {r.childAges && r.childAges.length > 0 && (
+                        <p className="text-sm mt-1 font-semibold">
+                          🎂 Enfants : {new Intl.ListFormat("fr", { style: "long", type: "conjunction" }).format(r.childAges)} ans
+                        </p>
+                      )}
                       {r.childLevel && (
                         <p className="text-sm mt-1 font-semibold">
                           🎒 Niveau : {r.childLevel}{r.childClass ? ` — ${r.childClass}` : ""}
@@ -2413,10 +2418,15 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
         {request.durationHours != null && (
           <p className="text-base font-semibold mt-2">⏱️ Durée demandée : {request.durationHours}h</p>
         )}
-        {(request.childLevel || request.childrenCount || request.escortDestination || request.otherDetail || request.childAge) && (
+        {(request.childLevel || request.childrenCount || request.escortDestination || request.otherDetail || request.childAge || (request.childAges?.length ?? 0) > 0) && (
           <div className="mt-3 bg-accent rounded-xl p-3">
             <p className="text-xs text-muted-foreground font-bold uppercase">Enfant (3 ans et +)</p>
             {request.childAge && <p className="text-base font-semibold mt-1">🎂 {request.childAge} ans</p>}
+            {request.childAges && request.childAges.length > 0 && (
+              <p className="text-base font-semibold mt-1">
+                🎂 Enfants : {new Intl.ListFormat("fr", { style: "long", type: "conjunction" }).format(request.childAges)} ans
+              </p>
+            )}
             {request.childLevel && (
               <p className="text-base font-semibold mt-1">
                 🎒 Niveau : {request.childLevel}{request.childClass ? ` — ${request.childClass}` : ""}
