@@ -571,8 +571,13 @@ function FamilyForm({
       parcelSize: isParcel ? parcelSize : undefined,
       childLevel: isHomework ? childLevel : undefined,
       childClass: isHomework && childClass.trim() ? childClass.trim() : undefined,
-      childAge: isChildNeed && childAge.trim() ? childAge.trim() : undefined,
-      childrenCount: isChildcare ? childrenCount : undefined,
+      childAge: isHomework && childAge.trim() ? childAge.trim() : undefined,
+      childAges: isMultiChild ? childAges.slice(0, childCountNum).map((a) => a.trim()) : undefined,
+      childrenCount: isMultiChild
+        ? childrenCount === "3 enfants et +"
+          ? `${childCountNum} enfants`
+          : childrenCount
+        : undefined,
       escortDestination: isEscortChild ? escortDestination : undefined,
       escortDetail: isEscortChild && escortDestination === "Autre" ? escortDetail : undefined,
       otherDetail: isOther ? otherDetail : undefined,
@@ -654,7 +659,12 @@ function FamilyForm({
     
     if (need === "Compagnie/Présence" && commissions.length > 0 && !commissionCertified) return;
     if (isOutdoor && !continuity) return;
-    if (isChildNeed && (!childAge.trim() || Number(childAge) < 3)) return;
+    if (isHomework && (!childAge.trim() || Number(childAge) < 3)) return;
+    if (
+      isMultiChild &&
+      childAges.slice(0, childCountNum).some((a) => !a.trim() || Number(a) < 3)
+    )
+      return;
     if (mode === "scheduled" && !autoSearch && !pickedCompanion) return;
     if (!cguOk) return;
 
