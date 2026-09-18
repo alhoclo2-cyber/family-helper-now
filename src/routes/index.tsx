@@ -485,7 +485,9 @@ function FamilyForm({
   const [childLevel, setChildLevel] = useState<string>(initial?.childLevel ?? "Primaire");
   const [childClass, setChildClass] = useState<string>(initial?.childClass ?? "");
   const [childAge, setChildAge] = useState<string>(initial?.childAge ?? "");
+  const [childAges, setChildAges] = useState<string[]>(initial?.childAges ?? [""]);
   const [childrenCount, setChildrenCount] = useState<string>(initial?.childrenCount ?? "1 enfant");
+  const [childCountExact, setChildCountExact] = useState<string>("");
   const [escortDestination, setEscortDestination] = useState<string>(initial?.escortDestination ?? "À l'école");
   const [escortDetail, setEscortDetail] = useState<string>(initial?.escortDetail ?? "");
   const [otherDetail, setOtherDetail] = useState<string>(initial?.otherDetail ?? "");
@@ -529,6 +531,20 @@ function FamilyForm({
   const isChildcare = need === "Garde d'enfants (à partir de 3 ans)";
   const isEscortChild = need === "Accompagner un enfant (à partir de 3 ans)";
   const isChildNeed = isHomework || isChildcare || isEscortChild;
+  const isMultiChild = isChildcare || isEscortChild;
+  const childCountNum =
+    childrenCount === "1 enfant"
+      ? 1
+      : childrenCount === "2 enfants"
+        ? 2
+        : Math.min(8, Math.max(3, Number(childCountExact) || 3));
+  // Synchronise le tableau des âges avec le nombre d'enfants (tronque ou complète).
+  const syncAges = (n: number) =>
+    setChildAges((prev) => {
+      const next = prev.slice(0, n);
+      while (next.length < n) next.push("");
+      return next;
+    });
   const isCleaning = need === "Ménage/Rangement intérieur";
   const isGardening = need === "Jardinage/Rangement extérieur";
 
