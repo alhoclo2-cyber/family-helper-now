@@ -87,7 +87,8 @@ export type Request = {
   escortDestination?: string; // destination pour l'accompagnement d'un enfant
   escortDetail?: string; // précision libre ("Autre")
   otherDetail?: string; // précision libre pour le besoin "Autre (à préciser)"
-  extraInfo?: string; // informations complémentaires libres (tous services)
+  extraInfo?: string; // informations complémentaires libres (tous services) : code d'entrée, étage…
+  missionInfo?: string; // précisions libres concernant la mission (tous services)
   continuityCertified?: boolean; // services extérieurs : continuité de l'aide à domicile
   status: "searching" | "accepted" | "cancelled";
   cancelledBy?: "family" | "companion";

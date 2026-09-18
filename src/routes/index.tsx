@@ -497,6 +497,7 @@ function FamilyForm({
   const [escortDetail, setEscortDetail] = useState<string>(initial?.escortDetail ?? "");
   const [otherDetail, setOtherDetail] = useState<string>(initial?.otherDetail ?? "");
   const [extraInfo, setExtraInfo] = useState<string>(parsed.rest);
+  const [missionInfo, setMissionInfo] = useState<string>(initial?.missionInfo ?? "");
   
   const [cguOk, setCguOk] = useState(false);
   const [complianceCheck, setComplianceCheck] = useState<ContractCheckResult | null>(null);
@@ -591,6 +592,7 @@ function FamilyForm({
         ]
           .filter(Boolean)
           .join("\n") || undefined,
+      missionInfo: missionInfo.trim() || undefined,
       continuityCertified:
         isOutdoor
           ? continuity
