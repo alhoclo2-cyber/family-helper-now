@@ -20,6 +20,7 @@ import {
   ThumbUpButton,
 } from "@/components/CompanionBadges";
 import { CompanionProfilePanel } from "@/components/CompanionProfilePanel";
+import { CompanionAvailabilityPanel } from "@/components/CompanionAvailabilityPanel";
 import { useCompanionSettings } from "@/lib/companionSettings";
 import soleliaLogoAsset from "@/assets/solelia-logo.png.asset.json";
 import floralBorderAsset from "@/assets/floral-border.jpg.asset.json";
@@ -283,16 +284,21 @@ function FamilyFlow() {
       if (preferredId) store.acceptRequestBy(currentId, preferredId);
       else {
         // Exclut les compagnons déjà écartés pour éviter de rouvrir la même alerte.
-        const pool = COMPANIONS.filter((c) => !(current?.declinedBy ?? []).includes(c.id));
-        const chosen =
-          pool.length > 0
-            ? pool[Math.floor(Math.random() * pool.length)]
-            : COMPANIONS[Math.floor(Math.random() * COMPANIONS.length)];
+        const target = current?.scheduledAt ?? Date.now();
+        const durationMin = current?.durationHours ? current.durationHours * 60 : DEFAULT_DURATION_MIN;
+        const pool = COMPANIONS.filter(
+          (c) =>
+            !(current?.declinedBy ?? []).includes(c.id) &&
+            isCompanionAvailableFor(c, target, durationMin),
+        );
+        // Aucun compagnon libre sur ce créneau : on laisse la demande en recherche.
+        if (pool.length === 0) return;
+        const chosen = pool[Math.floor(Math.random() * pool.length)];
         store.acceptRequestBy(currentId, chosen.id);
       }
     }, delay);
     return () => clearTimeout(t);
-  }, [step, current?.status, current?.preferredCompanionId, current?.scheduledAt, currentId, simulateNoAnswer]);
+  }, [step, current?.status, current?.preferredCompanionId, current?.scheduledAt, current?.durationHours, currentId, simulateNoAnswer]);
 
 
   if (step === "account") return <FamilyAccountScreen onBack={() => setStep("home")} />;
@@ -1105,25 +1111,42 @@ function FamilyForm({
               <p className="text-xs text-muted-foreground -mt-1">
                 Liste triée par distance et disponibilité uniquement. Les badges et pouces sont purement informatifs.
               </p>
-              {[...COMPANIONS].sort((a, b) => a.distanceKm - b.distanceKm).map((c) => (
+              {[...COMPANIONS].sort((a, b) => a.distanceKm - b.distanceKm).map((c) => {
+                const whenTs = new Date(when).getTime();
+                const free =
+                  Number.isNaN(whenTs) ||
+                  isCompanionAvailableFor(c, whenTs, durationHours * 60);
+                return (
                 <button
                   key={c.id}
                   type="button"
-                  onClick={() => setPickedCompanion(c.id)}
+                  disabled={!free}
+                  onClick={() => free && setPickedCompanion(c.id)}
                   className={`flex items-center gap-3 rounded-2xl border-2 p-3 text-left ${
-                    pickedCompanion === c.id ? "border-primary bg-accent" : "border-border bg-card"
+                    !free
+                      ? "border-border bg-card opacity-50 cursor-not-allowed"
+                      : pickedCompanion === c.id
+                        ? "border-primary bg-accent"
+                        : "border-border bg-card"
                   }`}
                 >
                   <img src={c.photo} alt={c.firstName} className="h-12 w-12 rounded-full object-cover" />
                   <span className="min-w-0">
                     <span className="block text-base font-bold">{c.firstName}</span>
-                    <span className="block text-xs text-muted-foreground mt-0.5">
-                      {experienceBadge(c.missions).emoji} {experienceBadge(c.missions).label} · 👍 {c.thumbs} ·{" "}
-                      {c.distanceKm} km
-                    </span>
+                    {free ? (
+                      <span className="block text-xs text-muted-foreground mt-0.5">
+                        {experienceBadge(c.missions).emoji} {experienceBadge(c.missions).label} · 👍 {c.thumbs} ·{" "}
+                        {c.distanceKm} km
+                      </span>
+                    ) : (
+                      <span className="block text-xs font-bold text-destructive mt-0.5">
+                        Indisponible à cette date/heure
+                      </span>
+                    )}
                   </span>
                 </button>
-              ))}
+                );
+              })}
               <p className="text-xs text-muted-foreground">
                 Sans réponse du compagnon choisi sous 4 h (ou 8 h si le rendez-vous est à plus de 48 h), nous vous
                 proposerons un autre compagnon ou une recherche automatique.
@@ -1259,13 +1282,31 @@ const CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000;
 const canFreeCancel = (scheduledAt?: number | null) =>
   !!scheduledAt && scheduledAt - Date.now() > CANCEL_WINDOW_MS;
 
-// Simulation de disponibilité des compagnons sur un nouveau créneau :
-// pas de créneau à moins de 24 h ; sinon 1 créneau sur 4 est complet.
-function companionAvailableAt(ts: number) {
-  if (Number.isNaN(ts)) return false;
-  if (ts - Date.now() <= CANCEL_WINDOW_MS) return false;
-  return Math.floor(ts / 60_000) % 4 !== 0;
+const DEFAULT_DURATION_MIN = 60;
+
+// Disponibilité réelle d'un compagnon selon ses indisponibilités récurrentes.
+function isCompanionAvailableFor(
+  companion: Companion,
+  startTs: number,
+  durationMinutes: number = DEFAULT_DURATION_MIN,
+): boolean {
+  const d = new Date(startTs);
+  const day = d.getDay();
+  const startMin = d.getHours() * 60 + d.getMinutes();
+  const endMin = startMin + durationMinutes;
+
+  return !(companion.unavailabilitySlots ?? []).some((sl) => {
+    if (sl.day !== day) return false;
+    const [sh, sm] = sl.start.split(":").map(Number);
+    const [eh, em] = sl.end.split(":").map(Number);
+    const unavailStart = sh * 60 + sm;
+    const unavailEnd = eh * 60 + em;
+    return Math.max(startMin, unavailStart) < Math.min(endMin, unavailEnd);
+  });
 }
+
+const requestDurationMin = (r: { durationHours?: number }) =>
+  r.durationHours ? r.durationHours * 60 : DEFAULT_DURATION_MIN;
 
 const FAMILY_CANCEL_REASONS = [
   "Je n'ai plus besoin de cette prestation",
@@ -1345,7 +1386,7 @@ function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolea
                 if (Number.isNaN(ts)) return;
                 setReschedule("checking");
                 setTimeout(() => {
-                  if (companionAvailableAt(ts)) {
+                  if (slotAvailable(ts)) {
                     store.updateRequest(request.id, { scheduledAt: ts });
                     setReschedule("confirmed");
                     setTimeout(() => { setEditing(false); setReschedule("idle"); }, 1400);
@@ -1697,7 +1738,15 @@ function FamilyWait({
                       <p className="text-xs font-bold mb-2">Autres compagnons disponibles</p>
                       <div className="flex flex-col gap-2">
                         {[...COMPANIONS]
-                          .filter((c) => c.id !== preferred?.id)
+                          .filter(
+                            (c) =>
+                              c.id !== preferred?.id &&
+                              isCompanionAvailableFor(
+                                c,
+                                request.scheduledAt ?? Date.now(),
+                                requestDurationMin(request),
+                              ),
+                          )
                           .sort((a, b) => a.distanceKm - b.distanceKm)
                           .map((c) => (
                           <button
@@ -2176,6 +2225,8 @@ function StudentFlow() {
       </button>
 
       <CompanionProfilePanel />
+
+      <CompanionAvailabilityPanel companionId={COMPANIONS[0].id} />
 
       {online ? (
         <>
