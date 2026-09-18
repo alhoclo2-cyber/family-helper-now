@@ -1067,6 +1067,16 @@ function FamilyForm({
           </p>
         </div>
       )}
+      <div>
+        <label className="block text-lg font-bold mb-2">Précisions sur la mission</label>
+        <textarea
+          value={missionInfo}
+          onChange={(e) => setMissionInfo(e.target.value)}
+          rows={3}
+          placeholder="Ex. faire réviser les tables de multiplication à mon fils, commencer par une promenade en arrivant, j'ai mis une machine à laver en route, pensez à l'étendre…"
+          className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
+        />
+      </div>
       {mode === "scheduled" && (
         <div>
           <label className="block text-lg font-bold mb-2">Qui doit venir ?</label>
