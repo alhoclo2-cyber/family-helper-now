@@ -28,22 +28,18 @@ function mergeSlots(slots: UnavailabilitySlot[]): UnavailabilitySlot[] {
     const dayslots = slots
       .filter((s) => s.day === day)
       .sort((a, b) => toMin(a.start) - toMin(b.start));
-    for (const s of dayslotsIter(dayslots)) out.push(s);
+    let cur: UnavailabilitySlot | undefined;
+    for (const s of dayslots) {
+      if (cur !== undefined && toMin(s.start) <= toMin(cur.end)) {
+        if (toMin(s.end) > toMin(cur.end)) cur = { day, start: cur.start, end: s.end };
+      } else {
+        if (cur !== undefined) out.push(cur);
+        cur = { day, start: s.start, end: s.end };
+      }
+    }
+    if (cur !== undefined) out.push(cur);
   }
   return out;
-}
-
-function* dayslotsIter(dayslots: UnavailabilitySlot[]) {
-  let cur: UnavailabilitySlot | null = null;
-  for (const s of dayslots) {
-    if (cur && toMin(s.start) <= toMin(cur.end)) {
-      if (toMin(s.end) > toMin(cur.end)) cur = { ...cur, end: s.end };
-    } else {
-      if (cur) yield cur;
-      cur = { ...s };
-    }
-  }
-  if (cur) yield cur;
 }
 
 export function CompanionAvailabilityPanel({ companionId }: { companionId: string }) {
