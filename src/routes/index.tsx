@@ -778,24 +778,56 @@ function FamilyForm({
           <div className="bg-accent rounded-2xl p-3 text-sm">
             👶 Services enfants accessibles <b>à partir de 3 ans</b>.
           </div>
-          <div>
-            <label className="block text-lg font-bold mb-2">Âge de l'enfant</label>
-            <input
-              type="number"
-              min={3}
-              max={17}
-              required
-              value={childAge}
-              onChange={(e) => setChildAge(e.target.value)}
-              placeholder="Ex. 6"
-              className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
-            />
-            {childAge && Number(childAge) < 3 && (
-              <p className="text-sm text-destructive mt-2">
-                Les missions avec enfant sont réservées aux enfants de 3 ans et plus.
-              </p>
-            )}
-          </div>
+          {isHomework && (
+            <div>
+              <label className="block text-lg font-bold mb-2">Âge de l'enfant</label>
+              <input
+                type="number"
+                min={3}
+                max={17}
+                required
+                value={childAge}
+                onChange={(e) => setChildAge(e.target.value)}
+                placeholder="Ex. 6"
+                className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
+              />
+              {childAge && Number(childAge) < 3 && (
+                <p className="text-sm text-destructive mt-2">
+                  Les missions avec enfant sont réservées aux enfants de 3 ans et plus.
+                </p>
+              )}
+            </div>
+          )}
+          {isMultiChild && (
+            <div className="flex flex-col gap-4">
+              {Array.from({ length: childCountNum }, (_, i) => (
+                <div key={i}>
+                  <label className="block text-lg font-bold mb-2">Âge de l'enfant {i + 1}</label>
+                  <input
+                    type="number"
+                    min={3}
+                    max={17}
+                    required
+                    value={childAges[i] ?? ""}
+                    onChange={(e) =>
+                      setChildAges((prev) => {
+                        const next = [...prev];
+                        next[i] = e.target.value;
+                        return next;
+                      })
+                    }
+                    placeholder="Ex. 6"
+                    className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
+                  />
+                  {childAges[i] && Number(childAges[i]) < 3 && (
+                    <p className="text-sm text-destructive mt-2">
+                      Les missions avec enfant sont réservées aux enfants de 3 ans et plus.
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
           {isHomework && (
             <div>
               <label className="block text-lg font-bold mb-2">Niveau scolaire</label>
@@ -836,7 +868,7 @@ function FamilyForm({
             </div>
           )}
 
-          {isChildcare && (
+          {isMultiChild && (
             <div>
               <label className="block text-lg font-bold mb-2">Nombre d'enfants</label>
               <div className="grid grid-cols-3 gap-2">
@@ -844,7 +876,16 @@ function FamilyForm({
                   <button
                     key={c}
                     type="button"
-                    onClick={() => setChildrenCount(c)}
+                    onClick={() => {
+                      setChildrenCount(c);
+                      syncAges(
+                        c === "1 enfant"
+                          ? 1
+                          : c === "2 enfants"
+                            ? 2
+                            : Math.min(8, Math.max(3, Number(childCountExact) || 3)),
+                      );
+                    }}
                     className={`py-3 px-2 rounded-2xl border-2 text-sm font-bold transition-all ${
                       childrenCount === c ? "border-primary bg-accent" : "border-border bg-card"
                     }`}
@@ -853,6 +894,23 @@ function FamilyForm({
                   </button>
                 ))}
               </div>
+              {childrenCount === "3 enfants et +" && (
+                <div className="mt-3">
+                  <label className="block text-sm font-bold mb-1">Nombre exact d'enfants</label>
+                  <input
+                    type="number"
+                    min={3}
+                    max={8}
+                    value={childCountExact}
+                    placeholder="3"
+                    onChange={(e) => {
+                      setChildCountExact(e.target.value);
+                      syncAges(Math.min(8, Math.max(3, Number(e.target.value) || 3)));
+                    }}
+                    className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
+                  />
+                </div>
+              )}
             </div>
           )}
           {isEscortChild && (
@@ -864,7 +922,7 @@ function FamilyForm({
                   "À une activité sportive",
                   "À une activité artistique",
                   "Chez un ami",
-                  "Faire un achat",
+                  "À la bibliothèque",
                   "Autre",
                 ].map((d) => (
                   <button
