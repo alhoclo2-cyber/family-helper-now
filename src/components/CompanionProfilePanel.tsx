@@ -11,6 +11,7 @@ export function CompanionProfilePanel() {
   const [open, setOpen] = useState(false);
   const [s, setS] = useState<CompanionSettings | null>(null);
   const [saved, setSaved] = useState(false);
+  const [radiusDraft, setRadiusDraft] = useState<string | null>(null);
 
   useEffect(() => {
     setS(loadSettings());
@@ -58,8 +59,14 @@ export function CompanionProfilePanel() {
               min={1}
               max={100}
               step={1}
-              value={s.radiusKm}
-              onChange={(e) => update({ radiusKm: Math.max(1, Number(e.target.value) || 1) })}
+              value={radiusDraft ?? String(s.radiusKm)}
+              onChange={(e) => {
+                const raw = e.target.value;
+                setRadiusDraft(raw);
+                const n = Number(raw);
+                if (raw !== "" && Number.isFinite(n) && n >= 1) update({ radiusKm: Math.min(100, Math.round(n)) });
+              }}
+              onBlur={() => setRadiusDraft(null)}
               className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-background text-lg focus:border-primary outline-none"
             />
             <p className="text-xs text-muted-foreground mt-1">
