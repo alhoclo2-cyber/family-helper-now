@@ -577,8 +577,9 @@ function FamilyForm({
       phone,
       scheduledAt,
       flow: mode === "scheduled" ? "scheduled" : "sos",
-      autoSearch: mode === "scheduled" ? autoSearch : true,
-      preferredCompanionId: mode === "scheduled" && !autoSearch && companion ? companion : undefined,
+      autoSearch: mode === "scheduled" ? Boolean(autoSearch) : true,
+      preferredCompanionId:
+        mode === "scheduled" && autoSearch === false && companion ? companion : undefined,
       durationHours: dh,
 
       parcelWeight: isParcel ? parcelWeight : undefined,
@@ -676,7 +677,7 @@ function FamilyForm({
       childAges.slice(0, childCountNum).some((a) => !a.trim() || Number(a) < 3)
     )
       return;
-    if (mode === "scheduled" && !autoSearch && !pickedCompanion) return;
+    if (mode === "scheduled" && (autoSearch === null || (!autoSearch && !pickedCompanion))) return;
     if (!cguOk) return;
 
     // Un rendez-vous doit être pris au moins 24 h à l'avance.
@@ -686,7 +687,7 @@ function FamilyForm({
     }
     setWhenError(false);
 
-    if (mode === "scheduled" && !autoSearch && pickedCompanion) {
+    if (mode === "scheduled" && autoSearch === false && pickedCompanion) {
       const check = runComplianceCheck(pickedCompanion);
       if (check?.requiresContract) {
         setComplianceCheck(check);
@@ -1259,7 +1260,7 @@ function FamilyForm({
       <div className="flex-1" />
       <button
         type="submit"
-        disabled={!cguOk || (mode === "scheduled" && !autoSearch && !pickedCompanion)}
+        disabled={!cguOk || (mode === "scheduled" && (autoSearch === null || (!autoSearch && !pickedCompanion)))}
         className="btn-huge bg-primary text-primary-foreground disabled:opacity-50"
       >
         {mode === "asap" ? "Lancer la recherche" : "Valider la réservation"}
