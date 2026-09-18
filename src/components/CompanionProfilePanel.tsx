@@ -11,6 +11,7 @@ export function CompanionProfilePanel() {
   const [open, setOpen] = useState(false);
   const [s, setS] = useState<CompanionSettings | null>(null);
   const [saved, setSaved] = useState(false);
+  const [radiusDraft, setRadiusDraft] = useState<string | null>(null);
 
   useEffect(() => {
     setS(loadSettings());
