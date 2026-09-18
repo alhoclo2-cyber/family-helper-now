@@ -485,7 +485,9 @@ function FamilyForm({
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   })();
 
-  const [autoSearch, setAutoSearch] = useState(initial?.autoSearch ?? true);
+  const [autoSearch, setAutoSearch] = useState<boolean | null>(
+    initial?.autoSearch !== undefined ? initial.autoSearch : null,
+  );
   const [pickedCompanion, setPickedCompanion] = useState<string>(initial?.preferredCompanionId ?? "");
 
   const [childLevel, setChildLevel] = useState<string>(initial?.childLevel ?? "Primaire");
@@ -1086,26 +1088,37 @@ function FamilyForm({
       {mode === "scheduled" && (
         <div>
           <label className="block text-lg font-bold mb-2">Qui doit venir ?</label>
-          <label
-            className={`flex items-start gap-3 rounded-2xl border-2 p-4 text-sm ${
-              autoSearch ? "border-primary bg-accent" : "border-border bg-card"
-            }`}
-          >
-            <input
-              type="checkbox"
-              checked={autoSearch}
-              onChange={(e) => setAutoSearch(e.target.checked)}
-              className="mt-0.5 h-5 w-5 shrink-0"
-            />
-            <span>
-              <b>Recherche d'un compagnon à proximité disponible</b>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setAutoSearch(true);
+                setPickedCompanion("");
+              }}
+              className={`flex-1 rounded-2xl border-2 p-4 text-left text-sm ${
+                autoSearch === true ? "border-primary bg-accent" : "border-border bg-card"
+              }`}
+            >
+              <b>🔍 Recherche automatique</b>
               <span className="block text-xs text-muted-foreground mt-1">
                 Votre demande est envoyée à tous les compagnons libres sur ce créneau. Le premier à accepter valide le
                 rendez-vous.
               </span>
-            </span>
-          </label>
-          {!autoSearch && (
+            </button>
+            <button
+              type="button"
+              onClick={() => setAutoSearch(false)}
+              className={`flex-1 rounded-2xl border-2 p-4 text-left text-sm ${
+                autoSearch === false ? "border-primary bg-accent" : "border-border bg-card"
+              }`}
+            >
+              <b>🙋 Choisir moi-même un compagnon</b>
+              <span className="block text-xs text-muted-foreground mt-1">
+                Sélectionnez un compagnon disponible dans la liste, triée par distance.
+              </span>
+            </button>
+          </div>
+          {autoSearch === false && (
             <div className="mt-3 flex flex-col gap-2">
               <p className="text-sm font-bold">Choisir un compagnon par son nom</p>
               <p className="text-xs text-muted-foreground -mt-1">
