@@ -1143,12 +1143,12 @@ function FamilyForm({
         />
       </div>
       <div>
-        <label className="block text-lg font-bold mb-2">Indications sur la mission</label>
+        <label className="block text-lg font-bold mb-2">Informations complémentaires</label>
         <textarea
           value={extraInfo}
           onChange={(e) => setExtraInfo(e.target.value)}
           rows={3}
-          placeholder="Ex. faire réviser les tables de multiplication, commencer par une promenade, étendre la machine à laver…"
+          placeholder="Ex. code d'entrée 1234A, 2e étage, sonner à gauche…"
           className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
         />
       </div>
