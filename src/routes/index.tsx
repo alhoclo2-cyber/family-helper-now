@@ -2220,6 +2220,7 @@ function StudentFlow() {
                         </p>
                       )}
                       {r.extraInfo && <p className="text-sm mt-1 text-muted-foreground">📝 {r.extraInfo}</p>}
+                      {r.missionInfo && <p className="text-sm mt-1 text-muted-foreground">🗒️ {r.missionInfo}</p>}
 
                       {r.childrenCount && <p className="text-sm mt-1 font-semibold">🧸 {r.childrenCount}</p>}
                       {r.otherDetail && (
@@ -2457,6 +2458,12 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
           <div className="mt-3 bg-accent rounded-xl p-3">
             <p className="text-xs text-muted-foreground font-bold uppercase">Informations complémentaires</p>
             <p className="text-base mt-1">{request.extraInfo}</p>
+          </div>
+        )}
+        {request.missionInfo && (
+          <div className="mt-3 bg-accent rounded-xl p-3">
+            <p className="text-xs text-muted-foreground font-bold uppercase">Précisions sur la mission</p>
+            <p className="text-base mt-1">{request.missionInfo}</p>
           </div>
         )}
 
