@@ -66,13 +66,7 @@ export function CompanionProfilePanel() {
                 const n = Number(raw);
                 if (raw !== "" && Number.isFinite(n) && n >= 1) update({ radiusKm: Math.min(100, Math.round(n)) });
               }}
-              onBlur={() => {
-                const n = Number(radiusDraft);
-                if (radiusDraft === null || radiusDraft === "" || !Number.isFinite(n) || n < 1) {
-                  update({ radiusKm: s.radiusKm });
-                }
-                setRadiusDraft(null);
-              }}
+              onBlur={() => setRadiusDraft(null)}
               className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-background text-lg focus:border-primary outline-none"
             />
             <p className="text-xs text-muted-foreground mt-1">
