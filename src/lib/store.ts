@@ -30,13 +30,20 @@ export type Companion = {
   cesuActive: boolean; // compte CESU+ Avance Immédiate actif
   hourlyRate: number; // salaire net horaire conseillé (congés payés inclus)
   missedCount: number; // nombre de RDV non honorés, visible par les familles
+  unavailabilitySlots: UnavailabilitySlot[]; // plages hebdomadaires d'INDISPONIBILITÉ (vide = disponible)
+};
+
+export type UnavailabilitySlot = {
+  day: number; // 0 = dimanche ... 6 = samedi
+  start: string; // "HH:MM"
+  end: string; // "HH:MM"
 };
 
 export const COMPANIONS: Companion[] = [
-  { id: "c1", firstName: "Léa", photo: "https://i.pravatar.cc/200?img=47", rating: 4.9, missions: 8, thumbs: 7, distanceKm: 1.2, radiusKm: 3, city: "Paris", cesuActive: true, hourlyRate: 11.5, missedCount: 0 },
-  { id: "c2", firstName: "Thomas", photo: "https://i.pravatar.cc/200?img=12", rating: 4.8, missions: 34, thumbs: 29, distanceKm: 2.4, radiusKm: 5, city: "Paris", cesuActive: false, hourlyRate: 11.5, missedCount: 0 },
-  { id: "c3", firstName: "Camille", photo: "https://i.pravatar.cc/200?img=32", rating: 5.0, missions: 96, thumbs: 88, distanceKm: 4.1, radiusKm: 8, city: "Paris", cesuActive: true, hourlyRate: 11.5, missedCount: 0 },
-  { id: "c4", firstName: "Malik", photo: "https://i.pravatar.cc/200?img=15", rating: 4.9, missions: 212, thumbs: 197, distanceKm: 2.9, radiusKm: 6, city: "Paris", cesuActive: true, hourlyRate: 12, missedCount: 0 },
+  { id: "c1", firstName: "Léa", photo: "https://i.pravatar.cc/200?img=47", rating: 4.9, missions: 8, thumbs: 7, distanceKm: 1.2, radiusKm: 3, city: "Paris", cesuActive: true, hourlyRate: 11.5, missedCount: 0, unavailabilitySlots: [] },
+  { id: "c2", firstName: "Thomas", photo: "https://i.pravatar.cc/200?img=12", rating: 4.8, missions: 34, thumbs: 29, distanceKm: 2.4, radiusKm: 5, city: "Paris", cesuActive: false, hourlyRate: 11.5, missedCount: 0, unavailabilitySlots: [{ day: 3, start: "08:00", end: "11:00" }] },
+  { id: "c3", firstName: "Camille", photo: "https://i.pravatar.cc/200?img=32", rating: 5.0, missions: 96, thumbs: 88, distanceKm: 4.1, radiusKm: 8, city: "Paris", cesuActive: true, hourlyRate: 11.5, missedCount: 0, unavailabilitySlots: [{ day: 0, start: "00:00", end: "23:59" }] },
+  { id: "c4", firstName: "Malik", photo: "https://i.pravatar.cc/200?img=15", rating: 4.9, missions: 212, thumbs: 197, distanceKm: 2.9, radiusKm: 6, city: "Paris", cesuActive: true, hourlyRate: 12, missedCount: 0, unavailabilitySlots: [] },
 ];
 
 export type ExperienceBadge = {
@@ -255,6 +262,11 @@ export const store = {
           : r,
       ),
     };
+    emit();
+  },
+  updateCompanionUnavailability: (companionId: string, slots: UnavailabilitySlot[]) => {
+    const c = COMPANIONS.find((x) => x.id === companionId);
+    if (c) c.unavailabilitySlots = slots;
     emit();
   },
   recordMissedAppointment: (companionId: string) => {
