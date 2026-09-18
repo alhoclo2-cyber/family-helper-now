@@ -485,7 +485,9 @@ function FamilyForm({
   const [childLevel, setChildLevel] = useState<string>(initial?.childLevel ?? "Primaire");
   const [childClass, setChildClass] = useState<string>(initial?.childClass ?? "");
   const [childAge, setChildAge] = useState<string>(initial?.childAge ?? "");
+  const [childAges, setChildAges] = useState<string[]>(initial?.childAges ?? [""]);
   const [childrenCount, setChildrenCount] = useState<string>(initial?.childrenCount ?? "1 enfant");
+  const [childCountExact, setChildCountExact] = useState<string>("");
   const [escortDestination, setEscortDestination] = useState<string>(initial?.escortDestination ?? "À l'école");
   const [escortDetail, setEscortDetail] = useState<string>(initial?.escortDetail ?? "");
   const [otherDetail, setOtherDetail] = useState<string>(initial?.otherDetail ?? "");
@@ -529,6 +531,20 @@ function FamilyForm({
   const isChildcare = need === "Garde d'enfants (à partir de 3 ans)";
   const isEscortChild = need === "Accompagner un enfant (à partir de 3 ans)";
   const isChildNeed = isHomework || isChildcare || isEscortChild;
+  const isMultiChild = isChildcare || isEscortChild;
+  const childCountNum =
+    childrenCount === "1 enfant"
+      ? 1
+      : childrenCount === "2 enfants"
+        ? 2
+        : Math.min(8, Math.max(3, Number(childCountExact) || 3));
+  // Synchronise le tableau des âges avec le nombre d'enfants (tronque ou complète).
+  const syncAges = (n: number) =>
+    setChildAges((prev) => {
+      const next = prev.slice(0, n);
+      while (next.length < n) next.push("");
+      return next;
+    });
   const isCleaning = need === "Ménage/Rangement intérieur";
   const isGardening = need === "Jardinage/Rangement extérieur";
 
@@ -555,8 +571,13 @@ function FamilyForm({
       parcelSize: isParcel ? parcelSize : undefined,
       childLevel: isHomework ? childLevel : undefined,
       childClass: isHomework && childClass.trim() ? childClass.trim() : undefined,
-      childAge: isChildNeed && childAge.trim() ? childAge.trim() : undefined,
-      childrenCount: isChildcare ? childrenCount : undefined,
+      childAge: isHomework && childAge.trim() ? childAge.trim() : undefined,
+      childAges: isMultiChild ? childAges.slice(0, childCountNum).map((a) => a.trim()) : undefined,
+      childrenCount: isMultiChild
+        ? childrenCount === "3 enfants et +"
+          ? `${childCountNum} enfants`
+          : childrenCount
+        : undefined,
       escortDestination: isEscortChild ? escortDestination : undefined,
       escortDetail: isEscortChild && escortDestination === "Autre" ? escortDetail : undefined,
       otherDetail: isOther ? otherDetail : undefined,
@@ -638,7 +659,12 @@ function FamilyForm({
     
     if (need === "Compagnie/Présence" && commissions.length > 0 && !commissionCertified) return;
     if (isOutdoor && !continuity) return;
-    if (isChildNeed && (!childAge.trim() || Number(childAge) < 3)) return;
+    if (isHomework && (!childAge.trim() || Number(childAge) < 3)) return;
+    if (
+      isMultiChild &&
+      childAges.slice(0, childCountNum).some((a) => !a.trim() || Number(a) < 3)
+    )
+      return;
     if (mode === "scheduled" && !autoSearch && !pickedCompanion) return;
     if (!cguOk) return;
 
@@ -752,24 +778,56 @@ function FamilyForm({
           <div className="bg-accent rounded-2xl p-3 text-sm">
             👶 Services enfants accessibles <b>à partir de 3 ans</b>.
           </div>
-          <div>
-            <label className="block text-lg font-bold mb-2">Âge de l'enfant</label>
-            <input
-              type="number"
-              min={3}
-              max={17}
-              required
-              value={childAge}
-              onChange={(e) => setChildAge(e.target.value)}
-              placeholder="Ex. 6"
-              className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
-            />
-            {childAge && Number(childAge) < 3 && (
-              <p className="text-sm text-destructive mt-2">
-                Les missions avec enfant sont réservées aux enfants de 3 ans et plus.
-              </p>
-            )}
-          </div>
+          {isHomework && (
+            <div>
+              <label className="block text-lg font-bold mb-2">Âge de l'enfant</label>
+              <input
+                type="number"
+                min={3}
+                max={17}
+                required
+                value={childAge}
+                onChange={(e) => setChildAge(e.target.value)}
+                placeholder="Ex. 6"
+                className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
+              />
+              {childAge && Number(childAge) < 3 && (
+                <p className="text-sm text-destructive mt-2">
+                  Les missions avec enfant sont réservées aux enfants de 3 ans et plus.
+                </p>
+              )}
+            </div>
+          )}
+          {isMultiChild && (
+            <div className="flex flex-col gap-4">
+              {Array.from({ length: childCountNum }, (_, i) => (
+                <div key={i}>
+                  <label className="block text-lg font-bold mb-2">Âge de l'enfant {i + 1}</label>
+                  <input
+                    type="number"
+                    min={3}
+                    max={17}
+                    required
+                    value={childAges[i] ?? ""}
+                    onChange={(e) =>
+                      setChildAges((prev) => {
+                        const next = [...prev];
+                        next[i] = e.target.value;
+                        return next;
+                      })
+                    }
+                    placeholder="Ex. 6"
+                    className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
+                  />
+                  {childAges[i] && Number(childAges[i]) < 3 && (
+                    <p className="text-sm text-destructive mt-2">
+                      Les missions avec enfant sont réservées aux enfants de 3 ans et plus.
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
           {isHomework && (
             <div>
               <label className="block text-lg font-bold mb-2">Niveau scolaire</label>
@@ -810,7 +868,7 @@ function FamilyForm({
             </div>
           )}
 
-          {isChildcare && (
+          {isMultiChild && (
             <div>
               <label className="block text-lg font-bold mb-2">Nombre d'enfants</label>
               <div className="grid grid-cols-3 gap-2">
@@ -818,7 +876,16 @@ function FamilyForm({
                   <button
                     key={c}
                     type="button"
-                    onClick={() => setChildrenCount(c)}
+                    onClick={() => {
+                      setChildrenCount(c);
+                      syncAges(
+                        c === "1 enfant"
+                          ? 1
+                          : c === "2 enfants"
+                            ? 2
+                            : Math.min(8, Math.max(3, Number(childCountExact) || 3)),
+                      );
+                    }}
                     className={`py-3 px-2 rounded-2xl border-2 text-sm font-bold transition-all ${
                       childrenCount === c ? "border-primary bg-accent" : "border-border bg-card"
                     }`}
@@ -827,6 +894,23 @@ function FamilyForm({
                   </button>
                 ))}
               </div>
+              {childrenCount === "3 enfants et +" && (
+                <div className="mt-3">
+                  <label className="block text-sm font-bold mb-1">Nombre exact d'enfants</label>
+                  <input
+                    type="number"
+                    min={3}
+                    max={8}
+                    value={childCountExact}
+                    placeholder="3"
+                    onChange={(e) => {
+                      setChildCountExact(e.target.value);
+                      syncAges(Math.min(8, Math.max(3, Number(e.target.value) || 3)));
+                    }}
+                    className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
+                  />
+                </div>
+              )}
             </div>
           )}
           {isEscortChild && (
@@ -838,7 +922,7 @@ function FamilyForm({
                   "À une activité sportive",
                   "À une activité artistique",
                   "Chez un ami",
-                  "Faire un achat",
+                  "À la bibliothèque",
                   "Autre",
                 ].map((d) => (
                   <button
@@ -1463,6 +1547,8 @@ function FamilyWait({
       <PaymentScreen
         companion={request.student!}
         hours={hours}
+        need={request.need}
+        childAges={request.childAges}
         salaire={salaireDraft ?? formatPrice(request.student!.hourlyRate ?? DEFAULT_HOURLY_RATE)}
         onSalaire={setSalaireDraft}
         onDone={(salaireNetHoraire) => {
@@ -1806,6 +1892,8 @@ function PaymentScreen({
   companion,
   hours,
   salaire,
+  need,
+  childAges,
   onSalaire,
   onDone,
   onBack,
@@ -1813,6 +1901,8 @@ function PaymentScreen({
   companion: Companion;
   hours: number;
   salaire: string; // contrôlé par l'écran parent : conservé en cas de navigation arrière
+  need: NeedType;
+  childAges?: string[];
   onSalaire: (v: string) => void;
   onDone: (salaireNetHoraire: number) => void;
   onBack: () => void;
@@ -1856,6 +1946,15 @@ function PaymentScreen({
         <p className="text-xs text-muted-foreground mt-2">
           Durée prévue : {hours}h — salaire estimé {formatPrice(salaireNum * hours)} €
         </p>
+        {(need === "Garde d'enfants (à partir de 3 ans)" ||
+          need === "Accompagner un enfant (à partir de 3 ans)") &&
+          (childAges?.length ?? 0) > 1 && (
+            <p className="text-xs text-muted-foreground mt-2">
+              👶 Pour {childAges!.length} enfants, il est habituel de majorer le salaire d'environ 1 €/h par
+              enfant supplémentaire (soit environ {formatPrice(salaireNum + (childAges!.length - 1))} €/h avec
+              votre montant actuel). Ce montant reste indicatif et modifiable.
+            </p>
+          )}
         <p className="text-xs text-muted-foreground mt-2">
           ⚖️ En tant que particulier employeur, vous ne pouvez pas rémunérer en dessous du SMIC horaire net (congés
           payés inclus).{" "}
@@ -2114,6 +2213,11 @@ function StudentFlow() {
                         <p className="text-sm mt-1 font-semibold">⏱️ Durée : {r.durationHours}h</p>
                       )}
                       {r.childAge && <p className="text-sm mt-1 font-semibold">🎂 Enfant : {r.childAge} ans</p>}
+                      {r.childAges && r.childAges.length > 0 && (
+                        <p className="text-sm mt-1 font-semibold">
+                          🎂 Enfants : {new Intl.ListFormat("fr", { style: "long", type: "conjunction" }).format(r.childAges)} ans
+                        </p>
+                      )}
                       {r.childLevel && (
                         <p className="text-sm mt-1 font-semibold">
                           🎒 Niveau : {r.childLevel}{r.childClass ? ` — ${r.childClass}` : ""}
@@ -2329,10 +2433,15 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
         {request.durationHours != null && (
           <p className="text-base font-semibold mt-2">⏱️ Durée demandée : {request.durationHours}h</p>
         )}
-        {(request.childLevel || request.childrenCount || request.escortDestination || request.otherDetail || request.childAge) && (
+        {(request.childLevel || request.childrenCount || request.escortDestination || request.otherDetail || request.childAge || (request.childAges?.length ?? 0) > 0) && (
           <div className="mt-3 bg-accent rounded-xl p-3">
             <p className="text-xs text-muted-foreground font-bold uppercase">Enfant (3 ans et +)</p>
             {request.childAge && <p className="text-base font-semibold mt-1">🎂 {request.childAge} ans</p>}
+            {request.childAges && request.childAges.length > 0 && (
+              <p className="text-base font-semibold mt-1">
+                🎂 Enfants : {new Intl.ListFormat("fr", { style: "long", type: "conjunction" }).format(request.childAges)} ans
+              </p>
+            )}
             {request.childLevel && (
               <p className="text-base font-semibold mt-1">
                 🎒 Niveau : {request.childLevel}{request.childClass ? ` — ${request.childClass}` : ""}
