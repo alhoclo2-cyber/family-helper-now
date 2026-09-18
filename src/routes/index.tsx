@@ -1340,6 +1340,14 @@ function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolea
     request.scheduledAt ? toLocalInput(request.scheduledAt) : "",
   );
   const free = canFreeCancel(request.scheduledAt);
+  // Disponibilité réelle sur le nouveau créneau (pas de créneau à moins de 24 h).
+  const slotAvailable = (ts: number) => {
+    if (Number.isNaN(ts)) return false;
+    if (ts - Date.now() <= CANCEL_WINDOW_MS) return false;
+    const durationMin = requestDurationMin(request);
+    if (request.student) return isCompanionAvailableFor(request.student, ts, durationMin);
+    return COMPANIONS.some((c) => isCompanionAvailableFor(c, ts, durationMin));
+  };
   return (
     <div className="w-full text-left">
       <p className="text-sm font-bold">Gérer mon rendez-vous</p>
