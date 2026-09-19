@@ -20,6 +20,7 @@ import {
   ThumbUpButton,
 } from "@/components/CompanionBadges";
 import { CompanionProfilePanel } from "@/components/CompanionProfilePanel";
+import { AccountInfoPanel } from "@/components/AccountInfoPanel";
 import { CompanionAvailabilityPanel } from "@/components/CompanionAvailabilityPanel";
 import { useCompanionSettings } from "@/lib/companionSettings";
 import soleliaLogoAsset from "@/assets/solelia-logo.png.asset.json";
@@ -2247,6 +2248,8 @@ function StudentFlow() {
       </button>
 
       <CompanionProfilePanel />
+
+      <AccountInfoPanel />
 
       <CompanionAvailabilityPanel companionId={COMPANIONS[0].id} />
 
