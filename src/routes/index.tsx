@@ -20,6 +20,7 @@ import {
   ThumbUpButton,
 } from "@/components/CompanionBadges";
 import { CompanionProfilePanel } from "@/components/CompanionProfilePanel";
+import { AccountInfoPanel } from "@/components/AccountInfoPanel";
 import { CompanionAvailabilityPanel } from "@/components/CompanionAvailabilityPanel";
 import { useCompanionSettings } from "@/lib/companionSettings";
 import soleliaLogoAsset from "@/assets/solelia-logo.png.asset.json";
@@ -2248,6 +2249,8 @@ function StudentFlow() {
 
       <CompanionProfilePanel />
 
+      <AccountInfoPanel />
+
       <CompanionAvailabilityPanel companionId={COMPANIONS[0].id} />
 
       {online ? (
@@ -3405,6 +3408,8 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
           <p className="text-xs text-muted-foreground truncate">{account.email}</p>
         </div>
       </div>
+
+      <AccountInfoPanel />
 
       <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-4">
         <p className="text-sm font-bold text-success">🇫🇷 Services à la personne</p>
