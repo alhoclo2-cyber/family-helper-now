@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      client_documents: {
+        Row: {
+          doc_type: Database["public"]["Enums"]["client_doc_type"]
+          file_path: string | null
+          id: string
+          reject_reason: string | null
+          status: Database["public"]["Enums"]["client_doc_status"]
+          uploaded_at: string
+          user_id: string
+        }
+        Insert: {
+          doc_type: Database["public"]["Enums"]["client_doc_type"]
+          file_path?: string | null
+          id?: string
+          reject_reason?: string | null
+          status?: Database["public"]["Enums"]["client_doc_status"]
+          uploaded_at?: string
+          user_id: string
+        }
+        Update: {
+          doc_type?: Database["public"]["Enums"]["client_doc_type"]
+          file_path?: string | null
+          id?: string
+          reject_reason?: string | null
+          status?: Database["public"]["Enums"]["client_doc_status"]
+          uploaded_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       companion_applications: {
         Row: {
           address_proof_path: string | null
@@ -184,6 +214,8 @@ export type Database = {
         | "approved"
         | "rejected"
         | "changes_requested"
+      client_doc_status: "missing" | "pending" | "validated" | "rejected"
+      client_doc_type: "rib" | "identity" | "proof_of_address"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -318,6 +350,8 @@ export const Constants = {
         "rejected",
         "changes_requested",
       ],
+      client_doc_status: ["missing", "pending", "validated", "rejected"],
+      client_doc_type: ["rib", "identity", "proof_of_address"],
     },
   },
 } as const
