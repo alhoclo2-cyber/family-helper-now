@@ -3409,6 +3409,8 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
         </div>
       </div>
 
+      <AccountInfoPanel />
+
       <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-4">
         <p className="text-sm font-bold text-success">🇫🇷 Services à la personne</p>
         <p className="text-xs text-muted-foreground mt-1">
