@@ -3337,62 +3337,70 @@ function AttestationFiscaleBlock({
 }
 
 function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
-  const account = useFamilyAccount();
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
+  const { session, loading: sessionLoading } = useSession();
+  const orders = useFamilyOrders();
   const [showYear, setShowYear] = useState<number | null>(null);
+  const [profile, setProfile] = useState<{
+    first_name: string;
+    last_name: string;
+    email: string;
+  } | null>(null);
 
-  if (!account) {
-    const submit = (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!fullName.trim() || !email.trim()) return;
-      saveFamilyAccount({
-        email: email.trim(),
-        fullName: fullName.trim(),
-        createdAt: Date.now(),
-        orders: [],
-      });
+  // Charge le profil Supabase et migre l'ancien compte local si présent.
+  useEffect(() => {
+    if (!session) return;
+    const userId = session.user.id;
+    let cancelled = false;
+    (async () => {
+      await migrateLegacyFamilyAccount(userId);
+      const { data } = await supabase
+        .from("profiles")
+        .select("first_name,last_name,email")
+        .eq("id", userId)
+        .maybeSingle();
+      if (!cancelled && data) setProfile(data);
+    })();
+    return () => {
+      cancelled = true;
     };
+  }, [session?.user.id]);
+
+  if (sessionLoading) {
     return (
-      <form onSubmit={submit} className="flex-1 flex flex-col px-5 py-6 gap-4">
-        <button type="button" onClick={onBack} className="text-base text-muted-foreground text-left">← Retour</button>
-        <div className="text-center">
-          <div className="text-5xl">👤</div>
-          <h2 className="text-2xl font-black mt-2">Créer mon compte</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Retrouvez l'historique de vos missions et votre récapitulatif fiscal annuel.
-          </p>
-        </div>
+      <div className="flex-1 flex flex-col px-5 py-6 gap-4">
+        <button onClick={onBack} className="text-base text-muted-foreground text-left">← Retour</button>
+        <p className="text-center text-muted-foreground py-10">Chargement…</p>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div className="flex-1 flex flex-col px-5 py-6 gap-4">
+        <button onClick={onBack} className="text-base text-muted-foreground text-left">← Retour</button>
         <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-3 text-sm">
           💳 <b>Modèle mandataire</b> — {formatPrice(SERVICE_FEE)} € de frais de service par mission. Votre
           attestation fiscale officielle est délivrée par l'URSSAF.
         </div>
-        <input
-          required
-          placeholder="Nom et prénom"
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-          className="px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
+        <AuthCard
+          title="Mon espace Solélia"
+          subtitle="Particuliers"
+          onSuccess={() => {
+            /* la session met à jour la vue automatiquement */
+          }}
         />
-        <input
-          required
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
-        />
-        <div className="flex-1" />
-        <button type="submit" className="btn-huge bg-primary text-primary-foreground">
-          Créer mon compte
-        </button>
-      </form>
+      </div>
     );
   }
 
+  const displayName = profile
+    ? `${profile.first_name} ${profile.last_name}`.trim()
+    : "";
+  const displayEmail = profile?.email || session.user.email || "";
+
   // Aggregate orders by year
   const byYear = new Map<number, Order[]>();
-  for (const o of account.orders) {
+  for (const o of orders) {
     const y = new Date(o.date).getFullYear();
     if (!byYear.has(y)) byYear.set(y, []);
     byYear.get(y)!.push(o);
@@ -3400,8 +3408,8 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
   const years = Array.from(byYear.keys()).sort((a, b) => b - a);
 
   if (showYear !== null) {
-    const orders = byYear.get(showYear) ?? [];
-    const feesYear = orders.reduce((s, o) => s + o.serviceFee, 0);
+    const yearOrders = byYear.get(showYear) ?? [];
+    const feesYear = yearOrders.reduce((s, o) => s + o.serviceFee, 0);
     return (
       <div className="flex-1 flex flex-col px-5 py-6 gap-4">
         <button onClick={() => setShowYear(null)} className="text-base text-muted-foreground text-left">← Retour au compte</button>
@@ -3411,8 +3419,8 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
         </div>
         <div className="bg-card rounded-2xl p-5 border-2 border-border">
           <p className="text-sm text-muted-foreground">Titulaire</p>
-          <p className="text-lg font-bold">{account.fullName}</p>
-          <p className="text-xs text-muted-foreground mt-1">{account.email}</p>
+          <p className="text-lg font-bold">{displayName || displayEmail}</p>
+          <p className="text-xs text-muted-foreground mt-1">{displayEmail}</p>
         </div>
         <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-5">
           <div className="flex justify-between text-base">
@@ -3421,7 +3429,7 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
           </div>
           <div className="flex justify-between text-base mt-2">
             <span className="text-muted-foreground">Nombre de missions</span>
-            <span className="font-semibold">{orders.length}</span>
+            <span className="font-semibold">{yearOrders.length}</span>
           </div>
           <div className="h-px bg-success/30 my-3" />
           <p className="text-sm font-bold">Votre attestation fiscale officielle est délivrée par l'URSSAF.</p>
@@ -3429,7 +3437,7 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
         <div>
           <p className="font-bold mb-2">Détail des missions</p>
           <div className="flex flex-col gap-2">
-            {orders.map((o) => (
+            {yearOrders.map((o) => (
               <div key={o.id} className="bg-card rounded-xl p-3 border-2 border-border text-sm">
                 <div className="flex justify-between font-semibold">
                   <span>{o.need}</span>
@@ -3450,7 +3458,7 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
     );
   }
 
-  const totalAll = account.orders.reduce((s, o) => s + o.serviceFee, 0);
+  const totalAll = orders.reduce((s, o) => s + o.serviceFee, 0);
   const currentYear = new Date().getFullYear();
 
   return (
@@ -3458,11 +3466,11 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
       <button onClick={onBack} className="text-base text-muted-foreground text-left">← Retour</button>
       <div className="bg-card rounded-3xl p-5 border-2 border-border flex items-center gap-4">
         <div className="h-14 w-14 rounded-full bg-primary text-primary-foreground grid place-items-center text-2xl font-black">
-          {account.fullName.slice(0, 1).toUpperCase()}
+          {(displayName || displayEmail).slice(0, 1).toUpperCase()}
         </div>
         <div className="min-w-0">
-          <p className="text-lg font-bold truncate">{account.fullName}</p>
-          <p className="text-xs text-muted-foreground truncate">{account.email}</p>
+          <p className="text-lg font-bold truncate">{displayName || "Mon compte"}</p>
+          <p className="text-xs text-muted-foreground truncate">{displayEmail}</p>
         </div>
       </div>
 
@@ -3478,7 +3486,12 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
         </p>
       </div>
 
-      <AttestationFiscaleBlock account={account} currentYear={currentYear} />
+      <AttestationFiscaleBlock
+        holderName={displayName || displayEmail}
+        holderEmail={displayEmail}
+        orders={orders}
+        currentYear={currentYear}
+      />
 
       <div>
         <p className="font-bold mb-2">📊 Historique par année</p>
@@ -3489,8 +3502,8 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
         ) : (
           <div className="flex flex-col gap-2">
             {years.map((y) => {
-              const orders = byYear.get(y)!;
-              const total = orders.reduce((s, o) => s + o.serviceFee, 0);
+              const yOrders = byYear.get(y)!;
+              const total = yOrders.reduce((s, o) => s + o.serviceFee, 0);
               return (
                 <button
                   key={y}
@@ -3500,7 +3513,7 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
                   <div className="flex justify-between items-center">
                     <div>
                       <p className="font-bold">Année {y}</p>
-                      <p className="text-xs text-muted-foreground">{orders.length} mission(s) · {formatPrice(total)} €</p>
+                      <p className="text-xs text-muted-foreground">{yOrders.length} mission(s) · {formatPrice(total)} €</p>
                     </div>
                     <span className="text-sm font-bold text-primary">Voir →</span>
                   </div>
@@ -3513,11 +3526,11 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
 
       <div>
         <p className="font-bold mb-2">🗂️ Historique des commandes</p>
-        {account.orders.length === 0 ? (
+        {orders.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-6">Aucune commande pour le moment.</p>
         ) : (
           <div className="flex flex-col gap-2">
-            {account.orders.map((o) => (
+            {orders.map((o) => (
               <div key={o.id} className="bg-card rounded-2xl p-4 border-2 border-border">
                 <div className="flex justify-between items-start gap-2">
                   <div className="min-w-0">
@@ -3540,7 +3553,7 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
       </div>
 
       <button
-        onClick={() => { if (confirm("Se déconnecter de votre compte ?")) saveFamilyAccount(null); }}
+        onClick={() => { if (confirm("Se déconnecter de votre compte ?")) supabase.auth.signOut(); }}
         className="text-sm text-muted-foreground underline mt-2"
       >
         Se déconnecter
