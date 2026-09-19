@@ -318,8 +318,9 @@ function FamilyFlow() {
   const [editRequest, setEditRequest] = useState<Request | null>(null);
   const currentId = useStore((s) => s.currentRequestId);
   const current = useStore((s) => s.requests.find((r) => r.id === s.currentRequestId));
-  const account = useFamilyAccount();
   const { session, loading: sessionLoading } = useSession();
+  const sessionFirstName =
+    (session?.user.user_metadata?.first_name as string | undefined)?.trim() || "";
 
   // Simulation « premier répondant » : un compagnon disponible accepte la mission.
   useEffect(() => {
@@ -357,7 +358,7 @@ function FamilyFlow() {
           onClick={() => setStep("account")}
           className="self-end text-sm font-semibold text-primary underline"
         >
-          {account ? `👤 ${account.fullName.split(" ")[0]}` : "👤 Mon compte"}
+          {session ? `👤 ${sessionFirstName || "Mon compte"}` : "👤 Mon compte"}
         </button>
         <div className="flex flex-col items-center gap-1">
           <div
