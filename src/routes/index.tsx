@@ -3267,9 +3267,19 @@ function StudentEnroll({
   );
 }
 
-function AttestationFiscaleBlock({ account, currentYear }: { account: FamilyAccount; currentYear: number }) {
+function AttestationFiscaleBlock({
+  holderName,
+  holderEmail,
+  orders,
+  currentYear,
+}: {
+  holderName: string;
+  holderEmail: string;
+  orders: Order[];
+  currentYear: number;
+}) {
   const [generating, setGenerating] = useState(false);
-  const yearOrders = account.orders.filter((o) => new Date(o.date).getFullYear() === currentYear);
+  const yearOrders = orders.filter((o) => new Date(o.date).getFullYear() === currentYear);
   const feesYear = yearOrders.reduce((s, o) => s + o.serviceFee, 0);
 
   const downloadPdf = async () => {
@@ -3282,8 +3292,8 @@ function AttestationFiscaleBlock({ account, currentYear }: { account: FamilyAcco
       doc.setFontSize(14);
       doc.text(`Attestation fiscale — frais de service ${currentYear}`, 20, 34);
       doc.setFontSize(11);
-      doc.text(`Titulaire : ${account.fullName}`, 20, 50);
-      doc.text(`Email : ${account.email}`, 20, 58);
+      doc.text(`Titulaire : ${holderName}`, 20, 50);
+      doc.text(`Email : ${holderEmail}`, 20, 58);
       doc.text(`Nombre de missions : ${yearOrders.length}`, 20, 72);
       doc.text(`Total des frais de service réglés : ${formatPrice(feesYear)} EUR`, 20, 80);
       doc.text(`Numéro de déclaration SAP : ${SAP_DECLARATION_NUMBER}`, 20, 88);
