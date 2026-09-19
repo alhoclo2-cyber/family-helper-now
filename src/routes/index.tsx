@@ -217,9 +217,13 @@ type FamilyAccount = {
   orders: Order[];
 };
 
+// Ancien compte local (avant authentification réelle) — conservé uniquement
+// pour la migration douce vers le profil Supabase.
 const FAMILY_ACCOUNT_KEY = "sos-family-account";
+// Historique local des missions (prototype) — conservé par navigateur.
+const FAMILY_ORDERS_KEY = "sos-family-orders";
 
-function loadFamilyAccount(): FamilyAccount | null {
+function loadLegacyFamilyAccount(): FamilyAccount | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(FAMILY_ACCOUNT_KEY);
@@ -227,18 +231,26 @@ function loadFamilyAccount(): FamilyAccount | null {
   } catch {}
   return null;
 }
-function saveFamilyAccount(a: FamilyAccount | null) {
+
+function loadFamilyOrders(): Order[] {
+  if (typeof window === "undefined") return [];
   try {
-    if (a) localStorage.setItem(FAMILY_ACCOUNT_KEY, JSON.stringify(a));
-    else localStorage.removeItem(FAMILY_ACCOUNT_KEY);
+    const raw = localStorage.getItem(FAMILY_ORDERS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
+function saveFamilyOrders(orders: Order[]) {
+  try {
+    localStorage.setItem(FAMILY_ORDERS_KEY, JSON.stringify(orders));
     window.dispatchEvent(new Event("sos-family-account-changed"));
   } catch {}
 }
-function useFamilyAccount() {
-  const [acc, setAcc] = useState<FamilyAccount | null>(null);
+function useFamilyOrders() {
+  const [orders, setOrders] = useState<Order[]>([]);
   useEffect(() => {
-    setAcc(loadFamilyAccount());
-    const refresh = () => setAcc(loadFamilyAccount());
+    setOrders(loadFamilyOrders());
+    const refresh = () => setOrders(loadFamilyOrders());
     window.addEventListener("storage", refresh);
     window.addEventListener("sos-family-account-changed", refresh);
     return () => {
@@ -246,12 +258,46 @@ function useFamilyAccount() {
       window.removeEventListener("sos-family-account-changed", refresh);
     };
   }, []);
-  return acc;
+  return orders;
 }
 function addOrderToAccount(order: Order) {
-  const a = loadFamilyAccount();
-  if (!a) return;
-  saveFamilyAccount({ ...a, orders: [order, ...a.orders] });
+  saveFamilyOrders([order, ...loadFamilyOrders()]);
+}
+
+/**
+ * Migration douce : pré-remplit le profil Supabase à partir de l'ancien compte
+ * local si ses champs sont encore vides, conserve l'historique des missions,
+ * puis supprime l'ancienne clé pour n'avoir qu'une seule source de vérité.
+ */
+async function migrateLegacyFamilyAccount(userId: string) {
+  const legacy = loadLegacyFamilyAccount();
+  if (!legacy) return;
+  try {
+    // Conserve l'historique des missions sous la nouvelle clé.
+    const existing = loadFamilyOrders();
+    const known = new Set(existing.map((o) => o.id));
+    saveFamilyOrders([...legacy.orders.filter((o) => !known.has(o.id)), ...existing]);
+
+    const parts = legacy.fullName.trim().split(/\s+/);
+    const firstName = parts[0] ?? "";
+    const lastName = parts.slice(1).join(" ");
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("first_name,last_name,email")
+      .eq("id", userId)
+      .maybeSingle();
+    const update: Database["public"]["Tables"]["profiles"]["Update"] = {};
+    if (profile && !profile.first_name && firstName) update.first_name = firstName;
+    if (profile && !profile.last_name && lastName) update.last_name = lastName;
+    if (profile && !profile.email && legacy.email) update.email = legacy.email;
+    if (Object.keys(update).length > 0) {
+      await supabase.from("profiles").update(update).eq("id", userId);
+    }
+  } finally {
+    try {
+      localStorage.removeItem(FAMILY_ACCOUNT_KEY);
+    } catch {}
+  }
 }
 
 function ServiceFeeHint({ className = "" }: { className?: string }) {
@@ -272,8 +318,9 @@ function FamilyFlow() {
   const [editRequest, setEditRequest] = useState<Request | null>(null);
   const currentId = useStore((s) => s.currentRequestId);
   const current = useStore((s) => s.requests.find((r) => r.id === s.currentRequestId));
-  const account = useFamilyAccount();
   const { session, loading: sessionLoading } = useSession();
+  const sessionFirstName =
+    (session?.user.user_metadata?.first_name as string | undefined)?.trim() || "";
 
   // Simulation « premier répondant » : un compagnon disponible accepte la mission.
   useEffect(() => {
@@ -311,7 +358,7 @@ function FamilyFlow() {
           onClick={() => setStep("account")}
           className="self-end text-sm font-semibold text-primary underline"
         >
-          {account ? `👤 ${account.fullName.split(" ")[0]}` : "👤 Mon compte"}
+          {session ? `👤 ${sessionFirstName || "Mon compte"}` : "👤 Mon compte"}
         </button>
         <div className="flex flex-col items-center gap-1">
           <div
@@ -3220,9 +3267,19 @@ function StudentEnroll({
   );
 }
 
-function AttestationFiscaleBlock({ account, currentYear }: { account: FamilyAccount; currentYear: number }) {
+function AttestationFiscaleBlock({
+  holderName,
+  holderEmail,
+  orders,
+  currentYear,
+}: {
+  holderName: string;
+  holderEmail: string;
+  orders: Order[];
+  currentYear: number;
+}) {
   const [generating, setGenerating] = useState(false);
-  const yearOrders = account.orders.filter((o) => new Date(o.date).getFullYear() === currentYear);
+  const yearOrders = orders.filter((o) => new Date(o.date).getFullYear() === currentYear);
   const feesYear = yearOrders.reduce((s, o) => s + o.serviceFee, 0);
 
   const downloadPdf = async () => {
@@ -3235,8 +3292,8 @@ function AttestationFiscaleBlock({ account, currentYear }: { account: FamilyAcco
       doc.setFontSize(14);
       doc.text(`Attestation fiscale — frais de service ${currentYear}`, 20, 34);
       doc.setFontSize(11);
-      doc.text(`Titulaire : ${account.fullName}`, 20, 50);
-      doc.text(`Email : ${account.email}`, 20, 58);
+      doc.text(`Titulaire : ${holderName}`, 20, 50);
+      doc.text(`Email : ${holderEmail}`, 20, 58);
       doc.text(`Nombre de missions : ${yearOrders.length}`, 20, 72);
       doc.text(`Total des frais de service réglés : ${formatPrice(feesYear)} EUR`, 20, 80);
       doc.text(`Numéro de déclaration SAP : ${SAP_DECLARATION_NUMBER}`, 20, 88);
@@ -3280,62 +3337,70 @@ function AttestationFiscaleBlock({ account, currentYear }: { account: FamilyAcco
 }
 
 function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
-  const account = useFamilyAccount();
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
+  const { session, loading: sessionLoading } = useSession();
+  const orders = useFamilyOrders();
   const [showYear, setShowYear] = useState<number | null>(null);
+  const [profile, setProfile] = useState<{
+    first_name: string;
+    last_name: string;
+    email: string;
+  } | null>(null);
 
-  if (!account) {
-    const submit = (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!fullName.trim() || !email.trim()) return;
-      saveFamilyAccount({
-        email: email.trim(),
-        fullName: fullName.trim(),
-        createdAt: Date.now(),
-        orders: [],
-      });
+  // Charge le profil Supabase et migre l'ancien compte local si présent.
+  useEffect(() => {
+    if (!session) return;
+    const userId = session.user.id;
+    let cancelled = false;
+    (async () => {
+      await migrateLegacyFamilyAccount(userId);
+      const { data } = await supabase
+        .from("profiles")
+        .select("first_name,last_name,email")
+        .eq("id", userId)
+        .maybeSingle();
+      if (!cancelled && data) setProfile(data);
+    })();
+    return () => {
+      cancelled = true;
     };
+  }, [session?.user.id]);
+
+  if (sessionLoading) {
     return (
-      <form onSubmit={submit} className="flex-1 flex flex-col px-5 py-6 gap-4">
-        <button type="button" onClick={onBack} className="text-base text-muted-foreground text-left">← Retour</button>
-        <div className="text-center">
-          <div className="text-5xl">👤</div>
-          <h2 className="text-2xl font-black mt-2">Créer mon compte</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Retrouvez l'historique de vos missions et votre récapitulatif fiscal annuel.
-          </p>
-        </div>
+      <div className="flex-1 flex flex-col px-5 py-6 gap-4">
+        <button onClick={onBack} className="text-base text-muted-foreground text-left">← Retour</button>
+        <p className="text-center text-muted-foreground py-10">Chargement…</p>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div className="flex-1 flex flex-col px-5 py-6 gap-4">
+        <button onClick={onBack} className="text-base text-muted-foreground text-left">← Retour</button>
         <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-3 text-sm">
           💳 <b>Modèle mandataire</b> — {formatPrice(SERVICE_FEE)} € de frais de service par mission. Votre
           attestation fiscale officielle est délivrée par l'URSSAF.
         </div>
-        <input
-          required
-          placeholder="Nom et prénom"
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-          className="px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
+        <AuthCard
+          title="Mon espace Solélia"
+          subtitle="Particuliers"
+          onSuccess={() => {
+            /* la session met à jour la vue automatiquement */
+          }}
         />
-        <input
-          required
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
-        />
-        <div className="flex-1" />
-        <button type="submit" className="btn-huge bg-primary text-primary-foreground">
-          Créer mon compte
-        </button>
-      </form>
+      </div>
     );
   }
 
+  const displayName = profile
+    ? `${profile.first_name} ${profile.last_name}`.trim()
+    : "";
+  const displayEmail = profile?.email || session.user.email || "";
+
   // Aggregate orders by year
   const byYear = new Map<number, Order[]>();
-  for (const o of account.orders) {
+  for (const o of orders) {
     const y = new Date(o.date).getFullYear();
     if (!byYear.has(y)) byYear.set(y, []);
     byYear.get(y)!.push(o);
@@ -3343,8 +3408,8 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
   const years = Array.from(byYear.keys()).sort((a, b) => b - a);
 
   if (showYear !== null) {
-    const orders = byYear.get(showYear) ?? [];
-    const feesYear = orders.reduce((s, o) => s + o.serviceFee, 0);
+    const yearOrders = byYear.get(showYear) ?? [];
+    const feesYear = yearOrders.reduce((s, o) => s + o.serviceFee, 0);
     return (
       <div className="flex-1 flex flex-col px-5 py-6 gap-4">
         <button onClick={() => setShowYear(null)} className="text-base text-muted-foreground text-left">← Retour au compte</button>
@@ -3354,8 +3419,8 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
         </div>
         <div className="bg-card rounded-2xl p-5 border-2 border-border">
           <p className="text-sm text-muted-foreground">Titulaire</p>
-          <p className="text-lg font-bold">{account.fullName}</p>
-          <p className="text-xs text-muted-foreground mt-1">{account.email}</p>
+          <p className="text-lg font-bold">{displayName || displayEmail}</p>
+          <p className="text-xs text-muted-foreground mt-1">{displayEmail}</p>
         </div>
         <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-5">
           <div className="flex justify-between text-base">
@@ -3364,7 +3429,7 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
           </div>
           <div className="flex justify-between text-base mt-2">
             <span className="text-muted-foreground">Nombre de missions</span>
-            <span className="font-semibold">{orders.length}</span>
+            <span className="font-semibold">{yearOrders.length}</span>
           </div>
           <div className="h-px bg-success/30 my-3" />
           <p className="text-sm font-bold">Votre attestation fiscale officielle est délivrée par l'URSSAF.</p>
@@ -3372,7 +3437,7 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
         <div>
           <p className="font-bold mb-2">Détail des missions</p>
           <div className="flex flex-col gap-2">
-            {orders.map((o) => (
+            {yearOrders.map((o) => (
               <div key={o.id} className="bg-card rounded-xl p-3 border-2 border-border text-sm">
                 <div className="flex justify-between font-semibold">
                   <span>{o.need}</span>
@@ -3393,7 +3458,7 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
     );
   }
 
-  const totalAll = account.orders.reduce((s, o) => s + o.serviceFee, 0);
+  const totalAll = orders.reduce((s, o) => s + o.serviceFee, 0);
   const currentYear = new Date().getFullYear();
 
   return (
@@ -3401,11 +3466,11 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
       <button onClick={onBack} className="text-base text-muted-foreground text-left">← Retour</button>
       <div className="bg-card rounded-3xl p-5 border-2 border-border flex items-center gap-4">
         <div className="h-14 w-14 rounded-full bg-primary text-primary-foreground grid place-items-center text-2xl font-black">
-          {account.fullName.slice(0, 1).toUpperCase()}
+          {(displayName || displayEmail).slice(0, 1).toUpperCase()}
         </div>
         <div className="min-w-0">
-          <p className="text-lg font-bold truncate">{account.fullName}</p>
-          <p className="text-xs text-muted-foreground truncate">{account.email}</p>
+          <p className="text-lg font-bold truncate">{displayName || "Mon compte"}</p>
+          <p className="text-xs text-muted-foreground truncate">{displayEmail}</p>
         </div>
       </div>
 
@@ -3421,7 +3486,12 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
         </p>
       </div>
 
-      <AttestationFiscaleBlock account={account} currentYear={currentYear} />
+      <AttestationFiscaleBlock
+        holderName={displayName || displayEmail}
+        holderEmail={displayEmail}
+        orders={orders}
+        currentYear={currentYear}
+      />
 
       <div>
         <p className="font-bold mb-2">📊 Historique par année</p>
@@ -3432,8 +3502,8 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
         ) : (
           <div className="flex flex-col gap-2">
             {years.map((y) => {
-              const orders = byYear.get(y)!;
-              const total = orders.reduce((s, o) => s + o.serviceFee, 0);
+              const yOrders = byYear.get(y)!;
+              const total = yOrders.reduce((s, o) => s + o.serviceFee, 0);
               return (
                 <button
                   key={y}
@@ -3443,7 +3513,7 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
                   <div className="flex justify-between items-center">
                     <div>
                       <p className="font-bold">Année {y}</p>
-                      <p className="text-xs text-muted-foreground">{orders.length} mission(s) · {formatPrice(total)} €</p>
+                      <p className="text-xs text-muted-foreground">{yOrders.length} mission(s) · {formatPrice(total)} €</p>
                     </div>
                     <span className="text-sm font-bold text-primary">Voir →</span>
                   </div>
@@ -3456,11 +3526,11 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
 
       <div>
         <p className="font-bold mb-2">🗂️ Historique des commandes</p>
-        {account.orders.length === 0 ? (
+        {orders.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-6">Aucune commande pour le moment.</p>
         ) : (
           <div className="flex flex-col gap-2">
-            {account.orders.map((o) => (
+            {orders.map((o) => (
               <div key={o.id} className="bg-card rounded-2xl p-4 border-2 border-border">
                 <div className="flex justify-between items-start gap-2">
                   <div className="min-w-0">
@@ -3483,7 +3553,7 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
       </div>
 
       <button
-        onClick={() => { if (confirm("Se déconnecter de votre compte ?")) saveFamilyAccount(null); }}
+        onClick={() => { if (confirm("Se déconnecter de votre compte ?")) supabase.auth.signOut(); }}
         className="text-sm text-muted-foreground underline mt-2"
       >
         Se déconnecter
