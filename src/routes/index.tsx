@@ -286,7 +286,7 @@ async function migrateLegacyFamilyAccount(userId: string) {
       .select("first_name,last_name,email")
       .eq("id", userId)
       .maybeSingle();
-    const update: Partial<Pick<Profile, "first_name" | "last_name" | "email">> = {};
+    const update: Database["public"]["Tables"]["profiles"]["Update"] = {};
     if (profile && !profile.first_name && firstName) update.first_name = firstName;
     if (profile && !profile.last_name && lastName) update.last_name = lastName;
     if (profile && !profile.email && legacy.email) update.email = legacy.email;
