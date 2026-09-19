@@ -8,6 +8,13 @@
       "when": 1789801285874,
       "tag": "0000_create_client_documents",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789801314465,
+      "tag": "0001_client_docs_storage_policies",
+      "breakpoints": true
     }
   ]
 }
