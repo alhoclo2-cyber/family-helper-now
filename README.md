@@ -264,8 +264,6 @@ Non opérationnelles dans le code actuel :
 
 ---
 
-**Note sur le nom** : le produit s'appelle **Solélia**. Le dépôt peut encore
-contenir des références à d'anciennes appellations (ex. « SOS Étudiants »,
-« Famille Connect ») conservées pour des raisons techniques.
+**Note sur le nom** : le produit s'appelle **Solélia Accompagnement**.
 
 Projet développé avec [Lovable](https://lovable.dev).
