@@ -101,10 +101,17 @@ export function AccountInfoPanel() {
     setEmailMsg(null);
     const { error: err } = await supabase.auth.updateUser({ email: next });
     setEmailBusy(false);
+    if (err) {
+      setEmailMsg(
+        err.message.toLowerCase().includes("rate") ||
+          err.message.toLowerCase().includes("after")
+          ? "⏳ Une demande vient d'être envoyée. Patientez environ 1 minute avant de réessayer, et vérifiez votre boîte mail."
+          : "Impossible de modifier l'adresse email. Réessayez.",
+      );
+      return;
+    }
     setEmailMsg(
-      err
-        ? "Impossible de modifier l'adresse email. Réessayez."
-        : "📧 Vérifiez votre boîte mail pour confirmer votre nouvelle adresse.",
+      "📧 Vérifiez votre boîte mail : un lien de confirmation a été envoyé à votre nouvelle adresse (et parfois aussi à l'ancienne).",
     );
   };
 
