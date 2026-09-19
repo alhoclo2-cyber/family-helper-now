@@ -21,6 +21,7 @@ import {
 } from "@/components/CompanionBadges";
 import { CompanionProfilePanel } from "@/components/CompanionProfilePanel";
 import { AccountInfoPanel } from "@/components/AccountInfoPanel";
+import { ClientDocumentsPanel } from "@/components/ClientDocumentsPanel";
 import { CompanionAvailabilityPanel } from "@/components/CompanionAvailabilityPanel";
 import { useCompanionSettings } from "@/lib/companionSettings";
 import soleliaLogoAsset from "@/assets/solelia-logo.png.asset.json";
@@ -3475,6 +3476,8 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
       </div>
 
       <AccountInfoPanel />
+
+      <ClientDocumentsPanel />
 
       <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-4">
         <p className="text-sm font-bold text-success">🇫🇷 Services à la personne</p>
