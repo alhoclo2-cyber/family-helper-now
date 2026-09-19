@@ -217,9 +217,13 @@ type FamilyAccount = {
   orders: Order[];
 };
 
+// Ancien compte local (avant authentification réelle) — conservé uniquement
+// pour la migration douce vers le profil Supabase.
 const FAMILY_ACCOUNT_KEY = "sos-family-account";
+// Historique local des missions (prototype) — conservé par navigateur.
+const FAMILY_ORDERS_KEY = "sos-family-orders";
 
-function loadFamilyAccount(): FamilyAccount | null {
+function loadLegacyFamilyAccount(): FamilyAccount | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(FAMILY_ACCOUNT_KEY);
@@ -227,18 +231,26 @@ function loadFamilyAccount(): FamilyAccount | null {
   } catch {}
   return null;
 }
-function saveFamilyAccount(a: FamilyAccount | null) {
+
+function loadFamilyOrders(): Order[] {
+  if (typeof window === "undefined") return [];
   try {
-    if (a) localStorage.setItem(FAMILY_ACCOUNT_KEY, JSON.stringify(a));
-    else localStorage.removeItem(FAMILY_ACCOUNT_KEY);
+    const raw = localStorage.getItem(FAMILY_ORDERS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
+function saveFamilyOrders(orders: Order[]) {
+  try {
+    localStorage.setItem(FAMILY_ORDERS_KEY, JSON.stringify(orders));
     window.dispatchEvent(new Event("sos-family-account-changed"));
   } catch {}
 }
-function useFamilyAccount() {
-  const [acc, setAcc] = useState<FamilyAccount | null>(null);
+function useFamilyOrders() {
+  const [orders, setOrders] = useState<Order[]>([]);
   useEffect(() => {
-    setAcc(loadFamilyAccount());
-    const refresh = () => setAcc(loadFamilyAccount());
+    setOrders(loadFamilyOrders());
+    const refresh = () => setOrders(loadFamilyOrders());
     window.addEventListener("storage", refresh);
     window.addEventListener("sos-family-account-changed", refresh);
     return () => {
@@ -246,12 +258,46 @@ function useFamilyAccount() {
       window.removeEventListener("sos-family-account-changed", refresh);
     };
   }, []);
-  return acc;
+  return orders;
 }
 function addOrderToAccount(order: Order) {
-  const a = loadFamilyAccount();
-  if (!a) return;
-  saveFamilyAccount({ ...a, orders: [order, ...a.orders] });
+  saveFamilyOrders([order, ...loadFamilyOrders()]);
+}
+
+/**
+ * Migration douce : pré-remplit le profil Supabase à partir de l'ancien compte
+ * local si ses champs sont encore vides, conserve l'historique des missions,
+ * puis supprime l'ancienne clé pour n'avoir qu'une seule source de vérité.
+ */
+async function migrateLegacyFamilyAccount(userId: string) {
+  const legacy = loadLegacyFamilyAccount();
+  if (!legacy) return;
+  try {
+    // Conserve l'historique des missions sous la nouvelle clé.
+    const existing = loadFamilyOrders();
+    const known = new Set(existing.map((o) => o.id));
+    saveFamilyOrders([...legacy.orders.filter((o) => !known.has(o.id)), ...existing]);
+
+    const parts = legacy.fullName.trim().split(/\s+/);
+    const firstName = parts[0] ?? "";
+    const lastName = parts.slice(1).join(" ");
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("first_name,last_name,email")
+      .eq("id", userId)
+      .maybeSingle();
+    const update: Record<string, string> = {};
+    if (profile && !profile.first_name && firstName) update.first_name = firstName;
+    if (profile && !profile.last_name && lastName) update.last_name = lastName;
+    if (profile && !profile.email && legacy.email) update.email = legacy.email;
+    if (Object.keys(update).length > 0) {
+      await supabase.from("profiles").update(update).eq("id", userId);
+    }
+  } finally {
+    try {
+      localStorage.removeItem(FAMILY_ACCOUNT_KEY);
+    } catch {}
+  }
 }
 
 function ServiceFeeHint({ className = "" }: { className?: string }) {
