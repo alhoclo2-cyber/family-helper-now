@@ -487,7 +487,7 @@ function FamilyFlow() {
       request={current}
       simulateNoAnswer={simulateNoAnswer}
       onSimulateNoAnswer={setSimulateNoAnswer}
-      onEditRequest={() => { if (current) { setEditRequest(current); setStep("form"); } }}
+      onEditRequest={(req) => { const r = req ?? current; if (r) { setEditRequest(r); setStep("form"); } }}
       onDone={() => { store.clearCurrent(); setSimulateNoAnswer(false); setEditRequest(null); setStep("home"); }}
     />
   );
@@ -1592,7 +1592,7 @@ function FamilyWait({
   request: Request | undefined;
   simulateNoAnswer: boolean;
   onSimulateNoAnswer: (v: boolean) => void;
-  onEditRequest: () => void;
+  onEditRequest: (req?: Request) => void;
   onDone: () => void;
 }) {
   const [paid, setPaid] = useState(false);
@@ -1631,7 +1631,22 @@ function FamilyWait({
               : "Annulation à moins de 24 h : conformément aux conditions, le paiement n'est pas remboursé."
             : "Demande en cours annulée. Vous pouvez maintenant modifier vos critères et relancer la recherche."}
         </p>
-        <button onClick={onDone} className="btn-huge bg-primary text-primary-foreground w-full">
+        {!paidAlready && (
+          <button
+            onClick={() => { store.discardRequest(request.id); onEditRequest(request); }}
+            className="btn-huge bg-primary text-primary-foreground w-full"
+          >
+            ✏️ Modifier mes critères
+          </button>
+        )}
+        <button
+          onClick={onDone}
+          className={
+            paidAlready
+              ? "btn-huge bg-primary text-primary-foreground w-full"
+              : "py-4 rounded-2xl border-2 border-border bg-card font-bold w-full"
+          }
+        >
           Retour à l'accueil
         </button>
       </div>
@@ -1883,7 +1898,7 @@ function FamilyWait({
           )}
           <button
             type="button"
-            onClick={onEditRequest}
+            onClick={() => onEditRequest()}
             className="py-4 rounded-2xl border-2 border-primary text-primary font-bold text-sm w-full"
           >
             ← Modifier ma demande
@@ -1994,7 +2009,7 @@ function FamilyWait({
           {!paid && (
             <button
               type="button"
-              onClick={onEditRequest}
+              onClick={() => onEditRequest()}
               className="py-4 rounded-2xl border-2 border-primary text-primary font-bold text-sm w-full"
             >
               ← Modifier ma demande
