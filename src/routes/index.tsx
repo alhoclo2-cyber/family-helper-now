@@ -1898,7 +1898,7 @@ function FamilyWait({
           )}
           <button
             type="button"
-            onClick={onEditRequest}
+            onClick={() => onEditRequest()}
             className="py-4 rounded-2xl border-2 border-primary text-primary font-bold text-sm w-full"
           >
             ← Modifier ma demande
@@ -2009,7 +2009,7 @@ function FamilyWait({
           {!paid && (
             <button
               type="button"
-              onClick={onEditRequest}
+              onClick={() => onEditRequest()}
               className="py-4 rounded-2xl border-2 border-primary text-primary font-bold text-sm w-full"
             >
               ← Modifier ma demande
