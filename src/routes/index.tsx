@@ -1619,14 +1619,17 @@ function FamilyWait({
 
   if (!request) return null;
   if (request.status === "cancelled") {
+    const paidAlready = paid || request.paid;
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
         <div className="text-6xl">🗑️</div>
-        <p className="text-2xl font-black">Rendez-vous annulé</p>
+        <p className="text-2xl font-black">{paidAlready ? "Rendez-vous annulé" : "Demande annulée"}</p>
         <p className="text-base text-muted-foreground">
-          {request.refunded
-            ? "Annulation à plus de 24 h : vous serez intégralement remboursé sous 3 jours ouvrés."
-            : "Annulation à moins de 24 h : conformément aux conditions, le paiement n'est pas remboursé."}
+          {paidAlready
+            ? request.refunded
+              ? "Annulation à plus de 24 h : vous serez intégralement remboursé sous 3 jours ouvrés."
+              : "Annulation à moins de 24 h : conformément aux conditions, le paiement n'est pas remboursé."
+            : "Demande en cours annulée. Vous pouvez maintenant modifier vos critères et relancer la recherche."}
         </p>
         <button onClick={onDone} className="btn-huge bg-primary text-primary-foreground w-full">
           Retour à l'accueil
@@ -1671,6 +1674,7 @@ function FamilyWait({
             cesuActive: request.student!.cesuActive,
             studentName: request.student!.firstName,
           });
+          store.updateRequest(request.id, { paid: true });
           setPaid(true);
           setShowPay(false);
         }}
@@ -1798,7 +1802,7 @@ function FamilyWait({
                 {isSos ? (
                   <button
                     type="button"
-                    onClick={() => { store.cancelRequest(request.id, true, "Modification des critères de la demande"); }}
+                    onClick={() => { store.cancelRequest(request.id, false, "Modification des critères de la demande"); }}
                     className="py-4 rounded-2xl border-2 border-border bg-card font-bold text-sm"
                   >
                     ✏️ Modifier mes critères
