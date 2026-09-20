@@ -1633,7 +1633,7 @@ function FamilyWait({
         </p>
         {!paidAlready && (
           <button
-            onClick={() => { store.discardRequest(request.id); onEditRequest(); }}
+            onClick={() => { store.discardRequest(request.id); onEditRequest(request); }}
             className="btn-huge bg-primary text-primary-foreground w-full"
           >
             ✏️ Modifier mes critères
