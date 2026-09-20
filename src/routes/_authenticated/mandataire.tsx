@@ -507,3 +507,246 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
     </div>
   );
 }
+
+/* ---------- Onglet « Inscriptions Particulier » ---------- */
+
+type ClientRow = Awaited<ReturnType<typeof listClientRegistrations>>[number];
+type ClientDoc = ClientRow["documents"][number];
+type ClientStatus = "incomplete" | "to_check" | "complete";
+
+const CLIENT_DOC_TYPES = [
+  { type: "rib", label: "RIB" },
+  { type: "identity", label: "Pièce d'identité" },
+  { type: "proof_of_address", label: "Justificatif de domicile" },
+] as const;
+
+const CLIENT_STATUS_LABEL: Record<ClientStatus, string> = {
+  incomplete: "🔴 Dossier incomplet",
+  to_check: "🟡 Documents à vérifier",
+  complete: "🟢 Dossier complet",
+};
+
+function clientStatus(c: ClientRow): ClientStatus {
+  const byType = new Map(c.documents.map((d) => [d.doc_type, d]));
+  const present = CLIENT_DOC_TYPES.filter((t) => byType.get(t.type)?.file_path);
+  if (present.length < CLIENT_DOC_TYPES.length) return "incomplete";
+  return present.every((t) => byType.get(t.type)?.status === "validated") ? "complete" : "to_check";
+}
+
+function ClientsTab({ clients }: { clients: UseQueryResult<ClientRow[]> }) {
+  const [filter, setFilter] = useState<ClientStatus | "all">("all");
+  const [q, setQ] = useState("");
+  const [page, setPage] = useState(0);
+  const [priority, setPriority] = useState(false);
+
+  if (clients.isLoading)
+    return <p className="text-center text-muted-foreground py-10">Chargement des inscriptions…</p>;
+  if (clients.isError)
+    return (
+      <p className="text-center text-destructive py-10">Impossible de charger les inscriptions.</p>
+    );
+
+  const all = clients.data ?? [];
+  const needle = q.trim().toLowerCase();
+  const filtered = all
+    .filter((c) => (filter === "all" ? true : clientStatus(c) === filter))
+    .filter((c) =>
+      !needle ? true : `${c.first_name} ${c.last_name} ${c.email}`.toLowerCase().includes(needle),
+    )
+    .sort((a, b) => {
+      if (priority) {
+        const rank = (c: ClientRow) => (clientStatus(c) === "to_check" ? 0 : 1);
+        const d = rank(a) - rank(b);
+        if (d !== 0) return d;
+      }
+      return b.created_at.localeCompare(a.created_at);
+    });
+  const count = (s: ClientStatus) => all.filter((c) => clientStatus(c) === s).length;
+  const shown = filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-xs text-muted-foreground">
+        Suivi administratif uniquement : un compte Particulier est actif dès son inscription, quel
+        que soit l'état de ses documents.
+      </p>
+      <div className="grid grid-cols-3 gap-2 text-center">
+        {(["incomplete", "to_check", "complete"] as const).map((s) => (
+          <button
+            key={s}
+            onClick={() => {
+              setFilter(s);
+              setPage(0);
+            }}
+            className={`rounded-2xl border-2 p-3 ${filter === s ? "border-primary bg-secondary" : "border-border bg-card"}`}
+          >
+            <div className="text-2xl font-black">{count(s)}</div>
+            <div className="text-xs">{CLIENT_STATUS_LABEL[s]}</div>
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <button
+          onClick={() => {
+            setFilter("all");
+            setPage(0);
+          }}
+          className={`text-sm underline ${filter === "all" ? "font-bold" : "text-muted-foreground"}`}
+        >
+          Toutes les inscriptions ({all.length})
+        </button>
+        <label className="text-sm flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={priority}
+            onChange={(e) => setPriority(e.target.checked)}
+            className="h-4 w-4"
+          />
+          À vérifier d'abord
+        </label>
+      </div>
+      <SearchBar
+        value={q}
+        onChange={(v) => {
+          setQ(v);
+          setPage(0);
+        }}
+      />
+      {shown.length === 0 && (
+        <p className="text-center text-muted-foreground py-8">Aucune inscription dans cette catégorie.</p>
+      )}
+      {shown.map((c) => (
+        <ClientCard key={c.id} client={c} />
+      ))}
+      <Pager page={page} total={filtered.length} onPage={setPage} />
+    </div>
+  );
+}
+
+function ClientCard({ client }: { client: ClientRow }) {
+  const [open, setOpen] = useState(false);
+  const byType = new Map(client.documents.map((d) => [d.doc_type, d]));
+  const status = clientStatus(client);
+  return (
+    <div className="rounded-2xl border-2 border-border bg-card p-4 flex flex-col gap-3">
+      <button onClick={() => setOpen((o) => !o)} className="text-left flex gap-3 items-center">
+        <div className="flex-1 min-w-0">
+          <div className="font-bold text-base truncate">
+            {client.first_name} {client.last_name}
+          </div>
+          <div className="text-sm text-muted-foreground truncate">{client.email}</div>
+          <div className="text-xs text-muted-foreground">
+            Inscrit le {new Date(client.created_at).toLocaleDateString("fr-FR")}
+          </div>
+        </div>
+        <span className="text-xs font-bold whitespace-nowrap">{CLIENT_STATUS_LABEL[status]}</span>
+      </button>
+      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-bold">
+        {CLIENT_DOC_TYPES.map((t) => {
+          const d = byType.get(t.type);
+          const ok = d?.status === "validated";
+          return (
+            <span key={t.type} className={ok ? "text-success" : "text-destructive"}>
+              {ok ? "✓" : "✗"} {t.label}
+            </span>
+          );
+        })}
+      </div>
+      <button onClick={() => setOpen((o) => !o)} className="text-sm font-bold text-primary text-left">
+        {open ? "Masquer les documents" : "Voir et vérifier les documents"}
+      </button>
+      {open && (
+        <div className="flex flex-col gap-3">
+          {CLIENT_DOC_TYPES.map((t) => (
+            <ClientDocCard key={t.type} label={t.label} doc={byType.get(t.type) ?? null} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ClientDocCard({ label, doc }: { label: string; doc: ClientDoc | null }) {
+  const qc = useQueryClient();
+  const review = useServerFn(reviewClientDocument);
+  const [reason, setReason] = useState(doc?.reject_reason ?? "");
+  const [err, setErr] = useState<string | null>(null);
+  const url = useSignedUrl(doc?.file_path ?? null, "client-docs");
+  const mut = useMutation({
+    mutationFn: (v: { status: "validated" | "rejected"; rejectReason?: string }) =>
+      review({ data: { id: doc!.id, ...v } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["client-registrations"] }),
+    onError: (e: Error) => setErr(e.message),
+  });
+  const isPdf = doc?.file_path?.toLowerCase().endsWith(".pdf");
+
+  return (
+    <div className="rounded-2xl border-2 border-border p-3">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-sm font-bold">{label}</p>
+        <span
+          className={`text-xs font-bold shrink-0 ${doc?.status === "validated" ? "text-success" : doc?.status === "pending" ? "text-warning" : "text-destructive"}`}
+        >
+          {doc?.status === "validated"
+            ? "🟢 Validé"
+            : doc?.status === "pending"
+              ? "🟡 À vérifier"
+              : doc?.status === "rejected"
+                ? "🔴 Refusé"
+                : "🔴 Manquant"}
+        </span>
+      </div>
+      {!doc?.file_path ? (
+        <p className="text-sm text-destructive mt-2">Non fourni</p>
+      ) : (
+        <>
+          {url.data && !isPdf && (
+            <img
+              src={url.data.url}
+              alt={label}
+              className="w-full max-h-64 object-contain rounded-xl bg-muted my-2"
+            />
+          )}
+          {url.data && (
+            <a
+              href={url.data.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block text-sm font-bold text-primary underline"
+            >
+              {isPdf ? "📄 Ouvrir le PDF" : "🔍 Ouvrir en grand"}
+            </a>
+          )}
+          {doc.reject_reason && (
+            <p className="text-xs font-bold text-destructive mt-1">Motif : {doc.reject_reason}</p>
+          )}
+          {err && <p className="text-sm text-destructive mt-2">{err}</p>}
+          <div className="flex flex-col gap-2 mt-3">
+            {doc.status !== "validated" && (
+              <button
+                disabled={mut.isPending}
+                onClick={() => mut.mutate({ status: "validated" })}
+                className="py-3 rounded-2xl bg-success text-success-foreground font-bold disabled:opacity-50"
+              >
+                ✅ Valider ce document
+              </button>
+            )}
+            <textarea
+              placeholder="Motif du refus (10 caractères minimum)"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className={inputCls + " min-h-16"}
+            />
+            <button
+              disabled={mut.isPending || reason.trim().length < 10}
+              onClick={() => mut.mutate({ status: "rejected", rejectReason: reason })}
+              className="py-3 rounded-2xl bg-warning text-warning-foreground font-bold disabled:opacity-50"
+            >
+              📝 Refuser et demander une correction
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
