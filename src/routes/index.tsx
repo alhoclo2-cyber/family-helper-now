@@ -2964,6 +2964,7 @@ function StudentEnroll({
           <ul className="space-y-2 text-sm">
             <li>✓ Être majeur (18 ans et +)</li>
             <li>✓ Pièce d'identité valide</li>
+            <li>✓ Carte Vitale (copie ou photo du recto)</li>
             <li>✓ Justificatif de domicile (ou dossier d'hébergement)</li>
             <li>✓ Justificatif de situation (carte étudiante, contrat de travail, attestation France Travail, notification de retraite…)</li>
             <li>✓ Extrait de casier judiciaire (bulletin n°3 de moins de 3 mois)</li>
