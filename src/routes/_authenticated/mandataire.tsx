@@ -171,7 +171,7 @@ function Dashboard() {
                 {a.first_name} {a.last_name}
               </div>
               <div className="text-sm text-muted-foreground truncate">
-                {a.situation ?? "—"} · {a.city}
+                {a.situation ?? "—"} · {a.address || a.city}
               </div>
               <div className="text-xs text-muted-foreground">
                 {new Date(a.created_at).toLocaleDateString("fr-FR")}
@@ -285,7 +285,7 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
           </h2>
           <p className="text-sm text-muted-foreground">
             {app.situation ?? "—"}
-            {app.school ? ` · ${app.school}` : ""}
+            {app.address ? ` · ${app.address}` : ""}
           </p>
           <p className="text-sm font-bold mt-1">{STATUS_LABEL[app.status]}</p>
         </div>
@@ -294,7 +294,7 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
       <div className="rounded-2xl border-2 border-border bg-card p-4 text-sm space-y-1">
         <p>📧 {app.email}</p>
         <p>📞 {app.phone}</p>
-        <p>📍 {app.city}</p>
+        <p>📍 {app.address || app.city}</p>
         <p>
           🆔 NIR : <span className="font-mono font-bold">{app.nir || "Non renseigné"}</span>
         </p>
@@ -310,6 +310,7 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
 
       <h3 className="font-black">Pièces justificatives</h3>
       <DocCard label="🪪 Pièce d'identité" path={app.id_card_path} />
+      <DocCard label="💳 Carte Vitale (recto)" path={app.vitale_card_path} />
       <DocCard label="🎓 Justificatif de situation" path={app.situation_proof_path} />
       <DocCard label="⚖️ Casier judiciaire (B3, moins de 3 mois)" path={app.criminal_record_path} />
       <DocCard label="🏦 RIB" path={app.iban_path} />
