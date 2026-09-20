@@ -2730,6 +2730,7 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
 
 type DocKey =
   | "idCard"
+  | "vitaleCard"
   | "studentCard"
   | "criminalRecord"
   | "iban"
@@ -2741,11 +2742,10 @@ type HousingStatus = "owner" | "hosted";
 type EnrollForm = {
   firstName: string;
   lastName: string;
+  address: string;
   email: string;
   phone: string;
   situation: string;
-  school: string;
-  city: string;
   motivation: string;
   nir: string;
   housing: HousingStatus;
@@ -2756,6 +2756,7 @@ type EnrollForm = {
 
 type DocColumn =
   | "id_card_path"
+  | "vitale_card_path"
   | "situation_proof_path"
   | "criminal_record_path"
   | "iban_path"
@@ -2766,6 +2767,7 @@ type DocColumn =
 
 const DOC_COLUMN: Record<DocKey, DocColumn> = {
   idCard: "id_card_path",
+  vitaleCard: "vitale_card_path",
   studentCard: "situation_proof_path",
   criminalRecord: "criminal_record_path",
   iban: "iban_path",
@@ -2778,6 +2780,7 @@ const DOC_COLUMN: Record<DocKey, DocColumn> = {
 /** Mots-clés permettant de mettre en rouge les pièces citées dans le motif du Mandataire */
 const DOC_KEYWORDS: Record<DocKey, string[]> = {
   idCard: ["identité", "identite", "cni", "passeport"],
+  vitaleCard: ["vitale"],
   studentCard: ["situation", "étudiante", "etudiante", "contrat", "retraite", "france travail"],
   criminalRecord: ["casier", "judiciaire", "b3", "bulletin"],
   iban: ["rib", "iban", "banc"],
@@ -2836,11 +2839,10 @@ function StudentEnroll({
   const [p, setP] = useState<EnrollForm>({
     firstName: "",
     lastName: "",
+    address: "",
     email: "",
     phone: "",
     situation: "Étudiant(e)",
-    school: "",
-    city: "",
     motivation: "",
     nir: "",
     housing: "owner",
@@ -2860,9 +2862,8 @@ function StudentEnroll({
         lastName: prev.lastName || app?.last_name || prof?.last_name || "",
         email: prev.email || app?.email || prof?.email || session.user.email || "",
         phone: prev.phone || app?.phone || prof?.phone || "",
-        city: prev.city || app?.city || prof?.city || "",
+        address: prev.address || app?.address || prof?.address_line || "",
         situation: app?.situation || prev.situation,
-        school: prev.school || app?.school || "",
         motivation: prev.motivation || app?.motivation || "",
         nir: prev.nir || app?.nir || "",
         housing: (app?.housing_status as HousingStatus) || prev.housing,
@@ -2915,7 +2916,7 @@ function StudentEnroll({
           <p className="text-sm text-muted-foreground">Candidat</p>
           <p className="text-lg font-bold">{app.first_name} {app.last_name}</p>
           <p className="text-sm text-muted-foreground mt-2">Situation</p>
-          <p className="text-base">{app.situation} — {app.school}</p>
+          <p className="text-base">{app.situation}{app.address ? ` — ${app.address}` : ""}</p>
           <p className="text-sm text-muted-foreground mt-2">Statut</p>
           <p className="text-base font-semibold text-warning-foreground">⏳ En attente de vérification</p>
         </div>
@@ -3051,11 +3052,10 @@ function StudentEnroll({
         user_id: session.user.id,
         first_name: p.firstName.trim(),
         last_name: p.lastName.trim(),
+        address: p.address.trim(),
         email: p.email.trim(),
         phone: p.phone.trim(),
         situation: p.situation,
-        school: p.school.trim(),
-        city: p.city.trim(),
         motivation: p.motivation.trim(),
         nir: p.nir.replace(/\D/g, ""),
         housing_status: p.housing,
@@ -3085,6 +3085,7 @@ function StudentEnroll({
 
   const docs: { k: DocKey; label: string; icon: string }[] = [
     { k: "idCard", label: "Pièce d'identité", icon: "🪪" },
+    { k: "vitaleCard", label: "Copie ou photo du recto de la carte Vitale", icon: "💳" },
     { k: "studentCard", label: "Justificatif de situation (carte étudiante, contrat, attestation…)", icon: "📑" },
     { k: "criminalRecord", label: "Casier judiciaire (B3, moins de 3 mois)", icon: "📄" },
     { k: "iban", label: "RIB", icon: "🏦" },
@@ -3113,11 +3114,10 @@ function StudentEnroll({
   const valid = Boolean(
     p.firstName.trim() &&
       p.lastName.trim() &&
+      p.address.trim() &&
       p.email.trim() &&
       p.phone.trim() &&
       p.situation &&
-      p.school.trim() &&
-      p.city.trim() &&
       nirOk &&
       hasSelfie &&
       allDocs &&
