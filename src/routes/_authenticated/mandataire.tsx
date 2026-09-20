@@ -116,11 +116,99 @@ function Shell({ children, email }: { children: React.ReactNode; email?: string 
   );
 }
 
+const PAGE_SIZE = 20;
+
+function SearchBar({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <input
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder="Rechercher un nom, prénom ou email…"
+      className={inputCls}
+    />
+  );
+}
+
+function Pager({
+  page,
+  total,
+  onPage,
+}: {
+  page: number;
+  total: number;
+  onPage: (p: number) => void;
+}) {
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if (pages <= 1) return null;
+  return (
+    <div className="flex items-center justify-between gap-2 pt-2">
+      <button
+        disabled={page === 0}
+        onClick={() => onPage(page - 1)}
+        className="px-4 py-2 rounded-2xl border-2 border-border font-bold disabled:opacity-40"
+      >
+        ←
+      </button>
+      <span className="text-sm text-muted-foreground">
+        Page {page + 1} / {pages}
+      </span>
+      <button
+        disabled={page >= pages - 1}
+        onClick={() => onPage(page + 1)}
+        className="px-4 py-2 rounded-2xl border-2 border-border font-bold disabled:opacity-40"
+      >
+        →
+      </button>
+    </div>
+  );
+}
+
 function Dashboard() {
+  const [tab, setTab] = useState<"companions" | "clients">("companions");
   const list = useServerFn(listApplications);
   const apps = useQuery({ queryKey: ["applications"], queryFn: () => list() });
+  const listClients = useServerFn(listClientRegistrations);
+  const clients = useQuery({ queryKey: ["client-registrations"], queryFn: () => listClients() });
+
+  const norm = (s: string) => (s === "rejected" ? "changes_requested" : s);
+  const companionTodo = (apps.data ?? []).filter((a) =>
+    ["pending", "changes_requested"].includes(norm(a.status)),
+  ).length;
+  const clientTodo = (clients.data ?? []).filter((c) => clientStatus(c) !== "complete").length;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-2 gap-2">
+        {(
+          [
+            ["companions", "Candidatures Compagnon", companionTodo],
+            ["clients", "Inscriptions Particulier", clientTodo],
+          ] as const
+        ).map(([key, label, badge]) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            className={`relative rounded-2xl border-2 p-3 text-sm font-bold ${tab === key ? "border-primary bg-secondary" : "border-border bg-card"}`}
+          >
+            {label}
+            {badge > 0 && (
+              <span className="absolute -top-2 -right-2 min-w-6 h-6 px-1 rounded-full bg-destructive text-destructive-foreground text-xs font-black flex items-center justify-center">
+                {badge}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+      {tab === "companions" ? <CompanionsTab apps={apps} /> : <ClientsTab clients={clients} />}
+    </div>
+  );
+}
+
+function CompanionsTab({ apps }: { apps: UseQueryResult<App[]> }) {
   const [filter, setFilter] = useState<Filter>("pending");
   const [selected, setSelected] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+  const [page, setPage] = useState(0);
 
   if (apps.isLoading)
     return <p className="text-center text-muted-foreground py-10">Chargement des candidatures…</p>;
@@ -134,8 +222,16 @@ function Dashboard() {
   if (current) return <Detail app={current} onBack={() => setSelected(null)} />;
 
   const norm = (s: string) => (s === "rejected" ? "changes_requested" : s);
-  const shown = filter === "all" ? all : all.filter((a) => norm(a.status) === filter);
+  const needle = q.trim().toLowerCase();
+  const filtered = (filter === "all" ? all : all.filter((a) => norm(a.status) === filter))
+    .filter((a) =>
+      !needle
+        ? true
+        : `${a.first_name} ${a.last_name} ${a.email}`.toLowerCase().includes(needle),
+    )
+    .sort((a, b) => a.created_at.localeCompare(b.created_at));
   const count = (s: string) => all.filter((a) => norm(a.status) === s).length;
+  const shown = filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
 
   return (
     <div className="flex flex-col gap-4">
@@ -143,7 +239,10 @@ function Dashboard() {
         {(["pending", "changes_requested", "approved"] as const).map((s) => (
           <button
             key={s}
-            onClick={() => setFilter(s)}
+            onClick={() => {
+              setFilter(s);
+              setPage(0);
+            }}
             className={`rounded-2xl border-2 p-3 ${filter === s ? "border-primary bg-secondary" : "border-border bg-card"}`}
           >
             <div className="text-2xl font-black">{count(s)}</div>
@@ -152,11 +251,21 @@ function Dashboard() {
         ))}
       </div>
       <button
-        onClick={() => setFilter("all")}
+        onClick={() => {
+          setFilter("all");
+          setPage(0);
+        }}
         className={`text-sm underline ${filter === "all" ? "font-bold" : "text-muted-foreground"}`}
       >
         Voir toutes les candidatures ({all.length})
       </button>
+      <SearchBar
+        value={q}
+        onChange={(v) => {
+          setQ(v);
+          setPage(0);
+        }}
+      />
       {shown.length === 0 && (
         <p className="text-center text-muted-foreground py-8">
           Aucune candidature dans cette catégorie.
@@ -179,6 +288,21 @@ function Dashboard() {
             </div>
             <span className="text-xs font-bold whitespace-nowrap">{STATUS_LABEL[a.status]}</span>
           </button>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-bold">
+            {(
+              [
+                ["Identité", a.id_card_path],
+                ["Situation", a.situation_proof_path],
+                ["B3", a.criminal_record_path],
+                ["RIB", a.iban_path],
+                ["Selfie", a.selfie_path],
+              ] as const
+            ).map(([label, path]) => (
+              <span key={label} className={path ? "text-success" : "text-destructive"}>
+                {path ? "✓" : "✗"} {label}
+              </span>
+            ))}
+          </div>
           <a
             href={mailtoLink(a, a.reject_reason ?? "")}
             className="text-sm font-bold text-primary underline"
@@ -187,9 +311,11 @@ function Dashboard() {
           </a>
         </div>
       ))}
+      <Pager page={page} total={filtered.length} onPage={setPage} />
     </div>
   );
 }
+
 
 function useSignedUrl(path: string | null) {
   const fetchUrl = useServerFn(getDocumentUrl);
