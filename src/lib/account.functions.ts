@@ -93,18 +93,68 @@ export const listApplications = createServerFn({ method: "GET" })
 
 export const getDocumentUrl = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { path: string }) => {
+  .inputValidator((input: { path: string; bucket?: "companion-docs" | "client-docs" }) => {
     if (typeof input?.path !== "string" || !input.path) throw new Error("Chemin invalide");
-    return input;
+    const bucket = input.bucket ?? "companion-docs";
+    if (!["companion-docs", "client-docs"].includes(bucket)) throw new Error("Bucket invalide");
+    return { path: input.path, bucket };
   })
   .handler(async ({ data, context }) => {
     await requireMandataire(context);
     const { data: signed, error } = await context.supabase.storage
-      .from("companion-docs")
+      .from(data.bucket)
       .createSignedUrl(data.path, 600);
     if (error || !signed) throw new Error(error?.message ?? "Document introuvable");
     return { url: signed.signedUrl };
   });
+
+/** Comptes Particulier (profils hors candidats Compagnon) et statut de leurs documents. */
+export const listClientRegistrations = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await requireMandataire(context);
+    const [profilesRes, docsRes, appsRes] = await Promise.all([
+      context.supabase
+        .from("profiles")
+        .select("id, first_name, last_name, email, phone, city, created_at")
+        .order("created_at", { ascending: false }),
+      context.supabase
+        .from("client_documents")
+        .select("id, user_id, doc_type, file_path, status, reject_reason, uploaded_at"),
+      context.supabase.from("companion_applications").select("user_id"),
+    ]);
+    if (profilesRes.error) throw new Error(profilesRes.error.message);
+    if (docsRes.error) throw new Error(docsRes.error.message);
+
+    const companionIds = new Set((appsRes.data ?? []).map((a) => a.user_id));
+    const docs = docsRes.data ?? [];
+    return (profilesRes.data ?? [])
+      .filter((p) => !companionIds.has(p.id) && p.id !== context.userId)
+      .map((p) => ({ ...p, documents: docs.filter((d) => d.user_id === p.id) }));
+  });
+
+export const reviewClientDocument = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string; status: "validated" | "rejected"; rejectReason?: string }) => {
+    if (!input?.id || !["validated", "rejected"].includes(input.status))
+      throw new Error("Données invalides");
+    if (input.status === "rejected" && (input.rejectReason?.trim().length ?? 0) < 10)
+      throw new Error("Merci de préciser le motif (10 caractères minimum).");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    await requireMandataire(context);
+    const { error } = await context.supabase
+      .from("client_documents")
+      .update({
+        status: data.status,
+        reject_reason: data.status === "rejected" ? data.rejectReason!.trim() : null,
+      })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 
 export const reviewApplication = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
