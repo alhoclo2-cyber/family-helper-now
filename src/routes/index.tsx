@@ -1767,6 +1767,12 @@ function FamilyWait({
                   {nearbyCount} compagnon(s) disponible(s) dans leur rayon d'intervention ont reçu une notification.
                   Le premier qui accepte verrouille la mission.
                 </p>
+                {autoSkipped && (
+                  <p className="text-sm font-semibold mt-2">
+                    🔄 {autoSkipped} n'a pas répondu : la demande a été transmise automatiquement au compagnon
+                    disponible suivant.
+                  </p>
+                )}
               </div>
             </>
           ) : preferred ? (
