@@ -3168,6 +3168,10 @@ function StudentEnroll({
         </div>
       </div>
       <div className="flex flex-col">
+        <input placeholder="Adresse complète (n°, rue, code postal, ville)" value={p.address} onChange={(e) => setP({ ...p, address: e.target.value })} className={field + errCls(!!p.address.trim())} />
+        <Missing ok={!!p.address.trim()} text="Champ obligatoire" />
+      </div>
+      <div className="flex flex-col">
         <input type="email" placeholder="Email" value={p.email} onChange={(e) => setP({ ...p, email: e.target.value })} className={field + errCls(!!p.email.trim())} />
         <Missing ok={!!p.email.trim()} text="Champ obligatoire" />
       </div>
@@ -3192,14 +3196,6 @@ function StudentEnroll({
           ))}
         </div>
         <Missing ok={!!p.situation} text="Sélection obligatoire" />
-      </div>
-      <div className="flex flex-col">
-        <input placeholder="Établissement / employeur / activité" value={p.school} onChange={(e) => setP({ ...p, school: e.target.value })} className={field + errCls(!!p.school.trim())} />
-        <Missing ok={!!p.school.trim()} text="Champ obligatoire" />
-      </div>
-      <div className="flex flex-col">
-        <input placeholder="Ville" value={p.city} onChange={(e) => setP({ ...p, city: e.target.value })} className={field + errCls(!!p.city.trim())} />
-        <Missing ok={!!p.city.trim()} text="Champ obligatoire" />
       </div>
       <textarea placeholder="Pourquoi voulez-vous rejoindre Solélia ?" value={p.motivation} onChange={(e) => setP({ ...p, motivation: e.target.value })} rows={3} className={field + " resize-none"} />
 
