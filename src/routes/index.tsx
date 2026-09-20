@@ -3561,7 +3561,7 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
                       {new Date(o.date).toLocaleString("fr-FR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1 truncate">📍 {o.address}</p>
-                    {o.studentName && <p className="text-xs mt-1">🎓 {o.studentName}</p>}
+                    {o.studentName && <p className="text-xs mt-1">🤝 {o.studentName}</p>}
                   </div>
                   <div className="text-right shrink-0">
                     <p className="font-black">{formatPrice(o.serviceFee)} €</p>
