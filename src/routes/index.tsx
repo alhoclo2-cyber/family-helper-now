@@ -1828,7 +1828,7 @@ function FamilyWait({
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 {isSos
-                  ? "Aucun compagnon disponible n'a accepté votre urgence. Vous pouvez relancer l'alerte ou modifier vos critères (besoin, durée, adresse)."
+                  ? "Tous les compagnons disponibles à proximité ont été sollicités automatiquement, sans réponse. Vous pouvez relancer l'alerte ou modifier vos critères (besoin, durée, adresse)."
                   : "Choisissez un autre compagnon ou basculez en recherche automatique à proximité."}
               </p>
               <div className="grid grid-cols-1 gap-2 mt-3">
