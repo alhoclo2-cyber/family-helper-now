@@ -1671,6 +1671,7 @@ function FamilyWait({
             cesuActive: request.student!.cesuActive,
             studentName: request.student!.firstName,
           });
+          store.updateRequest(request.id, { paid: true });
           setPaid(true);
           setShowPay(false);
         }}
