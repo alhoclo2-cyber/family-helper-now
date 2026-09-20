@@ -46,8 +46,9 @@ export type Database = {
       }
       companion_applications: {
         Row: {
+          address: string
           address_proof_path: string | null
-          city: string
+          city: string | null
           created_at: string
           criminal_record_path: string | null
           email: string
@@ -66,17 +67,19 @@ export type Database = {
           reject_reason: string | null
           reviewed_at: string | null
           reviewed_by: string | null
-          school: string
+          school: string | null
           selfie_path: string | null
           situation: string
           situation_proof_path: string | null
           status: Database["public"]["Enums"]["application_status"]
           updated_at: string
           user_id: string
+          vitale_card_path: string | null
         }
         Insert: {
+          address?: string
           address_proof_path?: string | null
-          city?: string
+          city?: string | null
           created_at?: string
           criminal_record_path?: string | null
           email: string
@@ -95,17 +98,19 @@ export type Database = {
           reject_reason?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
-          school?: string
+          school?: string | null
           selfie_path?: string | null
           situation?: string
           situation_proof_path?: string | null
           status?: Database["public"]["Enums"]["application_status"]
           updated_at?: string
           user_id: string
+          vitale_card_path?: string | null
         }
         Update: {
+          address?: string
           address_proof_path?: string | null
-          city?: string
+          city?: string | null
           created_at?: string
           criminal_record_path?: string | null
           email?: string
@@ -124,13 +129,14 @@ export type Database = {
           reject_reason?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
-          school?: string
+          school?: string | null
           selfie_path?: string | null
           situation?: string
           situation_proof_path?: string | null
           status?: Database["public"]["Enums"]["application_status"]
           updated_at?: string
           user_id?: string
+          vitale_card_path?: string | null
         }
         Relationships: []
       }
