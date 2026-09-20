@@ -487,7 +487,7 @@ function FamilyFlow() {
       request={current}
       simulateNoAnswer={simulateNoAnswer}
       onSimulateNoAnswer={setSimulateNoAnswer}
-      onEditRequest={() => { if (current) { setEditRequest(current); setStep("form"); } }}
+      onEditRequest={(req) => { const r = req ?? current; if (r) { setEditRequest(r); setStep("form"); } }}
       onDone={() => { store.clearCurrent(); setSimulateNoAnswer(false); setEditRequest(null); setStep("home"); }}
     />
   );
@@ -1592,7 +1592,7 @@ function FamilyWait({
   request: Request | undefined;
   simulateNoAnswer: boolean;
   onSimulateNoAnswer: (v: boolean) => void;
-  onEditRequest: () => void;
+  onEditRequest: (req?: Request) => void;
   onDone: () => void;
 }) {
   const [paid, setPaid] = useState(false);
