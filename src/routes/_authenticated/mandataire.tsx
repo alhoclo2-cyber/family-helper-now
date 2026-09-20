@@ -1,11 +1,17 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { ShieldCheck, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAccess, useSession } from "@/lib/auth";
-import { getDocumentUrl, listApplications, reviewApplication } from "@/lib/account.functions";
+import {
+  getDocumentUrl,
+  listApplications,
+  listClientRegistrations,
+  reviewApplication,
+  reviewClientDocument,
+} from "@/lib/account.functions";
 import { inputCls } from "@/lib/auth";
 
 export const Route = createFileRoute("/_authenticated/mandataire")({
@@ -317,11 +323,11 @@ function CompanionsTab({ apps }: { apps: UseQueryResult<App[]> }) {
 }
 
 
-function useSignedUrl(path: string | null) {
+function useSignedUrl(path: string | null, bucket: "companion-docs" | "client-docs" = "companion-docs") {
   const fetchUrl = useServerFn(getDocumentUrl);
   return useQuery({
-    queryKey: ["doc-url", path],
-    queryFn: () => fetchUrl({ data: { path: path! } }),
+    queryKey: ["doc-url", bucket, path],
+    queryFn: () => fetchUrl({ data: { path: path!, bucket } }),
     enabled: !!path,
     staleTime: 5 * 60_000,
   });
