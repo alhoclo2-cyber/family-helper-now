@@ -1617,6 +1617,25 @@ function FamilyWait({
     return () => window.removeEventListener("popstate", onPop);
   }, [paid]);
 
+  // Besoin rapide : cascade automatique. À l'expiration du délai, le compagnon
+  // sollicité est écarté et la mission part vers le suivant, sans action du client.
+  const [autoSkipped, setAutoSkipped] = useState<string | null>(null);
+  useEffect(() => {
+    if (!request || request.scheduledAt || request.status !== "searching") return;
+    const started = restartedAt ?? request.createdAt;
+    if (!simulateNoAnswer && now - started <= SOS_TIMEOUT_MS) return;
+    const durationMin = request.durationHours ? request.durationHours * 60 : DEFAULT_DURATION_MIN;
+    const declined = request.declinedBy ?? [];
+    const pool = COMPANIONS.filter(
+      (c) => !declined.includes(c.id) && isCompanionAvailableFor(c, Date.now(), durationMin),
+    ).sort((a, b) => a.distanceKm - b.distanceKm);
+    if (pool.length <= 1) return; // plus personne à solliciter : bouton manuel en secours
+    store.declineRequest(request.id, pool[0].id);
+    setAutoSkipped(pool[0].firstName);
+    setRestartedAt(Date.now());
+    onSimulateNoAnswer(false);
+  }, [request?.id, request?.status, request?.scheduledAt, request?.declinedBy, now, simulateNoAnswer, restartedAt]);
+
   if (!request) return null;
   if (request.status === "cancelled") {
     const paidAlready = paid || request.paid;
