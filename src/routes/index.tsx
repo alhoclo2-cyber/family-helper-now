@@ -2100,6 +2100,8 @@ function PaymentScreen({
   salaire,
   need,
   childAges,
+  deferred = false,
+  chargeAt = null,
   onSalaire,
   onDone,
   onBack,
@@ -2109,6 +2111,8 @@ function PaymentScreen({
   salaire: string; // contrôlé par l'écran parent : conservé en cas de navigation arrière
   need: NeedType;
   childAges?: string[];
+  deferred?: boolean; // mission à plus de 24 h : enregistrement de carte, pas de débit
+  chargeAt?: number | null; // date/heure prévue du débit (J-24 h)
   onSalaire: (v: string) => void;
   onDone: (salaireNetHoraire: number) => void;
   onBack: () => void;
