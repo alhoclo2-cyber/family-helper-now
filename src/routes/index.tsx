@@ -221,6 +221,74 @@ async function recordDeferredCharge(missionId: string, chargeAt: number, compani
 }
 
 /**
+ * Statut du débit différé côté Client : tant que la tâche horaire n'a pas
+ * traité la ligne, le paiement reste « prévu 24 h avant la mission ».
+ */
+function DeferredPaymentStatus({
+  missionId,
+  scheduledChargeAt,
+}: {
+  missionId: string;
+  scheduledChargeAt: number | null;
+}) {
+  const [status, setStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      const { data } = await supabase
+        .from("mission_payments")
+        .select("status")
+        .eq("mission_id", missionId)
+        .maybeSingle();
+      if (alive) setStatus(data?.status ?? null);
+    };
+    void load();
+    const timer = setInterval(load, 60000);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [missionId]);
+
+  if (status === "debit_echoue") {
+    return (
+      <div className="w-full bg-destructive/10 border-2 border-destructive rounded-2xl p-4">
+        <p className="text-lg font-bold text-destructive">
+          ⚠️ Le paiement n'a pas pu être effectué — merci de mettre à jour votre moyen de paiement
+        </p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Les {formatPrice(SERVICE_FEE)} € de frais de service n'ont pas pu être prélevés.
+        </p>
+      </div>
+    );
+  }
+
+  if (status === "debit_reussi") {
+    return (
+      <div className="w-full bg-success/10 border-2 border-success rounded-2xl p-4">
+        <p className="text-lg font-bold text-success">✅ Mission confirmée — paiement effectué</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Les {formatPrice(SERVICE_FEE)} € de frais de service ont été prélevés.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full bg-success/10 border-2 border-success rounded-2xl p-4">
+      <p className="text-lg font-bold text-success">
+        ✅ Réservation confirmée — paiement de {formatPrice(SERVICE_FEE)} € prévu 24 h avant la mission
+      </p>
+      <p className="text-sm text-muted-foreground mt-1">
+        Votre carte est enregistrée, aucun débit n'a encore eu lieu
+        {scheduledChargeAt ? ` — prélèvement prévu le ${formatSchedule(scheduledChargeAt)}` : ""}.
+      </p>
+    </div>
+  );
+}
+
+/**
  * Anticipation du statut SAP : à passer à `true` manuellement une fois le
  * numéro de déclaration SAP obtenu. Tant que false, aucun crédit d'impôt
  * n'est calculé ni affiché sur les frais de service.
@@ -2062,20 +2130,19 @@ function FamilyWait({
             </>
           ) : (
             <>
-              <div className="w-full bg-success/10 border-2 border-success rounded-2xl p-4">
-                <p className="text-lg font-bold text-success">
-                  {request.deferredCharge
-                    ? `✅ Réservation confirmée — paiement de ${formatPrice(SERVICE_FEE)} € prévu 24 h avant la mission`
-                    : "✅ Paiement confirmé"}
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {request.deferredCharge
-                    ? `Votre carte est enregistrée, aucun débit n'a encore eu lieu${
-                        request.scheduledChargeAt ? ` — prélèvement prévu le ${formatSchedule(request.scheduledChargeAt)}` : ""
-                      }.`
-                    : "Reçu envoyé par SMS · ajouté à votre compte"}
-                </p>
-              </div>
+              {request.deferredCharge ? (
+                <DeferredPaymentStatus
+                  missionId={request.id}
+                  scheduledChargeAt={request.scheduledChargeAt ?? null}
+                />
+              ) : (
+                <div className="w-full bg-success/10 border-2 border-success rounded-2xl p-4">
+                  <p className="text-lg font-bold text-success">✅ Paiement confirmé</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Reçu envoyé par SMS · ajouté à votre compte
+                  </p>
+                </div>
+              )}
               <a
                 href={`tel:${request.phone}`}
                 className="btn-huge bg-success text-success-foreground text-center w-full"

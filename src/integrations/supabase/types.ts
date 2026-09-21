@@ -143,13 +143,17 @@ export type Database = {
       mission_payments: {
         Row: {
           amount_cents: number
+          charged_at: string | null
           client_id: string
           companion_ref: string | null
           companion_user_id: string | null
           created_at: string
+          failure_reason: string | null
           id: string
+          last_run_at: string | null
           mission_id: string
           scheduled_charge_at: string | null
+          simulate_failure: boolean
           status: string
           stripe_payment_method_id: string | null
           stripe_setup_intent_id: string | null
@@ -157,13 +161,17 @@ export type Database = {
         }
         Insert: {
           amount_cents?: number
+          charged_at?: string | null
           client_id: string
           companion_ref?: string | null
           companion_user_id?: string | null
           created_at?: string
+          failure_reason?: string | null
           id?: string
+          last_run_at?: string | null
           mission_id: string
           scheduled_charge_at?: string | null
+          simulate_failure?: boolean
           status?: string
           stripe_payment_method_id?: string | null
           stripe_setup_intent_id?: string | null
@@ -171,13 +179,17 @@ export type Database = {
         }
         Update: {
           amount_cents?: number
+          charged_at?: string | null
           client_id?: string
           companion_ref?: string | null
           companion_user_id?: string | null
           created_at?: string
+          failure_reason?: string | null
           id?: string
+          last_run_at?: string | null
           mission_id?: string
           scheduled_charge_at?: string | null
+          simulate_failure?: boolean
           status?: string
           stripe_payment_method_id?: string | null
           stripe_setup_intent_id?: string | null
