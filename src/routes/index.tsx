@@ -2062,20 +2062,19 @@ function FamilyWait({
             </>
           ) : (
             <>
-              <div className="w-full bg-success/10 border-2 border-success rounded-2xl p-4">
-                <p className="text-lg font-bold text-success">
-                  {request.deferredCharge
-                    ? `✅ Réservation confirmée — paiement de ${formatPrice(SERVICE_FEE)} € prévu 24 h avant la mission`
-                    : "✅ Paiement confirmé"}
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {request.deferredCharge
-                    ? `Votre carte est enregistrée, aucun débit n'a encore eu lieu${
-                        request.scheduledChargeAt ? ` — prélèvement prévu le ${formatSchedule(request.scheduledChargeAt)}` : ""
-                      }.`
-                    : "Reçu envoyé par SMS · ajouté à votre compte"}
-                </p>
-              </div>
+              {request.deferredCharge ? (
+                <DeferredPaymentStatus
+                  missionId={request.id}
+                  scheduledChargeAt={request.scheduledChargeAt ?? null}
+                />
+              ) : (
+                <div className="w-full bg-success/10 border-2 border-success rounded-2xl p-4">
+                  <p className="text-lg font-bold text-success">✅ Paiement confirmé</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Reçu envoyé par SMS · ajouté à votre compte
+                  </p>
+                </div>
+              )}
               <a
                 href={`tel:${request.phone}`}
                 className="btn-huge bg-success text-success-foreground text-center w-full"
