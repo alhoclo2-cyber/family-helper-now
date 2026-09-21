@@ -186,6 +186,41 @@ const SERVICE_FEE = 6; // frais de service mandataire Solélia (forfait fixe)
 const DEFAULT_HOURLY_RATE = 11.5; // salaire net horaire conseillé, congés payés inclus
 
 /**
+ * Prise de RDV (mission à plus de 24 h) : la carte est enregistrée (SetupIntent),
+ * aucun débit n'a lieu le jour de la réservation. Le débit des frais de service
+ * est programmé 24 h avant la mission (tâche planifiée : prompt séparé).
+ */
+const DEFERRED_CHARGE_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function isDeferredCharge(scheduledAt?: number | null) {
+  return !!scheduledAt && scheduledAt - Date.now() > DEFERRED_CHARGE_WINDOW_MS;
+}
+
+/**
+ * Enregistre la carte pour un débit différé. Tant que Stripe n'est pas branché,
+ * les identifiants SetupIntent / PaymentMethod sont simulés : la structure de la
+ * ligne est déjà celle attendue par le futur webhook.
+ */
+async function recordDeferredCharge(missionId: string, chargeAt: number, companionRef: string) {
+  const { data } = await supabase.auth.getSession();
+  const userId = data.session?.user.id;
+  if (!userId) return;
+  await supabase.from("mission_payments").upsert(
+    {
+      mission_id: missionId,
+      client_id: userId,
+      companion_ref: companionRef,
+      stripe_setup_intent_id: `seti_sim_${missionId}`,
+      stripe_payment_method_id: `pm_sim_${missionId}`,
+      amount_cents: Math.round(SERVICE_FEE * 100),
+      scheduled_charge_at: new Date(chargeAt).toISOString(),
+      status: "en_attente_debit",
+    },
+    { onConflict: "mission_id" },
+  );
+}
+
+/**
  * Anticipation du statut SAP : à passer à `true` manuellement une fois le
  * numéro de déclaration SAP obtenu. Tant que false, aucun crédit d'impôt
  * n'est calculé ni affiché sur les frais de service.
