@@ -2268,7 +2268,11 @@ function PaymentScreen({
 
       <div className="flex-1" />
       <button type="submit" disabled={processing} className="btn-huge bg-success text-success-foreground disabled:opacity-60">
-        {processing ? "Traitement…" : `Payer ${formatPrice(SERVICE_FEE)} € et confirmer la mission`}
+        {processing
+          ? "Traitement…"
+          : deferred
+            ? "Enregistrer ma carte et confirmer la réservation"
+            : `Payer ${formatPrice(SERVICE_FEE)} € et confirmer la mission`}
       </button>
       <p className="text-xs text-muted-foreground text-center">🔒 Paiement sécurisé — démo</p>
     </form>
