@@ -2194,7 +2194,7 @@ function PaymentScreen({
           <p className="text-xs text-muted-foreground mt-2">
             Votre carte est simplement enregistrée pour confirmer la réservation. Les {formatPrice(SERVICE_FEE)} € de
             frais de service seront prélevés 24 h avant la mission
-            {chargeAt ? `, soit le ${formatDateTime(chargeAt)}` : ""}.
+            {chargeAt ? `, soit le ${formatSchedule(chargeAt)}` : ""}.
           </p>
         </div>
       )}
