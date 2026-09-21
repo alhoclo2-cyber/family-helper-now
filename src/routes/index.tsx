@@ -2052,17 +2052,29 @@ function FamilyWait({
                 </p>
               </div>
               <button onClick={() => setShowPay(true)} className="btn-huge bg-primary text-primary-foreground w-full">
-                💳 Finaliser — {formatPrice(SERVICE_FEE)} €
+                {deferred ? "💳 Enregistrer ma carte et confirmer" : `💳 Finaliser — ${formatPrice(SERVICE_FEE)} €`}
               </button>
               <p className="text-xs text-muted-foreground">
-                Les coordonnées du compagnon seront révélées après paiement.
+                {deferred
+                  ? `Aucun débit aujourd'hui : les ${formatPrice(SERVICE_FEE)} € seront prélevés 24 h avant la mission. Les coordonnées du compagnon seront révélées après confirmation.`
+                  : "Les coordonnées du compagnon seront révélées après paiement."}
               </p>
             </>
           ) : (
             <>
               <div className="w-full bg-success/10 border-2 border-success rounded-2xl p-4">
-                <p className="text-lg font-bold text-success">✅ Paiement confirmé</p>
-                <p className="text-sm text-muted-foreground mt-1">Reçu envoyé par SMS · ajouté à votre compte</p>
+                <p className="text-lg font-bold text-success">
+                  {request.deferredCharge
+                    ? `✅ Réservation confirmée — paiement de ${formatPrice(SERVICE_FEE)} € prévu 24 h avant la mission`
+                    : "✅ Paiement confirmé"}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {request.deferredCharge
+                    ? `Votre carte est enregistrée, aucun débit n'a encore eu lieu${
+                        request.scheduledChargeAt ? ` — prélèvement prévu le ${formatSchedule(request.scheduledChargeAt)}` : ""
+                      }.`
+                    : "Reçu envoyé par SMS · ajouté à votre compte"}
+                </p>
               </div>
               <a
                 href={`tel:${request.phone}`}
