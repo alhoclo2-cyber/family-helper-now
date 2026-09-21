@@ -140,6 +140,51 @@ export type Database = {
         }
         Relationships: []
       }
+      mission_payments: {
+        Row: {
+          amount_cents: number
+          client_id: string
+          companion_ref: string | null
+          companion_user_id: string | null
+          created_at: string
+          id: string
+          mission_id: string
+          scheduled_charge_at: string | null
+          status: string
+          stripe_payment_method_id: string | null
+          stripe_setup_intent_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount_cents?: number
+          client_id: string
+          companion_ref?: string | null
+          companion_user_id?: string | null
+          created_at?: string
+          id?: string
+          mission_id: string
+          scheduled_charge_at?: string | null
+          status?: string
+          stripe_payment_method_id?: string | null
+          stripe_setup_intent_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          client_id?: string
+          companion_ref?: string | null
+          companion_user_id?: string | null
+          created_at?: string
+          id?: string
+          mission_id?: string
+          scheduled_charge_at?: string | null
+          status?: string
+          stripe_payment_method_id?: string | null
+          stripe_setup_intent_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           address_line: string
