@@ -34,7 +34,7 @@ export const updatePaymentSimulation = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     await requireMandataire(context);
-    const patch: Record<string, unknown> = {};
+    const patch: Database["public"]["Tables"]["mission_payments"]["Update"] = {};
     if (data.dueNow) {
       patch["scheduled_charge_at"] = new Date().toISOString();
       patch["status"] = "en_attente_debit";
