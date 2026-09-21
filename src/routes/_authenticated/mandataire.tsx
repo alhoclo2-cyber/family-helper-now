@@ -13,6 +13,11 @@ import {
   reviewClientDocument,
 } from "@/lib/account.functions";
 import { inputCls } from "@/lib/auth";
+import {
+  listMissionPayments,
+  runDuePaymentsNow,
+  updatePaymentSimulation,
+} from "@/lib/payments.functions";
 
 export const Route = createFileRoute("/_authenticated/mandataire")({
   head: () => ({
@@ -754,6 +759,96 @@ function ClientDocCard({ label, doc }: { label: string; doc: ClientDoc | null })
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+// ============ Frais de service : suivi et simulation du débit à J-24 h ============
+
+const PAYMENT_STATUS_LABEL: Record<string, string> = {
+  en_attente_debit: "⏳ En attente de débit",
+  debit_reussi: "✅ Débit réussi",
+  debit_echoue: "⚠️ Débit échoué",
+};
+
+function PaymentsTab() {
+  const qc = useQueryClient();
+  const list = useServerFn(listMissionPayments);
+  const payments = useQuery({ queryKey: ["mission-payments"], queryFn: () => list() });
+  const update = useServerFn(updatePaymentSimulation);
+  const runNow = useServerFn(runDuePaymentsNow);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const refresh = () => void qc.invalidateQueries({ queryKey: ["mission-payments"] });
+
+  const mutate = useMutation({
+    mutationFn: (input: { id: string; dueNow?: boolean; simulateFailure?: boolean }) =>
+      update({ data: input }),
+    onSuccess: refresh,
+  });
+
+  const run = useMutation({
+    mutationFn: () => runNow(),
+    onSuccess: (r) => {
+      setMessage(`Traitement exécuté : ${r.processed} ligne(s), ${r.succeeded} réussie(s), ${r.failed} échouée(s).`);
+      refresh();
+    },
+    onError: (e: Error) => setMessage(e.message),
+  });
+
+  const rows = payments.data ?? [];
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="rounded-2xl border-2 border-border bg-card p-3 text-sm">
+        <p className="font-bold">Débit des frais de service (6,00 €) à 24 h de la mission</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Vérification automatique toutes les heures. Paiement simulé : aucun prélèvement réel.
+        </p>
+        <button
+          onClick={() => run.mutate()}
+          disabled={run.isPending}
+          className="mt-3 w-full rounded-2xl bg-primary text-primary-foreground font-bold py-3 disabled:opacity-50"
+        >
+          {run.isPending ? "Traitement…" : "▶️ Lancer le traitement maintenant"}
+        </button>
+        {message && <p className="text-xs mt-2">{message}</p>}
+      </div>
+
+      {payments.isLoading && <p className="text-sm text-muted-foreground">Chargement…</p>}
+      {!payments.isLoading && rows.length === 0 && (
+        <p className="text-sm text-muted-foreground">Aucune réservation avec paiement différé.</p>
+      )}
+
+      {rows.map((p) => (
+        <div key={p.id} className="rounded-2xl border-2 border-border bg-card p-3 text-sm">
+          <p className="font-bold">{PAYMENT_STATUS_LABEL[p.status] ?? p.status}</p>
+          <p className="text-xs text-muted-foreground mt-1 break-all">Mission {p.mission_id}</p>
+          <p className="text-xs text-muted-foreground">
+            Prélèvement prévu :{" "}
+            {p.scheduled_charge_at ? new Date(p.scheduled_charge_at).toLocaleString("fr-FR") : "—"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Montant : {(p.amount_cents / 100).toFixed(2)} €
+            {p.charged_at ? ` · débité le ${new Date(p.charged_at).toLocaleString("fr-FR")}` : ""}
+          </p>
+          {p.failure_reason && <p className="text-xs text-destructive mt-1">{p.failure_reason}</p>}
+          <div className="grid grid-cols-2 gap-2 mt-3">
+            <button
+              onClick={() => mutate.mutate({ id: p.id, dueNow: true })}
+              className="rounded-2xl border-2 border-primary text-primary font-bold py-2 text-xs"
+            >
+              ⏱️ Rendre exigible maintenant
+            </button>
+            <button
+              onClick={() => mutate.mutate({ id: p.id, simulateFailure: !p.simulate_failure })}
+              className={`rounded-2xl border-2 font-bold py-2 text-xs ${p.simulate_failure ? "border-destructive text-destructive" : "border-border"}`}
+            >
+              {p.simulate_failure ? "Échec simulé : activé" : "Simuler un échec"}
+            </button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
