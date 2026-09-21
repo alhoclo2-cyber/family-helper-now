@@ -1722,6 +1722,10 @@ function FamilyWait({
       : null;
   const complianceCheck = rawCheck?.requiresContract ? rawCheck : null;
 
+  // Prise de RDV à plus de 24 h : enregistrement de carte, aucun débit aujourd'hui.
+  const deferred = isDeferredCharge(request.scheduledAt);
+  const chargeAt = request.scheduledAt ? request.scheduledAt - DEFERRED_CHARGE_WINDOW_MS : null;
+
   if (accepted && showPay && !paid) {
     return (
       <PaymentScreen
@@ -1729,6 +1733,8 @@ function FamilyWait({
         hours={hours}
         need={request.need}
         childAges={request.childAges}
+        deferred={deferred}
+        chargeAt={chargeAt}
         salaire={salaireDraft ?? formatPrice(request.student!.hourlyRate ?? DEFAULT_HOURLY_RATE)}
         onSalaire={setSalaireDraft}
         onDone={(salaireNetHoraire) => {
@@ -1743,7 +1749,12 @@ function FamilyWait({
             cesuActive: request.student!.cesuActive,
             studentName: request.student!.firstName,
           });
-          store.updateRequest(request.id, { paid: true });
+          if (deferred && chargeAt) {
+            void recordDeferredCharge(request.id, chargeAt, request.student!.id);
+            store.updateRequest(request.id, { paid: true, deferredCharge: true, scheduledChargeAt: chargeAt });
+          } else {
+            store.updateRequest(request.id, { paid: true, deferredCharge: false });
+          }
           setPaid(true);
           setShowPay(false);
         }}
