@@ -100,7 +100,9 @@ export type Request = {
   status: "searching" | "accepted" | "cancelled";
   cancelledBy?: "family" | "companion";
   refunded?: boolean;
-  paid?: boolean; // paiement du forfait effectué (le RDV est alors confirmé)
+  paid?: boolean; // paiement du forfait effectué OU carte enregistrée (le RDV est alors confirmé)
+  deferredCharge?: boolean; // RDV à plus de 24 h : carte enregistrée, débit des 6 € différé
+  scheduledChargeAt?: number; // date/heure prévue du débit des frais de service (J-24 h)
   cancelReason?: string; // motif final retenu pour l'annulation par la famille
   companionCancelNotice?: { companionName: string; reason: string } | null; // dernier motif d'un compagnon qui s'est désisté
   student?: Companion;

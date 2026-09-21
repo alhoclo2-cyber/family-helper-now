@@ -186,6 +186,41 @@ const SERVICE_FEE = 6; // frais de service mandataire Solélia (forfait fixe)
 const DEFAULT_HOURLY_RATE = 11.5; // salaire net horaire conseillé, congés payés inclus
 
 /**
+ * Prise de RDV (mission à plus de 24 h) : la carte est enregistrée (SetupIntent),
+ * aucun débit n'a lieu le jour de la réservation. Le débit des frais de service
+ * est programmé 24 h avant la mission (tâche planifiée : prompt séparé).
+ */
+const DEFERRED_CHARGE_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function isDeferredCharge(scheduledAt?: number | null) {
+  return !!scheduledAt && scheduledAt - Date.now() > DEFERRED_CHARGE_WINDOW_MS;
+}
+
+/**
+ * Enregistre la carte pour un débit différé. Tant que Stripe n'est pas branché,
+ * les identifiants SetupIntent / PaymentMethod sont simulés : la structure de la
+ * ligne est déjà celle attendue par le futur webhook.
+ */
+async function recordDeferredCharge(missionId: string, chargeAt: number, companionRef: string) {
+  const { data } = await supabase.auth.getSession();
+  const userId = data.session?.user.id;
+  if (!userId) return;
+  await supabase.from("mission_payments").upsert(
+    {
+      mission_id: missionId,
+      client_id: userId,
+      companion_ref: companionRef,
+      stripe_setup_intent_id: `seti_sim_${missionId}`,
+      stripe_payment_method_id: `pm_sim_${missionId}`,
+      amount_cents: Math.round(SERVICE_FEE * 100),
+      scheduled_charge_at: new Date(chargeAt).toISOString(),
+      status: "en_attente_debit",
+    },
+    { onConflict: "mission_id" },
+  );
+}
+
+/**
  * Anticipation du statut SAP : à passer à `true` manuellement une fois le
  * numéro de déclaration SAP obtenu. Tant que false, aucun crédit d'impôt
  * n'est calculé ni affiché sur les frais de service.
@@ -1687,6 +1722,10 @@ function FamilyWait({
       : null;
   const complianceCheck = rawCheck?.requiresContract ? rawCheck : null;
 
+  // Prise de RDV à plus de 24 h : enregistrement de carte, aucun débit aujourd'hui.
+  const deferred = isDeferredCharge(request.scheduledAt);
+  const chargeAt = request.scheduledAt ? request.scheduledAt - DEFERRED_CHARGE_WINDOW_MS : null;
+
   if (accepted && showPay && !paid) {
     return (
       <PaymentScreen
@@ -1694,6 +1733,8 @@ function FamilyWait({
         hours={hours}
         need={request.need}
         childAges={request.childAges}
+        deferred={deferred}
+        chargeAt={chargeAt}
         salaire={salaireDraft ?? formatPrice(request.student!.hourlyRate ?? DEFAULT_HOURLY_RATE)}
         onSalaire={setSalaireDraft}
         onDone={(salaireNetHoraire) => {
@@ -1708,7 +1749,12 @@ function FamilyWait({
             cesuActive: request.student!.cesuActive,
             studentName: request.student!.firstName,
           });
-          store.updateRequest(request.id, { paid: true });
+          if (deferred && chargeAt) {
+            void recordDeferredCharge(request.id, chargeAt, request.student!.id);
+            store.updateRequest(request.id, { paid: true, deferredCharge: true, scheduledChargeAt: chargeAt });
+          } else {
+            store.updateRequest(request.id, { paid: true, deferredCharge: false });
+          }
           setPaid(true);
           setShowPay(false);
         }}
@@ -2006,17 +2052,29 @@ function FamilyWait({
                 </p>
               </div>
               <button onClick={() => setShowPay(true)} className="btn-huge bg-primary text-primary-foreground w-full">
-                💳 Finaliser — {formatPrice(SERVICE_FEE)} €
+                {deferred ? "💳 Enregistrer ma carte et confirmer" : `💳 Finaliser — ${formatPrice(SERVICE_FEE)} €`}
               </button>
               <p className="text-xs text-muted-foreground">
-                Les coordonnées du compagnon seront révélées après paiement.
+                {deferred
+                  ? `Aucun débit aujourd'hui : les ${formatPrice(SERVICE_FEE)} € seront prélevés 24 h avant la mission. Les coordonnées du compagnon seront révélées après confirmation.`
+                  : "Les coordonnées du compagnon seront révélées après paiement."}
               </p>
             </>
           ) : (
             <>
               <div className="w-full bg-success/10 border-2 border-success rounded-2xl p-4">
-                <p className="text-lg font-bold text-success">✅ Paiement confirmé</p>
-                <p className="text-sm text-muted-foreground mt-1">Reçu envoyé par SMS · ajouté à votre compte</p>
+                <p className="text-lg font-bold text-success">
+                  {request.deferredCharge
+                    ? `✅ Réservation confirmée — paiement de ${formatPrice(SERVICE_FEE)} € prévu 24 h avant la mission`
+                    : "✅ Paiement confirmé"}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {request.deferredCharge
+                    ? `Votre carte est enregistrée, aucun débit n'a encore eu lieu${
+                        request.scheduledChargeAt ? ` — prélèvement prévu le ${formatSchedule(request.scheduledChargeAt)}` : ""
+                      }.`
+                    : "Reçu envoyé par SMS · ajouté à votre compte"}
+                </p>
               </div>
               <a
                 href={`tel:${request.phone}`}
@@ -2054,6 +2112,8 @@ function PaymentScreen({
   salaire,
   need,
   childAges,
+  deferred = false,
+  chargeAt = null,
   onSalaire,
   onDone,
   onBack,
@@ -2063,6 +2123,8 @@ function PaymentScreen({
   salaire: string; // contrôlé par l'écran parent : conservé en cas de navigation arrière
   need: NeedType;
   childAges?: string[];
+  deferred?: boolean; // mission à plus de 24 h : enregistrement de carte, pas de débit
+  chargeAt?: number | null; // date/heure prévue du débit (J-24 h)
   onSalaire: (v: string) => void;
   onDone: (salaireNetHoraire: number) => void;
   onBack: () => void;
@@ -2130,13 +2192,24 @@ function PaymentScreen({
         </p>
         <div className="h-px bg-border my-4" />
         <div className="flex justify-between text-xl font-black">
-          <span>À régler aujourd'hui</span>
+          <span>{deferred ? "Débité 24 h avant la mission" : "À régler aujourd'hui"}</span>
           <span>{formatPrice(SERVICE_FEE)} €</span>
         </div>
         <p className="text-[11px] text-muted-foreground mt-1">
           Frais de service mandataire Solélia — forfait fixe, quelle que soit la durée.
         </p>
       </div>
+
+      {deferred && (
+        <div className="bg-accent border-2 border-primary rounded-2xl p-4 text-left">
+          <p className="text-sm font-black">🗓️ Aucun débit aujourd'hui</p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Votre carte est simplement enregistrée pour confirmer la réservation. Les {formatPrice(SERVICE_FEE)} € de
+            frais de service seront prélevés 24 h avant la mission
+            {chargeAt ? `, soit le ${formatSchedule(chargeAt)}` : ""}.
+          </p>
+        </div>
+      )}
 
       {companion.cesuActive ? (
         <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-4 text-left">
@@ -2207,7 +2280,11 @@ function PaymentScreen({
 
       <div className="flex-1" />
       <button type="submit" disabled={processing} className="btn-huge bg-success text-success-foreground disabled:opacity-60">
-        {processing ? "Traitement…" : `Payer ${formatPrice(SERVICE_FEE)} € et confirmer la mission`}
+        {processing
+          ? "Traitement…"
+          : deferred
+            ? "Enregistrer ma carte et confirmer la réservation"
+            : `Payer ${formatPrice(SERVICE_FEE)} € et confirmer la mission`}
       </button>
       <p className="text-xs text-muted-foreground text-center">🔒 Paiement sécurisé — démo</p>
     </form>
