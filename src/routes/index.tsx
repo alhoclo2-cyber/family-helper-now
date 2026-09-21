@@ -2180,13 +2180,24 @@ function PaymentScreen({
         </p>
         <div className="h-px bg-border my-4" />
         <div className="flex justify-between text-xl font-black">
-          <span>À régler aujourd'hui</span>
+          <span>{deferred ? "Débité 24 h avant la mission" : "À régler aujourd'hui"}</span>
           <span>{formatPrice(SERVICE_FEE)} €</span>
         </div>
         <p className="text-[11px] text-muted-foreground mt-1">
           Frais de service mandataire Solélia — forfait fixe, quelle que soit la durée.
         </p>
       </div>
+
+      {deferred && (
+        <div className="bg-accent border-2 border-primary rounded-2xl p-4 text-left">
+          <p className="text-sm font-black">🗓️ Aucun débit aujourd'hui</p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Votre carte est simplement enregistrée pour confirmer la réservation. Les {formatPrice(SERVICE_FEE)} € de
+            frais de service seront prélevés 24 h avant la mission
+            {chargeAt ? `, soit le ${formatDateTime(chargeAt)}` : ""}.
+          </p>
+        </div>
+      )}
 
       {companion.cesuActive ? (
         <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-4 text-left">
