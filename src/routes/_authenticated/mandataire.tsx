@@ -170,7 +170,7 @@ function Pager({
 }
 
 function Dashboard() {
-  const [tab, setTab] = useState<"companions" | "clients">("companions");
+  const [tab, setTab] = useState<"companions" | "clients" | "payments">("companions");
   const list = useServerFn(listApplications);
   const apps = useQuery({ queryKey: ["applications"], queryFn: () => list() });
   const listClients = useServerFn(listClientRegistrations);
@@ -184,11 +184,12 @@ function Dashboard() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         {(
           [
             ["companions", "Candidatures Compagnon", companionTodo],
             ["clients", "Inscriptions Particulier", clientTodo],
+            ["payments", "Frais de service", 0],
           ] as const
         ).map(([key, label, badge]) => (
           <button
@@ -205,7 +206,13 @@ function Dashboard() {
           </button>
         ))}
       </div>
-      {tab === "companions" ? <CompanionsTab apps={apps} /> : <ClientsTab clients={clients} />}
+      {tab === "companions" ? (
+        <CompanionsTab apps={apps} />
+      ) : tab === "clients" ? (
+        <ClientsTab clients={clients} />
+      ) : (
+        <PaymentsTab />
+      )}
     </div>
   );
 }
