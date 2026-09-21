@@ -15,7 +15,6 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedMandataireRouteImport } from './routes/_authenticated/mandataire'
-import { Route as ApiPublicHooksChargeDuePaymentsRouteImport } from './routes/api/public/hooks/charge-due-payments'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -46,12 +45,6 @@ const AuthenticatedMandataireRoute = AuthenticatedMandataireRouteImport.update({
   path: '/mandataire',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ApiPublicHooksChargeDuePaymentsRoute =
-  ApiPublicHooksChargeDuePaymentsRouteImport.update({
-    id: '/api/public/hooks/charge-due-payments',
-    path: '/api/public/hooks/charge-due-payments',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -59,7 +52,6 @@ export interface FileRoutesByFullPath {
   '/pro': typeof ProRoute
   '/reset-password': typeof ResetPasswordRoute
   '/mandataire': typeof AuthenticatedMandataireRoute
-  '/api/public/hooks/charge-due-payments': typeof ApiPublicHooksChargeDuePaymentsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -67,7 +59,6 @@ export interface FileRoutesByTo {
   '/pro': typeof ProRoute
   '/reset-password': typeof ResetPasswordRoute
   '/mandataire': typeof AuthenticatedMandataireRoute
-  '/api/public/hooks/charge-due-payments': typeof ApiPublicHooksChargeDuePaymentsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -77,25 +68,12 @@ export interface FileRoutesById {
   '/pro': typeof ProRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/mandataire': typeof AuthenticatedMandataireRoute
-  '/api/public/hooks/charge-due-payments': typeof ApiPublicHooksChargeDuePaymentsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/auth'
-    | '/pro'
-    | '/reset-password'
-    | '/mandataire'
-    | '/api/public/hooks/charge-due-payments'
+  fullPaths: '/' | '/auth' | '/pro' | '/reset-password' | '/mandataire'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/auth'
-    | '/pro'
-    | '/reset-password'
-    | '/mandataire'
-    | '/api/public/hooks/charge-due-payments'
+  to: '/' | '/auth' | '/pro' | '/reset-password' | '/mandataire'
   id:
     | '__root__'
     | '/'
@@ -104,7 +82,6 @@ export interface FileRouteTypes {
     | '/pro'
     | '/reset-password'
     | '/_authenticated/mandataire'
-    | '/api/public/hooks/charge-due-payments'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -113,7 +90,6 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ProRoute: typeof ProRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
-  ApiPublicHooksChargeDuePaymentsRoute: typeof ApiPublicHooksChargeDuePaymentsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -160,13 +136,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMandataireRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/api/public/hooks/charge-due-payments': {
-      id: '/api/public/hooks/charge-due-payments'
-      path: '/api/public/hooks/charge-due-payments'
-      fullPath: '/api/public/hooks/charge-due-payments'
-      preLoaderRoute: typeof ApiPublicHooksChargeDuePaymentsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -187,7 +156,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ProRoute: ProRoute,
   ResetPasswordRoute: ResetPasswordRoute,
-  ApiPublicHooksChargeDuePaymentsRoute: ApiPublicHooksChargeDuePaymentsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
