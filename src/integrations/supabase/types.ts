@@ -152,6 +152,8 @@ export type Database = {
           id: string
           last_run_at: string | null
           mission_id: string
+          next_retry_at: string | null
+          retry_count: number
           scheduled_charge_at: string | null
           simulate_failure: boolean
           status: string
@@ -170,6 +172,8 @@ export type Database = {
           id?: string
           last_run_at?: string | null
           mission_id: string
+          next_retry_at?: string | null
+          retry_count?: number
           scheduled_charge_at?: string | null
           simulate_failure?: boolean
           status?: string
@@ -188,6 +192,8 @@ export type Database = {
           id?: string
           last_run_at?: string | null
           mission_id?: string
+          next_retry_at?: string | null
+          retry_count?: number
           scheduled_charge_at?: string | null
           simulate_failure?: boolean
           status?: string
