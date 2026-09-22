@@ -791,7 +791,9 @@ function PaymentsTab() {
   const run = useMutation({
     mutationFn: () => runNow(),
     onSuccess: (r) => {
-      setMessage(`Traitement exécuté : ${r.processed} ligne(s), ${r.succeeded} réussie(s), ${r.failed} échouée(s).`);
+      setMessage(
+        `Traitement exécuté : ${r.processed} ligne(s), ${r.succeeded} réussie(s), ${r.failed} en relance, ${r.cancelled} mission(s) annulée(s).`,
+      );
       refresh();
     },
     onError: (e: Error) => setMessage(e.message),
