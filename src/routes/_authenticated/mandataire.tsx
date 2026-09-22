@@ -770,6 +770,7 @@ const PAYMENT_STATUS_LABEL: Record<string, string> = {
   debit_reussi: "✅ Débit réussi",
   debit_echoue: "⚠️ Débit échoué",
   annulee_echec_paiement: "🚫 Mission annulée (paiement impossible)",
+  annulee_avant_debit: "↩️ Mission annulée avant débit (rien n'a été prélevé)",
 };
 
 function PaymentsTab() {

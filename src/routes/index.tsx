@@ -221,6 +221,20 @@ async function recordDeferredCharge(missionId: string, chargeAt: number, compani
 }
 
 /**
+ * Annulation d'une mission « Prise de RDV » avant tout débit : la ligne passe en
+ * `annulee_avant_debit` et n'est plus sélectionnée par la tâche horaire.
+ * Si le débit a déjà réussi (ou échoué définitivement), rien n'est modifié ici :
+ * le remboursement suit le parcours existant selon le délai avant la mission.
+ */
+async function cancelDeferredChargeIfPending(missionId: string) {
+  await supabase
+    .from("mission_payments")
+    .update({ status: "annulee_avant_debit", scheduled_charge_at: null, next_retry_at: null })
+    .eq("mission_id", missionId)
+    .eq("status", "en_attente_debit");
+}
+
+/**
  * Statut du débit différé côté Client : tant que la tâche horaire n'a pas
  * traité la ligne, le paiement reste « prévu 24 h avant la mission ».
  */
@@ -1651,6 +1665,9 @@ function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolea
               disabled={!reason || (reason === "Autre raison" && !otherDetail.trim())}
               onClick={() => {
                 const finalReason = reason === "Autre raison" && otherDetail.trim() ? otherDetail.trim() : reason;
+                // Prise de RDV : si le débit des frais de service n'a pas encore eu lieu,
+                // la ligne de paiement est neutralisée (aucun prélèvement à venir).
+                void cancelDeferredChargeIfPending(request.id);
                 store.cancelRequest(request.id, free, finalReason);
               }}
               className="py-3 rounded-2xl bg-destructive text-destructive-foreground font-bold text-sm disabled:opacity-50"
