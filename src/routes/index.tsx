@@ -1665,6 +1665,9 @@ function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolea
               disabled={!reason || (reason === "Autre raison" && !otherDetail.trim())}
               onClick={() => {
                 const finalReason = reason === "Autre raison" && otherDetail.trim() ? otherDetail.trim() : reason;
+                // Prise de RDV : si le débit des frais de service n'a pas encore eu lieu,
+                // la ligne de paiement est neutralisée (aucun prélèvement à venir).
+                void cancelDeferredChargeIfPending(request.id);
                 store.cancelRequest(request.id, free, finalReason);
               }}
               className="py-3 rounded-2xl bg-destructive text-destructive-foreground font-bold text-sm disabled:opacity-50"
