@@ -241,7 +241,15 @@ function DeferredPaymentStatus({
         .select("status")
         .eq("mission_id", missionId)
         .maybeSingle();
-      if (alive) setStatus(data?.status ?? null);
+      if (!alive) return;
+      setStatus(data?.status ?? null);
+      // Échec définitif : la mission est annulée automatiquement.
+      if (data?.status === "annulee_echec_paiement") {
+        const current = store.getState().requests.find((r) => r.id === missionId);
+        if (current && current.status !== "cancelled") {
+          store.cancelRequest(missionId, false, "Paiement des frais de service impossible");
+        }
+      }
     };
     void load();
     const timer = setInterval(load, 60000);
@@ -251,6 +259,17 @@ function DeferredPaymentStatus({
     };
   }, [missionId]);
 
+  if (status === "annulee_echec_paiement") {
+    return (
+      <div className="w-full bg-destructive/10 border-2 border-destructive rounded-2xl p-4">
+        <p className="text-lg font-bold text-destructive">
+          🚫 Mission annulée — le paiement des frais de service n'a pas pu être effectué après plusieurs
+          tentatives.
+        </p>
+      </div>
+    );
+  }
+
   if (status === "debit_echoue") {
     return (
       <div className="w-full bg-destructive/10 border-2 border-destructive rounded-2xl p-4">
@@ -258,7 +277,8 @@ function DeferredPaymentStatus({
           ⚠️ Le paiement n'a pas pu être effectué — merci de mettre à jour votre moyen de paiement
         </p>
         <p className="text-sm text-muted-foreground mt-1">
-          Les {formatPrice(SERVICE_FEE)} € de frais de service n'ont pas pu être prélevés.
+          Les {formatPrice(SERVICE_FEE)} € de frais de service n'ont pas pu être prélevés. Une nouvelle
+          tentative aura lieu automatiquement dans quelques heures.
         </p>
       </div>
     );

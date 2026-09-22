@@ -36,10 +36,21 @@ export const updatePaymentSimulation = createServerFn({ method: "POST" })
     await requireMandataire(context);
     const patch: Database["public"]["Tables"]["mission_payments"]["Update"] = {};
     if (data.dueNow) {
-      patch["scheduled_charge_at"] = new Date().toISOString();
-      patch["status"] = "en_attente_debit";
-      patch["charged_at"] = null;
-      patch["failure_reason"] = null;
+      const nowIso = new Date().toISOString();
+      const { data: row } = await context.supabase
+        .from("mission_payments")
+        .select("status")
+        .eq("id", data.id)
+        .maybeSingle();
+      if (row?.status === "debit_echoue") {
+        // Ligne en échec : on rend la prochaine relance immédiatement exigible.
+        patch["next_retry_at"] = nowIso;
+      } else {
+        patch["scheduled_charge_at"] = nowIso;
+        patch["status"] = "en_attente_debit";
+        patch["charged_at"] = null;
+        patch["failure_reason"] = null;
+      }
     }
     if (typeof data.simulateFailure === "boolean") patch["simulate_failure"] = data.simulateFailure;
     if (Object.keys(patch).length === 0) return { ok: true };

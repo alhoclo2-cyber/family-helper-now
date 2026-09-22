@@ -769,6 +769,7 @@ const PAYMENT_STATUS_LABEL: Record<string, string> = {
   en_attente_debit: "⏳ En attente de débit",
   debit_reussi: "✅ Débit réussi",
   debit_echoue: "⚠️ Débit échoué",
+  annulee_echec_paiement: "🚫 Mission annulée (paiement impossible)",
 };
 
 function PaymentsTab() {
@@ -790,7 +791,9 @@ function PaymentsTab() {
   const run = useMutation({
     mutationFn: () => runNow(),
     onSuccess: (r) => {
-      setMessage(`Traitement exécuté : ${r.processed} ligne(s), ${r.succeeded} réussie(s), ${r.failed} échouée(s).`);
+      setMessage(
+        `Traitement exécuté : ${r.processed} ligne(s), ${r.succeeded} réussie(s), ${r.failed} en relance, ${r.cancelled} mission(s) annulée(s).`,
+      );
       refresh();
     },
     onError: (e: Error) => setMessage(e.message),
@@ -832,13 +835,19 @@ function PaymentsTab() {
             Montant : {(p.amount_cents / 100).toFixed(2)} €
             {p.charged_at ? ` · débité le ${new Date(p.charged_at).toLocaleString("fr-FR")}` : ""}
           </p>
+          <p className="text-xs text-muted-foreground">
+            Tentatives : {p.retry_count ?? 0} / 3
+            {p.next_retry_at
+              ? ` · prochaine relance le ${new Date(p.next_retry_at).toLocaleString("fr-FR")}`
+              : ""}
+          </p>
           {p.failure_reason && <p className="text-xs text-destructive mt-1">{p.failure_reason}</p>}
           <div className="grid grid-cols-2 gap-2 mt-3">
             <button
               onClick={() => mutate.mutate({ id: p.id, dueNow: true })}
               className="rounded-2xl border-2 border-primary text-primary font-bold py-2 text-xs"
             >
-              ⏱️ Rendre exigible maintenant
+              {p.status === "debit_echoue" ? "⏱️ Relancer maintenant" : "⏱️ Rendre exigible maintenant"}
             </button>
             <button
               onClick={() => mutate.mutate({ id: p.id, simulateFailure: !p.simulate_failure })}
