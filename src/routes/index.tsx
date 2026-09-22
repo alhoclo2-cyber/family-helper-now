@@ -277,7 +277,8 @@ function DeferredPaymentStatus({
           ⚠️ Le paiement n'a pas pu être effectué — merci de mettre à jour votre moyen de paiement
         </p>
         <p className="text-sm text-muted-foreground mt-1">
-          Les {formatPrice(SERVICE_FEE)} € de frais de service n'ont pas pu être prélevés.
+          Les {formatPrice(SERVICE_FEE)} € de frais de service n'ont pas pu être prélevés. Une nouvelle
+          tentative aura lieu automatiquement dans quelques heures.
         </p>
       </div>
     );
