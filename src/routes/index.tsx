@@ -477,19 +477,6 @@ function MandatairePanel() {
             recommandation indicative, vous restez libre de fixer le salaire.
           </li>
           <li>
-            <b className="text-foreground">Missions de nuit</b> : des règles spécifiques s'appliquent selon le type
-            d'intervention (travail effectif ou présence responsable). Renseignez-vous avant de fixer le tarif —{" "}
-            <a
-              href="https://www.service-public.fr/particuliers/vosdroits/F142"
-              target="_blank"
-              rel="noreferrer"
-              className="underline text-success"
-            >
-              Service-Public.fr
-            </a>
-            .
-          </li>
-          <li>
             <b className="text-foreground">Contrat de travail</b> : obligatoire dès 3h/semaine avec le même compagnon,
             ou au-delà de 4 semaines consécutives (art. L1271-5 du Code du travail). Solélia vous accompagne pour le
             générer.
@@ -712,6 +699,22 @@ function FamilyForm({
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   })();
 
+  // Solélia ne propose pas de missions de nuit : fin de mission au plus tard à 22h30,
+  // début au plus tôt à 7h00.
+  const MISSION_START_LIMIT_MIN = 7 * 60;
+  const MISSION_END_LIMIT_MIN = 22 * 60 + 30;
+  const maxDurationFor = (w: string) => {
+    if (!w) return 12;
+    const d = new Date(w);
+    const startMin = d.getHours() * 60 + d.getMinutes();
+    return Math.max(1, Math.min(12, Math.floor((MISSION_END_LIMIT_MIN - startMin) / 60)));
+  };
+  const missionStartMin = when ? new Date(when).getHours() * 60 + new Date(when).getMinutes() : 12 * 60;
+  const maxDurationAllowed = maxDurationFor(when);
+  const nightBlocked =
+    missionStartMin < MISSION_START_LIMIT_MIN ||
+    missionStartMin + durationHours * 60 > MISSION_END_LIMIT_MIN;
+
   const [autoSearch, setAutoSearch] = useState<boolean | null>(
     initial?.autoSearch !== undefined ? initial.autoSearch : null,
   );
@@ -913,6 +916,9 @@ function FamilyForm({
       return;
     }
     setWhenError(false);
+
+    // Aucune mission de nuit : la mission doit se terminer au plus tard à 22h30.
+    if (mode === "scheduled" && nightBlocked) return;
 
     if (mode === "scheduled" && autoSearch === false && pickedCompanion) {
       const check = runComplianceCheck(pickedCompanion);
@@ -1200,8 +1206,9 @@ function FamilyForm({
             <button
               key={h}
               type="button"
+              disabled={h > maxDurationAllowed}
               onClick={() => setDurationHours(h)}
-              className={`py-3 rounded-2xl border-2 text-base font-bold transition-all ${
+              className={`py-3 rounded-2xl border-2 text-base font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                 durationHours === h ? "border-primary bg-accent" : "border-border bg-card"
               }`}
             >
@@ -1210,8 +1217,9 @@ function FamilyForm({
           ))}
           <button
             type="button"
+            disabled={maxDurationAllowed < 5}
             onClick={() => setDurationHours((d) => (d >= 5 ? d : 5))}
-            className={`py-3 rounded-2xl border-2 text-base font-bold transition-all ${
+            className={`py-3 rounded-2xl border-2 text-base font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
               durationHours >= 5 ? "border-primary bg-accent" : "border-border bg-card"
             }`}
           >
@@ -1224,7 +1232,7 @@ function FamilyForm({
             <input
               type="range"
               min={5}
-              max={12}
+              max={Math.max(5, maxDurationAllowed)}
               step={1}
               value={durationHours}
               onChange={(e) => setDurationHours(Number(e.target.value))}
@@ -1286,6 +1294,7 @@ function FamilyForm({
             onChange={(e) => {
               setWhen(e.target.value);
               setWhenError(false);
+              setDurationHours((d) => Math.min(d, maxDurationFor(e.target.value)));
             }}
             className={`w-full px-5 py-4 rounded-2xl border-2 bg-card text-lg outline-none ${
               whenError ? "border-destructive" : "border-border focus:border-primary"
@@ -1297,10 +1306,13 @@ function FamilyForm({
               « Besoin rapidement », sans délai minimum.
             </p>
           )}
-          <p className="text-xs text-muted-foreground mt-2">
-            🌙 Les horaires de nuit légaux (21h à 7h, Art. L3122-2 du Code du travail) peuvent faire l'objet d'un accord
-            salarial différent entre vous et votre compagnon, qui reste libre d'accepter ou non une mission de nuit.
-          </p>
+          {nightBlocked && (
+            <p className="text-xs font-semibold text-destructive mt-2">
+              Solélia propose des missions jusqu'à 22h30 maximum. Pour un besoin de présence de nuit ou de surveillance
+              pendant le sommeil, ce type de prestation ne relève pas de notre plateforme — rapprochez-vous d'un service
+              de soins infirmiers à domicile ou d'une structure spécialisée.
+            </p>
+          )}
         </div>
       )}
       <div>
