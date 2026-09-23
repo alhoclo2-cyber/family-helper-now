@@ -917,6 +917,9 @@ function FamilyForm({
     }
     setWhenError(false);
 
+    // Aucune mission de nuit : la mission doit se terminer au plus tard à 22h30.
+    if (mode === "scheduled" && nightBlocked) return;
+
     if (mode === "scheduled" && autoSearch === false && pickedCompanion) {
       const check = runComplianceCheck(pickedCompanion);
       if (check?.requiresContract) {
