@@ -447,6 +447,63 @@ function ServiceFeeHint({ className = "" }: { className?: string }) {
   );
 }
 
+function MandatairePanel() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="w-full bg-success/10 border-2 border-success/40 rounded-2xl p-4 text-left">
+      <p className="text-sm font-bold text-success text-center">
+        💳 Solélia, votre mandataire
+      </p>
+      <p className="text-xs text-muted-foreground mt-2 text-center">
+        Frais de service uniques, salaire librement fixé — Solélia s'occupe de vos démarches URSSAF.
+      </p>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="mx-auto mt-2 block text-xs font-semibold text-success underline underline-offset-2"
+      >
+        {open ? "Masquer le détail ▴" : "Voir le détail ▾"}
+      </button>
+      {open && (
+        <ul className="text-xs text-muted-foreground mt-2 space-y-1 list-disc pl-4">
+          <li>
+            <b className="text-foreground">Frais de service uniques</b> : {formatPrice(SERVICE_FEE)} € par mission,
+            quels que soient la durée et le compagnon choisi.
+          </li>
+          <li>
+            <b className="text-foreground">Vous êtes particulier employeur</b> : le salaire net conseillé est de{" "}
+            {formatPrice(DEFAULT_HOURLY_RATE)} €/h (congés payés inclus), modifiable. Pour une mission concernant
+            plusieurs enfants, une majoration d'environ +1 €/h par enfant supplémentaire est habituellement suggérée —
+            recommandation indicative, vous restez libre de fixer le salaire.
+          </li>
+          <li>
+            <b className="text-foreground">Missions de nuit</b> : des règles spécifiques s'appliquent selon le type
+            d'intervention (travail effectif ou présence responsable). Renseignez-vous avant de fixer le tarif —{" "}
+            <a
+              href="https://www.service-public.fr/particuliers/vosdroits/F142"
+              target="_blank"
+              rel="noreferrer"
+              className="underline text-success"
+            >
+              Service-Public.fr
+            </a>
+            .
+          </li>
+          <li>
+            <b className="text-foreground">Contrat de travail</b> : obligatoire dès 3h/semaine avec le même compagnon,
+            ou au-delà de 4 semaines consécutives (art. L1271-5 du Code du travail). Solélia vous accompagne pour le
+            générer.
+          </li>
+          <li>
+            <b className="text-foreground">Zéro démarche</b> : Solélia transmet les déclarations à l'URSSAF. Votre
+            attestation fiscale officielle est délivrée par l'URSSAF.
+          </li>
+        </ul>
+      )}
+    </div>
+  );
+}
+
 /* ---------------- FAMILY ---------------- */
 
 function FamilyFlow() {
@@ -565,23 +622,7 @@ function FamilyFlow() {
             Date et heure précises — compagnon au choix ou recherche automatique
           </span>
         </button>
-        <div className="w-full bg-success/10 border-2 border-success/40 rounded-2xl p-4 text-left">
-          <p className="text-sm font-bold text-success text-center">💳 Solélia, votre mandataire</p>
-          <ul className="text-xs text-muted-foreground mt-2 space-y-1 list-disc pl-4">
-            <li>
-              <b className="text-foreground">Frais de service uniques</b> : {formatPrice(SERVICE_FEE)} € par mission,
-              quels que soient la durée et le compagnon choisi.
-            </li>
-            <li>
-              <b className="text-foreground">Vous êtes particulier employeur</b> : le salaire net conseillé est de{" "}
-              {formatPrice(DEFAULT_HOURLY_RATE)} €/h (congés payés inclus) et reste modifiable.
-            </li>
-            <li>
-              <b className="text-foreground">Zéro démarche</b> : Solélia transmet les déclarations à l'URSSAF.
-              Votre attestation fiscale officielle est délivrée par l'URSSAF.
-            </li>
-          </ul>
-        </div>
+        <MandatairePanel />
         <CguPanel />
         <p className="text-xs text-muted-foreground text-center max-w-xs">
           En cas d'urgence vitale, composez le <span className="font-bold text-foreground">15</span> (SAMU).
