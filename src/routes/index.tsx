@@ -622,23 +622,7 @@ function FamilyFlow() {
             Date et heure précises — compagnon au choix ou recherche automatique
           </span>
         </button>
-        <div className="w-full bg-success/10 border-2 border-success/40 rounded-2xl p-4 text-left">
-          <p className="text-sm font-bold text-success text-center">💳 Solélia, votre mandataire</p>
-          <ul className="text-xs text-muted-foreground mt-2 space-y-1 list-disc pl-4">
-            <li>
-              <b className="text-foreground">Frais de service uniques</b> : {formatPrice(SERVICE_FEE)} € par mission,
-              quels que soient la durée et le compagnon choisi.
-            </li>
-            <li>
-              <b className="text-foreground">Vous êtes particulier employeur</b> : le salaire net conseillé est de{" "}
-              {formatPrice(DEFAULT_HOURLY_RATE)} €/h (congés payés inclus) et reste modifiable.
-            </li>
-            <li>
-              <b className="text-foreground">Zéro démarche</b> : Solélia transmet les déclarations à l'URSSAF.
-              Votre attestation fiscale officielle est délivrée par l'URSSAF.
-            </li>
-          </ul>
-        </div>
+        <MandatairePanel />
         <CguPanel />
         <p className="text-xs text-muted-foreground text-center max-w-xs">
           En cas d'urgence vitale, composez le <span className="font-bold text-foreground">15</span> (SAMU).
