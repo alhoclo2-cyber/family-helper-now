@@ -1206,8 +1206,9 @@ function FamilyForm({
             <button
               key={h}
               type="button"
+              disabled={h > maxDurationAllowed}
               onClick={() => setDurationHours(h)}
-              className={`py-3 rounded-2xl border-2 text-base font-bold transition-all ${
+              className={`py-3 rounded-2xl border-2 text-base font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                 durationHours === h ? "border-primary bg-accent" : "border-border bg-card"
               }`}
             >
@@ -1216,8 +1217,9 @@ function FamilyForm({
           ))}
           <button
             type="button"
+            disabled={maxDurationAllowed < 5}
             onClick={() => setDurationHours((d) => (d >= 5 ? d : 5))}
-            className={`py-3 rounded-2xl border-2 text-base font-bold transition-all ${
+            className={`py-3 rounded-2xl border-2 text-base font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
               durationHours >= 5 ? "border-primary bg-accent" : "border-border bg-card"
             }`}
           >
@@ -1230,7 +1232,7 @@ function FamilyForm({
             <input
               type="range"
               min={5}
-              max={12}
+              max={Math.max(5, maxDurationAllowed)}
               step={1}
               value={durationHours}
               onChange={(e) => setDurationHours(Number(e.target.value))}
@@ -1292,6 +1294,7 @@ function FamilyForm({
             onChange={(e) => {
               setWhen(e.target.value);
               setWhenError(false);
+              setDurationHours((d) => Math.min(d, maxDurationFor(e.target.value)));
             }}
             className={`w-full px-5 py-4 rounded-2xl border-2 bg-card text-lg outline-none ${
               whenError ? "border-destructive" : "border-border focus:border-primary"
@@ -1303,10 +1306,13 @@ function FamilyForm({
               « Besoin rapidement », sans délai minimum.
             </p>
           )}
-          <p className="text-xs text-muted-foreground mt-2">
-            🌙 Les horaires de nuit légaux (21h à 7h, Art. L3122-2 du Code du travail) peuvent faire l'objet d'un accord
-            salarial différent entre vous et votre compagnon, qui reste libre d'accepter ou non une mission de nuit.
-          </p>
+          {nightBlocked && (
+            <p className="text-xs font-semibold text-destructive mt-2">
+              Solélia propose des missions jusqu'à 22h30 maximum. Pour un besoin de présence de nuit ou de surveillance
+              pendant le sommeil, ce type de prestation ne relève pas de notre plateforme — rapprochez-vous d'un service
+              de soins infirmiers à domicile ou d'une structure spécialisée.
+            </p>
+          )}
         </div>
       )}
       <div>
