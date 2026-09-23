@@ -477,19 +477,6 @@ function MandatairePanel() {
             recommandation indicative, vous restez libre de fixer le salaire.
           </li>
           <li>
-            <b className="text-foreground">Missions de nuit</b> : des règles spécifiques s'appliquent selon le type
-            d'intervention (travail effectif ou présence responsable). Renseignez-vous avant de fixer le tarif —{" "}
-            <a
-              href="https://www.service-public.fr/particuliers/vosdroits/F142"
-              target="_blank"
-              rel="noreferrer"
-              className="underline text-success"
-            >
-              Service-Public.fr
-            </a>
-            .
-          </li>
-          <li>
             <b className="text-foreground">Contrat de travail</b> : obligatoire dès 3h/semaine avec le même compagnon,
             ou au-delà de 4 semaines consécutives (art. L1271-5 du Code du travail). Solélia vous accompagne pour le
             générer.
@@ -711,6 +698,22 @@ function FamilyForm({
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   })();
+
+  // Solélia ne propose pas de missions de nuit : fin de mission au plus tard à 22h30,
+  // début au plus tôt à 7h00.
+  const MISSION_START_LIMIT_MIN = 7 * 60;
+  const MISSION_END_LIMIT_MIN = 22 * 60 + 30;
+  const maxDurationFor = (w: string) => {
+    if (!w) return 12;
+    const d = new Date(w);
+    const startMin = d.getHours() * 60 + d.getMinutes();
+    return Math.max(1, Math.min(12, Math.floor((MISSION_END_LIMIT_MIN - startMin) / 60)));
+  };
+  const missionStartMin = when ? new Date(when).getHours() * 60 + new Date(when).getMinutes() : 12 * 60;
+  const maxDurationAllowed = maxDurationFor(when);
+  const nightBlocked =
+    missionStartMin < MISSION_START_LIMIT_MIN ||
+    missionStartMin + durationHours * 60 > MISSION_END_LIMIT_MIN;
 
   const [autoSearch, setAutoSearch] = useState<boolean | null>(
     initial?.autoSearch !== undefined ? initial.autoSearch : null,
