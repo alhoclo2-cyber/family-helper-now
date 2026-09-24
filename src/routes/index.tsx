@@ -943,8 +943,31 @@ function FamilyForm({
     );
   };
 
+  const [showErrors, setShowErrors] = useState(false);
+  const okAddress = !!address.trim();
+  const okPhone = !!phone.trim();
+  const okOther = !(need === "Autre (à préciser)" && !otherDetail.trim());
+  const okCommission = !(need === "Compagnie/Présence" && commissions.length > 0 && !commissionCertified);
+  const okContinuity = !(isOutdoor && !continuity);
+  const okChildAge = !(isHomework && (!childAge.trim() || Number(childAge) < 3));
+  const okChildAgeAt = (i: number) => !(isMultiChild && (!(childAges[i] ?? "").trim() || Number(childAges[i]) < 3));
+  const okWho = !(mode === "scheduled" && (autoSearch === null || (!autoSearch && !pickedCompanion)));
+  const formValid =
+    okAddress && okPhone && okOther && okCommission && okContinuity && okChildAge &&
+    Array.from({ length: isMultiChild ? childCountNum : 0 }, (_, i) => okChildAgeAt(i)).every(Boolean) &&
+    okWho && cguOk;
+  const bad = (ok: boolean) => showErrors && !ok;
+  const errCls = (ok: boolean) => (bad(ok) ? " border-destructive bg-destructive/5" : "");
+  const Missing = ({ ok, text }: { ok: boolean; text: string }) =>
+    bad(ok) ? <p className="text-xs font-semibold text-destructive mt-1">{text}</p> : null;
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formValid) {
+      setShowErrors(true);
+      return;
+    }
+    setShowErrors(false);
     if (!address.trim() || !phone.trim()) return;
     if (need === "Autre (à préciser)" && !otherDetail.trim()) return;
     
@@ -1047,7 +1070,7 @@ function FamilyForm({
             })}
           </div>
           {commissions.length > 0 && (
-            <label className="flex items-start gap-3 rounded-2xl border-2 border-warning/50 bg-warning/10 p-4 cursor-pointer">
+            <label className={"flex items-start gap-3 rounded-2xl border-2 border-warning/50 bg-warning/10 p-4 cursor-pointer" + errCls(okCommission)}>
               <input
                 type="checkbox"
                 checked={commissionCertified}
@@ -1060,6 +1083,7 @@ function FamilyForm({
               </span>
             </label>
           )}
+          <Missing ok={okCommission} text="Certification obligatoire" />
         </div>
       )}
       {isOther && (
@@ -1070,9 +1094,9 @@ function FamilyForm({
             onChange={(e) => setOtherDetail(e.target.value)}
             placeholder="Décrivez en quelques mots le service souhaité"
             rows={3}
-            required
-            className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
+            className={"w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none" + errCls(okOther)}
           />
+          <Missing ok={okOther} text="Champ obligatoire" />
           <p className="text-xs text-muted-foreground mt-2">
             Le besoin doit tenir dans le cadre d'une mission d'entraide du quotidien, réalisable par une personne
             non professionnelle, en toute sécurité.
@@ -1092,12 +1116,12 @@ function FamilyForm({
                 type="number"
                 min={3}
                 max={17}
-                required
                 value={childAge}
                 onChange={(e) => setChildAge(e.target.value)}
                 placeholder="Ex. 6"
-                className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
+                className={"w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none" + errCls(okChildAge)}
               />
+              {!childAge.trim() && <Missing ok={okChildAge} text="Champ obligatoire" />}
               {childAge && Number(childAge) < 3 && (
                 <p className="text-sm text-destructive mt-2">
                   Les missions avec enfant sont réservées aux enfants de 3 ans et plus.
@@ -1114,7 +1138,6 @@ function FamilyForm({
                     type="number"
                     min={3}
                     max={17}
-                    required
                     value={childAges[i] ?? ""}
                     onChange={(e) =>
                       setChildAges((prev) => {
@@ -1124,8 +1147,9 @@ function FamilyForm({
                       })
                     }
                     placeholder="Ex. 6"
-                    className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
+                    className={"w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none" + errCls(okChildAgeAt(i))}
                   />
+                  {!(childAges[i] ?? "").trim() && <Missing ok={okChildAgeAt(i)} text="Champ obligatoire" />}
                   {childAges[i] && Number(childAges[i]) < 3 && (
                     <p className="text-sm text-destructive mt-2">
                       Les missions avec enfant sont réservées aux enfants de 3 ans et plus.
@@ -1402,7 +1426,7 @@ function FamilyForm({
                 setPickedCompanion("");
               }}
               className={`flex-1 rounded-2xl border-2 p-4 text-left text-sm ${
-                autoSearch === true ? "border-primary bg-accent" : "border-border bg-card"
+                autoSearch === true ? "border-primary bg-accent" : bad(autoSearch !== null) ? "border-destructive bg-destructive/5" : "border-border bg-card"
               }`}
             >
               <b>🔍 Recherche automatique</b>
@@ -1415,7 +1439,7 @@ function FamilyForm({
               type="button"
               onClick={() => setAutoSearch(false)}
               className={`flex-1 rounded-2xl border-2 p-4 text-left text-sm ${
-                autoSearch === false ? "border-primary bg-accent" : "border-border bg-card"
+                autoSearch === false ? "border-primary bg-accent" : bad(autoSearch !== null) ? "border-destructive bg-destructive/5" : "border-border bg-card"
               }`}
             >
               <b>🙋 Choisir moi-même un compagnon</b>
@@ -1424,6 +1448,7 @@ function FamilyForm({
               </span>
             </button>
           </div>
+          <Missing ok={okWho} text={autoSearch === false ? "Choisissez un compagnon dans la liste" : "Choisissez une option"} />
           {autoSearch === false && (
             <div className="mt-3 flex flex-col gap-2">
               <p className="text-sm font-bold">Choisir un compagnon par son nom</p>
@@ -1481,8 +1506,9 @@ function FamilyForm({
           value={address}
           onChange={(e) => setAddress(e.target.value)}
           placeholder="12 rue des Lilas, 75014 Paris"
-          className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
+          className={"w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none" + errCls(okAddress)}
         />
+        <Missing ok={okAddress} text="Champ obligatoire" />
       </div>
       <div>
         <label className="block text-lg font-bold mb-2">Téléphone</label>
@@ -1491,8 +1517,9 @@ function FamilyForm({
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
           placeholder="06 12 34 56 78"
-          className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
+          className={"w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none" + errCls(okPhone)}
         />
+        <Missing ok={okPhone} text="Champ obligatoire" />
       </div>
       <div>
         <label className="block text-lg font-bold mb-2">Informations complémentaires</label>
@@ -1505,7 +1532,7 @@ function FamilyForm({
         />
       </div>
       {isOutdoor && (
-        <label className="flex items-start gap-3 rounded-2xl border-2 border-warning bg-warning/10 p-4 text-sm">
+        <label className={"flex items-start gap-3 rounded-2xl border-2 border-warning bg-warning/10 p-4 text-sm" + errCls(okContinuity)}>
           <input
             type="checkbox"
             checked={continuity}
@@ -1519,7 +1546,11 @@ function FamilyForm({
           </span>
         </label>
       )}
-      <CguAcceptBlock checked={cguOk} onChange={setCguOk} role="client" />
+      {isOutdoor && <Missing ok={okContinuity} text="Certification obligatoire" />}
+      <div className={bad(cguOk) ? "rounded-2xl border-2 border-destructive" : ""}>
+        <CguAcceptBlock checked={cguOk} onChange={setCguOk} role="client" />
+      </div>
+      <Missing ok={cguOk} text="Acceptation des CGU obligatoire" />
       {mode === "scheduled" && !!pickedCompanion && (
         <div className="rounded-2xl border-2 border-dashed border-border p-3 text-left">
           <p className="text-xs font-bold">🧪 Simulation d'historique (test)</p>
@@ -1565,11 +1596,15 @@ function FamilyForm({
       <div className="flex-1" />
       <button
         type="submit"
-        disabled={!cguOk || (mode === "scheduled" && (autoSearch === null || (!autoSearch && !pickedCompanion)))}
         className="btn-huge bg-primary text-primary-foreground disabled:opacity-50"
       >
         {mode === "asap" ? "Lancer la recherche" : "Valider la réservation"}
       </button>
+      {showErrors && !formValid && (
+        <p className="text-sm font-semibold text-destructive text-center -mt-3">
+          Votre demande ne peut pas être validée. Veuillez compléter les éléments indiqués en rouge.
+        </p>
+      )}
       {complianceCheck && (
         <CesuRecurrenceModal
           companionId={pickedCompanion}
