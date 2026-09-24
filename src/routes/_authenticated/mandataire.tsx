@@ -309,7 +309,8 @@ function CompanionsTab({ apps }: { apps: UseQueryResult<App[]> }) {
           <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-bold">
             {(
               [
-                ["Identité", a.id_card_path],
+                ["Identité recto", a.id_card_path],
+                ["Identité verso", a.id_card_back_path],
                 ["Situation", a.situation_proof_path],
                 ["B3", a.criminal_record_path],
                 ["RIB", a.iban_path],
@@ -453,7 +454,8 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
       </div>
 
       <h3 className="font-black">Pièces justificatives</h3>
-      <DocCard label="🪪 Pièce d'identité" path={app.id_card_path} />
+      <DocCard label="🪪 Pièce d'identité — recto" path={app.id_card_path} />
+      <DocCard label="🪪 Pièce d'identité — verso" path={app.id_card_back_path} />
       <DocCard label="💳 Carte Vitale (recto)" path={app.vitale_card_path} />
       <DocCard label="🎓 Justificatif de situation" path={app.situation_proof_path} />
       <DocCard label="⚖️ Casier judiciaire (B3, moins de 3 mois)" path={app.criminal_record_path} />
@@ -528,7 +530,8 @@ type ClientStatus = "incomplete" | "to_check" | "complete";
 
 const CLIENT_DOC_TYPES = [
   { type: "rib", label: "RIB" },
-  { type: "identity", label: "Pièce d'identité" },
+  { type: "identity_front", label: "Pièce d'identité — recto" },
+  { type: "identity_back", label: "Pièce d'identité — verso" },
   { type: "proof_of_address", label: "Justificatif de domicile" },
 ] as const;
 
