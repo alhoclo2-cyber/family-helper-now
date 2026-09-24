@@ -64,6 +64,7 @@ function App() {
         </main>
         <footer className="px-5 py-4 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
           <span>© Solélia</span>
+          <a href="mailto:solelia.accompagnement@gmail.com" className="underline hover:text-foreground">Nous contacter</a>
           <Link to="/pro" className="underline hover:text-foreground">Espace Pro</Link>
         </footer>
       </div>
@@ -1287,6 +1288,10 @@ function FamilyForm({
             5h et plus
           </button>
         </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          ⚖️ Au-delà de 3h par semaine avec le même compagnon, un contrat de travail écrit devient obligatoire
+          (art. L1271-5 du Code du travail).
+        </p>
         {durationHours >= 5 && (
           <div className="mt-3">
             <p className="text-sm font-semibold mb-1">Durée précise : {durationHours}h</p>
@@ -1577,9 +1582,8 @@ function FamilyForm({
           }}
           onSwitchCompanion={(id) => {
             setPickedCompanion(id);
-            // Le panneau de simulation suit le nouveau compagnon : le contrôle porte sur lui.
-            setSimCompanion(id);
-            const next = runComplianceCheck(id, id);
+            // Le nouveau compagnon est évalué sur ses données réelles (la simulation ne le suit pas).
+            const next = runComplianceCheck(id, simCompanion);
             if (next?.requiresContract) {
               setComplianceCheck(next);
             } else {
@@ -2475,9 +2479,9 @@ function PaymentScreen({
             value={salaire}
             onChange={(e) => onSalaire(e.target.value)}
             inputMode="decimal"
-            className="flex-1 px-5 py-4 rounded-2xl border-2 border-border bg-background text-lg focus:border-primary outline-none"
+            className="flex-1 min-w-0 w-full px-5 py-4 rounded-2xl border-2 border-border bg-background text-lg focus:border-primary outline-none"
           />
-          <span className="text-lg font-bold">€/h</span>
+          <span className="shrink-0 text-lg font-bold">€/h</span>
         </div>
         <p className="text-xs text-muted-foreground mt-2">
           Durée prévue : {hours}h — salaire estimé {formatPrice(salaireNum * hours)} €
@@ -3148,6 +3152,7 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
 
 type DocKey =
   | "idCard"
+  | "idCardBack"
   | "vitaleCard"
   | "studentCard"
   | "criminalRecord"
@@ -3174,6 +3179,7 @@ type EnrollForm = {
 
 type DocColumn =
   | "id_card_path"
+  | "id_card_back_path"
   | "vitale_card_path"
   | "situation_proof_path"
   | "criminal_record_path"
@@ -3185,6 +3191,7 @@ type DocColumn =
 
 const DOC_COLUMN: Record<DocKey, DocColumn> = {
   idCard: "id_card_path",
+  idCardBack: "id_card_back_path",
   vitaleCard: "vitale_card_path",
   studentCard: "situation_proof_path",
   criminalRecord: "criminal_record_path",
@@ -3197,7 +3204,8 @@ const DOC_COLUMN: Record<DocKey, DocColumn> = {
 
 /** Mots-clés permettant de mettre en rouge les pièces citées dans le motif du Mandataire */
 const DOC_KEYWORDS: Record<DocKey, string[]> = {
-  idCard: ["identité", "identite", "cni", "passeport"],
+  idCard: ["identité", "identite", "cni", "passeport", "recto"],
+  idCardBack: ["identité", "identite", "cni", "passeport", "verso"],
   vitaleCard: ["vitale"],
   studentCard: ["situation", "étudiante", "etudiante", "contrat", "retraite", "france travail"],
   criminalRecord: ["casier", "judiciaire", "b3", "bulletin"],
@@ -3207,6 +3215,20 @@ const DOC_KEYWORDS: Record<DocKey, string[]> = {
   hostAddressProof: ["domicile de l'hébergeur", "domicile de l'hebergeur", "hébergeur", "hebergeur"],
   hostId: ["identité de l'hébergeur", "identite de l'hebergeur"],
 };
+
+/** Formate le NIR à la volée : 1 23 45 67 890 123 45 */
+function formatNir(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 15);
+  const groups = [1, 2, 2, 2, 3, 3, 2];
+  const out: string[] = [];
+  let i = 0;
+  for (const g of groups) {
+    if (i >= d.length) break;
+    out.push(d.slice(i, i + g));
+    i += g;
+  }
+  return out.join(" ");
+}
 
 /** Masque le NIR côté Compagnon : 1 ** ** ** *** *** ** */
 function maskNir(v: string) {
@@ -3503,7 +3525,8 @@ function StudentEnroll({
   };
 
   const docs: { k: DocKey; label: string; icon: string }[] = [
-    { k: "idCard", label: "Pièce d'identité", icon: "🪪" },
+    { k: "idCard", label: "Pièce d'identité — recto", icon: "🪪" },
+    { k: "idCardBack", label: "Pièce d'identité — verso", icon: "🪪" },
     { k: "vitaleCard", label: "Copie ou photo du recto de la carte Vitale", icon: "💳" },
     { k: "studentCard", label: "Justificatif de situation (carte étudiante, contrat, attestation…)", icon: "📑" },
     { k: "criminalRecord", label: "Casier judiciaire (B3, moins de 3 mois)", icon: "📄" },
@@ -3627,7 +3650,7 @@ function StudentEnroll({
           value={nirFocus ? p.nir : maskNir(p.nir)}
           onFocus={() => setNirFocus(true)}
           onBlur={() => setNirFocus(false)}
-          onChange={(e) => setP({ ...p, nir: e.target.value.replace(/[^\d ]/g, "").slice(0, 21) })}
+          onChange={(e) => setP({ ...p, nir: formatNir(e.target.value) })}
           className={field + " w-full tracking-wider" + errCls(nirOk)}
         />
         <p className="text-xs text-muted-foreground mt-2">
