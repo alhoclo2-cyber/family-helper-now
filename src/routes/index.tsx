@@ -64,6 +64,7 @@ function App() {
         </main>
         <footer className="px-5 py-4 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
           <span>© Solélia</span>
+          <a href="mailto:solelia.accompagnement@gmail.com" className="underline hover:text-foreground">Nous contacter</a>
           <Link to="/pro" className="underline hover:text-foreground">Espace Pro</Link>
         </footer>
       </div>
@@ -942,8 +943,31 @@ function FamilyForm({
     );
   };
 
+  const [showErrors, setShowErrors] = useState(false);
+  const okAddress = !!address.trim();
+  const okPhone = !!phone.trim();
+  const okOther = !(need === "Autre (à préciser)" && !otherDetail.trim());
+  const okCommission = !(need === "Compagnie/Présence" && commissions.length > 0 && !commissionCertified);
+  const okContinuity = !(isOutdoor && !continuity);
+  const okChildAge = !(isHomework && (!childAge.trim() || Number(childAge) < 3));
+  const okChildAgeAt = (i: number) => !(isMultiChild && (!(childAges[i] ?? "").trim() || Number(childAges[i]) < 3));
+  const okWho = !(mode === "scheduled" && (autoSearch === null || (!autoSearch && !pickedCompanion)));
+  const formValid =
+    okAddress && okPhone && okOther && okCommission && okContinuity && okChildAge &&
+    Array.from({ length: isMultiChild ? childCountNum : 0 }, (_, i) => okChildAgeAt(i)).every(Boolean) &&
+    okWho && cguOk;
+  const bad = (ok: boolean) => showErrors && !ok;
+  const errCls = (ok: boolean) => (bad(ok) ? " border-destructive bg-destructive/5" : "");
+  const Missing = ({ ok, text }: { ok: boolean; text: string }) =>
+    bad(ok) ? <p className="text-xs font-semibold text-destructive mt-1">{text}</p> : null;
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formValid) {
+      setShowErrors(true);
+      return;
+    }
+    setShowErrors(false);
     if (!address.trim() || !phone.trim()) return;
     if (need === "Autre (à préciser)" && !otherDetail.trim()) return;
     
@@ -1046,7 +1070,7 @@ function FamilyForm({
             })}
           </div>
           {commissions.length > 0 && (
-            <label className="flex items-start gap-3 rounded-2xl border-2 border-warning/50 bg-warning/10 p-4 cursor-pointer">
+            <label className={"flex items-start gap-3 rounded-2xl border-2 border-warning/50 bg-warning/10 p-4 cursor-pointer" + errCls(okCommission)}>
               <input
                 type="checkbox"
                 checked={commissionCertified}
@@ -1059,6 +1083,7 @@ function FamilyForm({
               </span>
             </label>
           )}
+          <Missing ok={okCommission} text="Certification obligatoire" />
         </div>
       )}
       {isOther && (
@@ -1069,9 +1094,9 @@ function FamilyForm({
             onChange={(e) => setOtherDetail(e.target.value)}
             placeholder="Décrivez en quelques mots le service souhaité"
             rows={3}
-            required
-            className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
+            className={"w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none" + errCls(okOther)}
           />
+          <Missing ok={okOther} text="Champ obligatoire" />
           <p className="text-xs text-muted-foreground mt-2">
             Le besoin doit tenir dans le cadre d'une mission d'entraide du quotidien, réalisable par une personne
             non professionnelle, en toute sécurité.
@@ -1091,12 +1116,12 @@ function FamilyForm({
                 type="number"
                 min={3}
                 max={17}
-                required
                 value={childAge}
                 onChange={(e) => setChildAge(e.target.value)}
                 placeholder="Ex. 6"
-                className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
+                className={"w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none" + errCls(okChildAge)}
               />
+              {!childAge.trim() && <Missing ok={okChildAge} text="Champ obligatoire" />}
               {childAge && Number(childAge) < 3 && (
                 <p className="text-sm text-destructive mt-2">
                   Les missions avec enfant sont réservées aux enfants de 3 ans et plus.
@@ -1113,7 +1138,6 @@ function FamilyForm({
                     type="number"
                     min={3}
                     max={17}
-                    required
                     value={childAges[i] ?? ""}
                     onChange={(e) =>
                       setChildAges((prev) => {
@@ -1123,8 +1147,9 @@ function FamilyForm({
                       })
                     }
                     placeholder="Ex. 6"
-                    className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
+                    className={"w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none" + errCls(okChildAgeAt(i))}
                   />
+                  {!(childAges[i] ?? "").trim() && <Missing ok={okChildAgeAt(i)} text="Champ obligatoire" />}
                   {childAges[i] && Number(childAges[i]) < 3 && (
                     <p className="text-sm text-destructive mt-2">
                       Les missions avec enfant sont réservées aux enfants de 3 ans et plus.
@@ -1287,6 +1312,10 @@ function FamilyForm({
             5h et plus
           </button>
         </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          ⚖️ Au-delà de 3h par semaine avec le même compagnon, un contrat de travail écrit devient obligatoire
+          (art. L1271-5 du Code du travail).
+        </p>
         {durationHours >= 5 && (
           <div className="mt-3">
             <p className="text-sm font-semibold mb-1">Durée précise : {durationHours}h</p>
@@ -1397,7 +1426,7 @@ function FamilyForm({
                 setPickedCompanion("");
               }}
               className={`flex-1 rounded-2xl border-2 p-4 text-left text-sm ${
-                autoSearch === true ? "border-primary bg-accent" : "border-border bg-card"
+                autoSearch === true ? "border-primary bg-accent" : bad(autoSearch !== null) ? "border-destructive bg-destructive/5" : "border-border bg-card"
               }`}
             >
               <b>🔍 Recherche automatique</b>
@@ -1410,7 +1439,7 @@ function FamilyForm({
               type="button"
               onClick={() => setAutoSearch(false)}
               className={`flex-1 rounded-2xl border-2 p-4 text-left text-sm ${
-                autoSearch === false ? "border-primary bg-accent" : "border-border bg-card"
+                autoSearch === false ? "border-primary bg-accent" : bad(autoSearch !== null) ? "border-destructive bg-destructive/5" : "border-border bg-card"
               }`}
             >
               <b>🙋 Choisir moi-même un compagnon</b>
@@ -1419,6 +1448,7 @@ function FamilyForm({
               </span>
             </button>
           </div>
+          <Missing ok={okWho} text={autoSearch === false ? "Choisissez un compagnon dans la liste" : "Choisissez une option"} />
           {autoSearch === false && (
             <div className="mt-3 flex flex-col gap-2">
               <p className="text-sm font-bold">Choisir un compagnon par son nom</p>
@@ -1476,8 +1506,9 @@ function FamilyForm({
           value={address}
           onChange={(e) => setAddress(e.target.value)}
           placeholder="12 rue des Lilas, 75014 Paris"
-          className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
+          className={"w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none" + errCls(okAddress)}
         />
+        <Missing ok={okAddress} text="Champ obligatoire" />
       </div>
       <div>
         <label className="block text-lg font-bold mb-2">Téléphone</label>
@@ -1486,8 +1517,9 @@ function FamilyForm({
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
           placeholder="06 12 34 56 78"
-          className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
+          className={"w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none" + errCls(okPhone)}
         />
+        <Missing ok={okPhone} text="Champ obligatoire" />
       </div>
       <div>
         <label className="block text-lg font-bold mb-2">Informations complémentaires</label>
@@ -1500,7 +1532,7 @@ function FamilyForm({
         />
       </div>
       {isOutdoor && (
-        <label className="flex items-start gap-3 rounded-2xl border-2 border-warning bg-warning/10 p-4 text-sm">
+        <label className={"flex items-start gap-3 rounded-2xl border-2 border-warning bg-warning/10 p-4 text-sm" + errCls(okContinuity)}>
           <input
             type="checkbox"
             checked={continuity}
@@ -1514,7 +1546,11 @@ function FamilyForm({
           </span>
         </label>
       )}
-      <CguAcceptBlock checked={cguOk} onChange={setCguOk} role="client" />
+      {isOutdoor && <Missing ok={okContinuity} text="Certification obligatoire" />}
+      <div className={bad(cguOk) ? "rounded-2xl border-2 border-destructive" : ""}>
+        <CguAcceptBlock checked={cguOk} onChange={setCguOk} role="client" />
+      </div>
+      <Missing ok={cguOk} text="Acceptation des CGU obligatoire" />
       {mode === "scheduled" && !!pickedCompanion && (
         <div className="rounded-2xl border-2 border-dashed border-border p-3 text-left">
           <p className="text-xs font-bold">🧪 Simulation d'historique (test)</p>
@@ -1560,11 +1596,15 @@ function FamilyForm({
       <div className="flex-1" />
       <button
         type="submit"
-        disabled={!cguOk || (mode === "scheduled" && (autoSearch === null || (!autoSearch && !pickedCompanion)))}
         className="btn-huge bg-primary text-primary-foreground disabled:opacity-50"
       >
         {mode === "asap" ? "Lancer la recherche" : "Valider la réservation"}
       </button>
+      {showErrors && !formValid && (
+        <p className="text-sm font-semibold text-destructive text-center -mt-3">
+          Votre demande ne peut pas être validée. Veuillez compléter les éléments indiqués en rouge.
+        </p>
+      )}
       {complianceCheck && (
         <CesuRecurrenceModal
           companionId={pickedCompanion}
@@ -1577,9 +1617,8 @@ function FamilyForm({
           }}
           onSwitchCompanion={(id) => {
             setPickedCompanion(id);
-            // Le panneau de simulation suit le nouveau compagnon : le contrôle porte sur lui.
-            setSimCompanion(id);
-            const next = runComplianceCheck(id, id);
+            // Le nouveau compagnon est évalué sur ses données réelles (la simulation ne le suit pas).
+            const next = runComplianceCheck(id, simCompanion || pickedCompanion);
             if (next?.requiresContract) {
               setComplianceCheck(next);
             } else {
@@ -2475,9 +2514,9 @@ function PaymentScreen({
             value={salaire}
             onChange={(e) => onSalaire(e.target.value)}
             inputMode="decimal"
-            className="flex-1 px-5 py-4 rounded-2xl border-2 border-border bg-background text-lg focus:border-primary outline-none"
+            className="flex-1 min-w-0 w-full px-5 py-4 rounded-2xl border-2 border-border bg-background text-lg focus:border-primary outline-none"
           />
-          <span className="text-lg font-bold">€/h</span>
+          <span className="shrink-0 text-lg font-bold">€/h</span>
         </div>
         <p className="text-xs text-muted-foreground mt-2">
           Durée prévue : {hours}h — salaire estimé {formatPrice(salaireNum * hours)} €
@@ -3148,6 +3187,7 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
 
 type DocKey =
   | "idCard"
+  | "idCardBack"
   | "vitaleCard"
   | "studentCard"
   | "criminalRecord"
@@ -3174,6 +3214,7 @@ type EnrollForm = {
 
 type DocColumn =
   | "id_card_path"
+  | "id_card_back_path"
   | "vitale_card_path"
   | "situation_proof_path"
   | "criminal_record_path"
@@ -3185,6 +3226,7 @@ type DocColumn =
 
 const DOC_COLUMN: Record<DocKey, DocColumn> = {
   idCard: "id_card_path",
+  idCardBack: "id_card_back_path",
   vitaleCard: "vitale_card_path",
   studentCard: "situation_proof_path",
   criminalRecord: "criminal_record_path",
@@ -3197,7 +3239,8 @@ const DOC_COLUMN: Record<DocKey, DocColumn> = {
 
 /** Mots-clés permettant de mettre en rouge les pièces citées dans le motif du Mandataire */
 const DOC_KEYWORDS: Record<DocKey, string[]> = {
-  idCard: ["identité", "identite", "cni", "passeport"],
+  idCard: ["identité", "identite", "cni", "passeport", "recto"],
+  idCardBack: ["identité", "identite", "cni", "passeport", "verso"],
   vitaleCard: ["vitale"],
   studentCard: ["situation", "étudiante", "etudiante", "contrat", "retraite", "france travail"],
   criminalRecord: ["casier", "judiciaire", "b3", "bulletin"],
@@ -3207,6 +3250,20 @@ const DOC_KEYWORDS: Record<DocKey, string[]> = {
   hostAddressProof: ["domicile de l'hébergeur", "domicile de l'hebergeur", "hébergeur", "hebergeur"],
   hostId: ["identité de l'hébergeur", "identite de l'hebergeur"],
 };
+
+/** Formate le NIR à la volée : 1 23 45 67 890 123 45 */
+function formatNir(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 15);
+  const groups = [1, 2, 2, 2, 3, 3, 2];
+  const out: string[] = [];
+  let i = 0;
+  for (const g of groups) {
+    if (i >= d.length) break;
+    out.push(d.slice(i, i + g));
+    i += g;
+  }
+  return out.join(" ");
+}
 
 /** Masque le NIR côté Compagnon : 1 ** ** ** *** *** ** */
 function maskNir(v: string) {
@@ -3503,7 +3560,8 @@ function StudentEnroll({
   };
 
   const docs: { k: DocKey; label: string; icon: string }[] = [
-    { k: "idCard", label: "Pièce d'identité", icon: "🪪" },
+    { k: "idCard", label: "Pièce d'identité — recto", icon: "🪪" },
+    { k: "idCardBack", label: "Pièce d'identité — verso", icon: "🪪" },
     { k: "vitaleCard", label: "Copie ou photo du recto de la carte Vitale", icon: "💳" },
     { k: "studentCard", label: "Justificatif de situation (carte étudiante, contrat, attestation…)", icon: "📑" },
     { k: "criminalRecord", label: "Casier judiciaire (B3, moins de 3 mois)", icon: "📄" },
@@ -3627,7 +3685,7 @@ function StudentEnroll({
           value={nirFocus ? p.nir : maskNir(p.nir)}
           onFocus={() => setNirFocus(true)}
           onBlur={() => setNirFocus(false)}
-          onChange={(e) => setP({ ...p, nir: e.target.value.replace(/[^\d ]/g, "").slice(0, 21) })}
+          onChange={(e) => setP({ ...p, nir: formatNir(e.target.value) })}
           className={field + " w-full tracking-wider" + errCls(nirOk)}
         />
         <p className="text-xs text-muted-foreground mt-2">

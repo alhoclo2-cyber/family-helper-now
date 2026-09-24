@@ -59,6 +59,7 @@ export type Database = {
           housing_status: string
           iban_path: string | null
           id: string
+          id_card_back_path: string | null
           id_card_path: string | null
           last_name: string
           motivation: string
@@ -90,6 +91,7 @@ export type Database = {
           housing_status?: string
           iban_path?: string | null
           id?: string
+          id_card_back_path?: string | null
           id_card_path?: string | null
           last_name: string
           motivation?: string
@@ -121,6 +123,7 @@ export type Database = {
           housing_status?: string
           iban_path?: string | null
           id?: string
+          id_card_back_path?: string | null
           id_card_path?: string | null
           last_name?: string
           motivation?: string
@@ -284,7 +287,12 @@ export type Database = {
         | "rejected"
         | "changes_requested"
       client_doc_status: "missing" | "pending" | "validated" | "rejected"
-      client_doc_type: "rib" | "identity" | "proof_of_address"
+      client_doc_type:
+        | "rib"
+        | "identity"
+        | "proof_of_address"
+        | "identity_front"
+        | "identity_back"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -420,7 +428,13 @@ export const Constants = {
         "changes_requested",
       ],
       client_doc_status: ["missing", "pending", "validated", "rejected"],
-      client_doc_type: ["rib", "identity", "proof_of_address"],
+      client_doc_type: [
+        "rib",
+        "identity",
+        "proof_of_address",
+        "identity_front",
+        "identity_back",
+      ],
     },
   },
 } as const

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/auth";
 
-type DocType = "rib" | "identity" | "proof_of_address";
+type DocType = "rib" | "identity" | "identity_front" | "identity_back" | "proof_of_address";
 type DocStatus = "missing" | "pending" | "validated" | "rejected";
 
 type DocRow = {
@@ -20,7 +20,8 @@ const DOCS: { type: DocType; label: string; hint: string }[] = [
     label: "RIB",
     hint: "Nécessaire à l'activation de l'API URSSAF/CESU+ pour le prélèvement automatique du reste à charge.",
   },
-  { type: "identity", label: "Pièce d'identité", hint: "Nécessaire à la déclaration URSSAF." },
+  { type: "identity_front", label: "Pièce d'identité — recto", hint: "Nécessaire à la déclaration URSSAF." },
+  { type: "identity_back", label: "Pièce d'identité — verso", hint: "Nécessaire à la déclaration URSSAF." },
   {
     type: "proof_of_address",
     label: "Justificatif de domicile",

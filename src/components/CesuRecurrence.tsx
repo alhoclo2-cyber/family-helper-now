@@ -7,7 +7,7 @@ import type { ContractCheckResult } from "@/lib/contractCompliance";
    (Article L. 1271-5 du Code du travail)
 ------------------------------------------------------------------- */
 
-function Modal({ children, onClose, dismissible = true }: { children: React.ReactNode; onClose: () => void; dismissible?: boolean }) {
+function Modal({ children, onClose, dismissible = true, closeLabel = "Fermer" }: { children: React.ReactNode; onClose: () => void; dismissible?: boolean; closeLabel?: string }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-foreground/50 p-3">
       <div className="w-full max-w-[440px] max-h-[85vh] overflow-y-auto rounded-3xl bg-card border-2 border-border p-5 text-left">
@@ -18,7 +18,7 @@ function Modal({ children, onClose, dismissible = true }: { children: React.Reac
             onClick={onClose}
             className="w-full mt-3 py-3 rounded-2xl border-2 border-border font-bold text-sm"
           >
-            Fermer
+            {closeLabel}
           </button>
         )}
       </div>
@@ -90,7 +90,7 @@ export function CesuRecurrenceModal({
   const both = check.weeklyHoursExceeded && check.consecutiveWeeksReached;
 
   return (
-    <Modal onClose={onClose} dismissible={dismissible}>
+    <Modal onClose={onClose} dismissible={dismissible} closeLabel="✏️ Modifier ma demande">
       <p className="text-lg font-black">⚠️ Contrat de travail écrit requis</p>
       <p className="text-sm mt-2 leading-relaxed">
         {both ? (
