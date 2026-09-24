@@ -735,7 +735,7 @@ function FamilyForm({
     if (!w) return 12;
     const d = new Date(w);
     const startMin = d.getHours() * 60 + d.getMinutes();
-    return Math.max(1, Math.min(12, Math.floor((MISSION_END_LIMIT_MIN - startMin) / 60)));
+    return Math.min(12, Math.floor((MISSION_END_LIMIT_MIN - startMin) / 60));
   };
   const missionStartMin = when ? new Date(when).getHours() * 60 + new Date(when).getMinutes() : 12 * 60;
   // En mode asap, la mission démarre maintenant : on référence l'heure actuelle.
@@ -745,7 +745,7 @@ function FamilyForm({
       : missionStartMin;
   const maxDurationAllowed =
     mode === "asap"
-      ? Math.max(1, Math.floor((MISSION_END_LIMIT_MIN - referenceStartMin) / 60))
+      ? Math.floor((MISSION_END_LIMIT_MIN - referenceStartMin) / 60)
       : maxDurationFor(when);
   const nightBlocked =
     referenceStartMin < MISSION_START_LIMIT_MIN ||
