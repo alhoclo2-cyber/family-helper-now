@@ -696,6 +696,7 @@ function FamilyForm({
   onBack,
   initial,
   editId,
+  inPlace,
 }: {
   mode: "asap" | "scheduled";
   onSubmit: () => void;
@@ -725,11 +726,11 @@ function FamilyForm({
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
   const [when, setWhen] = useState<string>(defaultSched());
-  const minWhen = (() => {
+  const [minWhen] = useState(() => {
     const d = new Date(Date.now() + 30 * 60 * 1000);
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  })();
+  });
 
   // Solélia ne propose pas de missions de nuit : fin de mission au plus tard à 22h30,
   // début au plus tôt à 7h00. Les constantes sont partagées au niveau module.
@@ -1356,7 +1357,7 @@ function FamilyForm({
               setWhenError(false);
               setDurationHours((d) => Math.min(d, maxDurationFor(e.target.value)));
             }}
-            className={`w-full px-5 py-4 rounded-2xl border-2 bg-card text-lg outline-none ${
+            className={`block w-full min-w-0 min-h-[60px] appearance-none px-5 py-4 rounded-2xl border-2 bg-card text-lg outline-none ${
               whenError ? "border-destructive" : "border-border focus:border-primary"
             }`}
           />
