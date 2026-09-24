@@ -43,6 +43,13 @@
       "when": 1790054540068,
       "tag": "0005_mission_payments_retry_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790235383150,
+      "tag": "0006_id_recto_verso",
+      "breakpoints": true
     }
   ]
 }
