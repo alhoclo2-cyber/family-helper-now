@@ -493,9 +493,18 @@ function MandatairePanel() {
 
 /* ---------------- FAMILY ---------------- */
 
+// Solélia ne propose pas de missions de nuit : fin de mission au plus tard à 22h30,
+// début au plus tôt à 7h00. Shared par FamilyFlow (blocage au clic) et FamilyForm.
+const MISSION_START_LIMIT_MIN = 7 * 60; // 7h00
+const MISSION_END_LIMIT_MIN = 22 * 60 + 30; // 22h30
+// 20h30 — tient compte du délai de réponse (jusqu'à 20 min) et d'arrivée (~10 min)
+// du compagnon avant le début réel de la mission.
+const MISSION_BUTTON_CUTOFF_MIN = 20 * 60 + 30;
+
 function FamilyFlow() {
   const [step, setStep] = useState<"home" | "form" | "wait" | "account">("home");
   const [requestMode, setRequestMode] = useState<"asap" | "scheduled">("asap");
+  const [nightClosed, setNightClosed] = useState(false);
   const [simulateNoAnswer, setSimulateNoAnswer] = useState(false);
   const [editRequest, setEditRequest] = useState<Request | null>(null);
   const currentId = useStore((s) => s.currentRequestId);
@@ -589,8 +598,29 @@ function FamilyFlow() {
             <li>Sans engagement.</li>
           </ul>
         </div>
+        {nightClosed && (
+          <div className="w-full bg-destructive/10 border-2 border-destructive/40 rounded-2xl p-4 text-center">
+            <p className="text-sm font-semibold text-destructive">
+              Solélia ne propose pas de mission entre 22h30 et 7h00. Revenez sur la plateforme dans cette plage horaire
+              pour réserver un compagnon.
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              En cas d'urgence vitale, composez le 15 (SAMU).
+            </p>
+            <button type="button" onClick={() => setNightClosed(false)} className="mt-3 text-xs font-semibold underline">
+              Fermer
+            </button>
+          </div>
+        )}
         <button
-          onClick={() => { setRequestMode("asap"); setSimulateNoAnswer(false); setStep("form"); }}
+          onClick={() => {
+            const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+            if (nowMin < MISSION_START_LIMIT_MIN || nowMin >= MISSION_BUTTON_CUTOFF_MIN) {
+              setNightClosed(true);
+              return;
+            }
+            setRequestMode("asap"); setSimulateNoAnswer(false); setStep("form");
+          }}
           className="btn-huge bg-primary text-primary-foreground hover:brightness-110 min-h-[180px] w-full flex flex-col items-center justify-center gap-2"
         >
           <span className="text-5xl">⚡</span>
@@ -700,9 +730,7 @@ function FamilyForm({
   })();
 
   // Solélia ne propose pas de missions de nuit : fin de mission au plus tard à 22h30,
-  // début au plus tôt à 7h00.
-  const MISSION_START_LIMIT_MIN = 7 * 60;
-  const MISSION_END_LIMIT_MIN = 22 * 60 + 30;
+  // début au plus tôt à 7h00. Les constantes sont partagées au niveau module.
   const maxDurationFor = (w: string) => {
     if (!w) return 12;
     const d = new Date(w);
@@ -710,10 +738,18 @@ function FamilyForm({
     return Math.max(1, Math.min(12, Math.floor((MISSION_END_LIMIT_MIN - startMin) / 60)));
   };
   const missionStartMin = when ? new Date(when).getHours() * 60 + new Date(when).getMinutes() : 12 * 60;
-  const maxDurationAllowed = maxDurationFor(when);
+  // En mode asap, la mission démarre maintenant : on référence l'heure actuelle.
+  const referenceStartMin =
+    mode === "asap"
+      ? new Date().getHours() * 60 + new Date().getMinutes()
+      : missionStartMin;
+  const maxDurationAllowed =
+    mode === "asap"
+      ? Math.max(1, Math.floor((MISSION_END_LIMIT_MIN - referenceStartMin) / 60))
+      : maxDurationFor(when);
   const nightBlocked =
-    missionStartMin < MISSION_START_LIMIT_MIN ||
-    missionStartMin + durationHours * 60 > MISSION_END_LIMIT_MIN;
+    referenceStartMin < MISSION_START_LIMIT_MIN ||
+    referenceStartMin + durationHours * 60 > MISSION_END_LIMIT_MIN;
 
   const [autoSearch, setAutoSearch] = useState<boolean | null>(
     initial?.autoSearch !== undefined ? initial.autoSearch : null,
@@ -920,6 +956,12 @@ function FamilyForm({
     // Aucune mission de nuit : la mission doit se terminer au plus tard à 22h30.
     if (mode === "scheduled" && nightBlocked) return;
 
+    // Filet de sécurité en mode asap : recalcul au moment du clic, l'affichage peut être obsolète.
+    if (mode === "asap") {
+      const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+      if (nowMin < MISSION_START_LIMIT_MIN || nowMin + durationHours * 60 > MISSION_END_LIMIT_MIN) return;
+    }
+
     if (mode === "scheduled" && autoSearch === false && pickedCompanion) {
       const check = runComplianceCheck(pickedCompanion);
       if (check?.requiresContract) {
@@ -937,6 +979,13 @@ function FamilyForm({
       <div className={`rounded-2xl p-3 text-sm font-semibold text-center ${mode === "asap" ? "bg-primary/10 text-primary" : "bg-accent text-foreground"}`}>
         {mode === "asap" ? "🆘 Urgence — maintenant" : "📅 Prendre un rendez-vous"}
       </div>
+      {mode === "asap" && nightBlocked && (
+        <p className="text-xs font-semibold text-destructive">
+          Solélia ne propose pas de mission au-delà de 22h30 ni avant 7h00. Pour un besoin urgent de nuit,
+          rapprochez-vous d'un service de soins infirmiers à domicile ou d'une structure spécialisée.
+          En cas d'urgence vitale, composez le 15 (SAMU).
+        </p>
+      )}
       <div>
         <label className="block text-lg font-bold mb-3">De quoi avez-vous besoin ?</label>
         <div className="grid grid-cols-2 gap-3">
