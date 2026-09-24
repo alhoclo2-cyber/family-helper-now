@@ -100,6 +100,8 @@ export type Request = {
   status: "searching" | "accepted" | "cancelled";
   cancelledBy?: "family" | "companion";
   refunded?: boolean;
+  refundAmount?: number; // remboursement partiel simulé (annulation RDV à moins de 24 h)
+  refundReason?: string;
   paid?: boolean; // paiement du forfait effectué OU carte enregistrée (le RDV est alors confirmé)
   deferredCharge?: boolean; // RDV à plus de 24 h : carte enregistrée, débit des 6 € différé
   scheduledChargeAt?: number; // date/heure prévue du débit des frais de service (J-24 h)
