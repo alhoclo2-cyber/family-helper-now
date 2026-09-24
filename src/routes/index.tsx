@@ -671,6 +671,7 @@ function FamilyFlow() {
         mode={editRequest ? (editRequest.scheduledAt ? "scheduled" : "asap") : requestMode}
         initial={editRequest}
         editId={editRequest?.id}
+        inPlace={!!editRequest?.paid && !editRequest?.scheduledAt}
         onSubmit={() => { setEditRequest(null); setStep("wait"); }}
         onBack={() => (editRequest ? (setEditRequest(null), setStep("wait")) : setStep("home"))}
       />
@@ -695,12 +696,14 @@ function FamilyForm({
   onBack,
   initial,
   editId,
+  inPlace,
 }: {
   mode: "asap" | "scheduled";
   onSubmit: () => void;
   onBack: () => void;
   initial?: Request | null; // demande existante à modifier (données pré-remplies)
   editId?: string; // id de la demande remplacée à la validation
+  inPlace?: boolean; // commande payée : mise à jour sur le même id, sans recréation
 }) {
   // Extraction des commissions stockées dans extraInfo lors d'une édition
   const parsed = (() => {
@@ -723,11 +726,11 @@ function FamilyForm({
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
   const [when, setWhen] = useState<string>(defaultSched());
-  const minWhen = (() => {
+  const [minWhen] = useState(() => {
     const d = new Date(Date.now() + 30 * 60 * 1000);
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  })();
+  });
 
   // Solélia ne propose pas de missions de nuit : fin de mission au plus tard à 22h30,
   // début au plus tôt à 7h00. Les constantes sont partagées au niveau module.
@@ -837,7 +840,7 @@ function FamilyForm({
     const scheduledAt = mode === "scheduled" ? new Date(when).getTime() : null;
     const dh = durationHours;
     const isParcel = need === "Retrait ou dépôt d'un colis";
-    store.createRequest({
+    const data: Parameters<typeof store.createRequest>[0] = {
       need,
       address,
       phone,
@@ -874,16 +877,25 @@ function FamilyForm({
           : need === "Compagnie/Présence" && commissions.length > 0
             ? commissionCertified
             : undefined,
-    });
+    };
+    if (inPlace && editId) {
+      // Commande confirmée et payée : vraie mise à jour sur le même id
+      // (paid, student, statut et créneau conservés).
+      const { scheduledAt: _s, flow: _f, autoSearch: _a, preferredCompanionId: _p, ...patch } = data;
+      store.updateRequest(editId, patch);
+      onSubmit();
+      return;
+    }
+    store.createRequest(data);
     // En cas de modification, l'ancienne demande est remplacée par la nouvelle.
     if (editId) store.discardRequest(editId);
     onSubmit();
   };
 
   // Injecte les missions fictives du panneau de simulation puis lance le contrôle réel.
-  const runComplianceCheck = (companionId: string): ContractCheckResult | null => {
+  const runComplianceCheck = (companionId: string, simOverride?: string): ContractCheckResult | null => {
     const bookingTs = new Date(when).getTime();
-    const target = simCompanion || companionId;
+    const target = simOverride ?? (simCompanion || companionId);
     const sims: Request[] = [];
     const weekStart = startOfWeek(new Date(bookingTs), { weekStartsOn: 1 });
     const companionObj = COMPANIONS.find((c) => c.id === target);
@@ -1345,7 +1357,7 @@ function FamilyForm({
               setWhenError(false);
               setDurationHours((d) => Math.min(d, maxDurationFor(e.target.value)));
             }}
-            className={`w-full px-5 py-4 rounded-2xl border-2 bg-card text-lg outline-none ${
+            className={`block w-full min-w-0 min-h-[60px] appearance-none px-5 py-4 rounded-2xl border-2 bg-card text-lg outline-none ${
               whenError ? "border-destructive" : "border-border focus:border-primary"
             }`}
           />
@@ -1565,7 +1577,9 @@ function FamilyForm({
           }}
           onSwitchCompanion={(id) => {
             setPickedCompanion(id);
-            const next = runComplianceCheck(id);
+            // Le panneau de simulation suit le nouveau compagnon : le contrôle porte sur lui.
+            setSimCompanion(id);
+            const next = runComplianceCheck(id, id);
             if (next?.requiresContract) {
               setComplianceCheck(next);
             } else {
@@ -1661,7 +1675,7 @@ function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolea
             value={newWhen}
             onChange={(e) => { setNewWhen(e.target.value); setReschedule("idle"); }}
             disabled={reschedule === "checking"}
-            className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
+            className="block w-full min-w-0 min-h-[52px] appearance-none px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
           />
           {reschedule === "checking" && (
             <p className="text-sm font-semibold text-primary">🔎 Recherche d'un compagnon disponible sur ce créneau…</p>
@@ -1721,8 +1735,8 @@ function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolea
           <p className="text-sm font-bold">{free ? "Annulation gratuite" : "Annulation tardive"}</p>
           <p className="text-sm text-muted-foreground mt-1">
             {free
-              ? "Vous annulez plus de 24 h avant le rendez-vous : remboursement intégral sous 3 jours ouvrés."
-              : `Il reste moins de 24 h avant le rendez-vous : ${paid ? "le paiement ne sera pas remboursé." : "le montant réglé ne sera pas remboursé."}`}
+              ? "Vous annulez plus de 24h avant le rendez-vous : aucun frais ne vous sera prélevé."
+              : `Il reste moins de 24 h avant le rendez-vous. Après l'annulation, vous pourrez demander un remboursement de ${formatPrice(5)} € (${formatPrice(1)} € de frais d'opération retenus).`}
           </p>
           <label className="block text-xs font-semibold mt-3">Motif de l'annulation</label>
           <select
@@ -1810,6 +1824,76 @@ function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolea
   );
 }
 
+const LATE_REFUND_AMOUNT = 5;
+const LATE_REFUND_FEE = 1;
+
+// Annulation à moins de 24 h (Prise de RDV) : remboursement partiel sur demande.
+// Simulation : aucun appel Stripe réel (remboursement de 5,00 € sur 6,00 €).
+function LateRefundRequest({ request }: { request: Request }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  if (request.refundAmount)
+    return (
+      <div className="w-full rounded-2xl border-2 border-success bg-success/10 p-4 text-left">
+        <p className="text-sm font-bold text-success">✅ Votre demande a été prise en compte.</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Remboursement de {formatPrice(request.refundAmount)} € en cours.
+        </p>
+      </div>
+    );
+  if (!open)
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="w-full py-4 rounded-2xl border-2 border-primary text-primary font-bold"
+      >
+        Demander un remboursement
+      </button>
+    );
+  return (
+    <div className="w-full rounded-2xl border-2 border-border bg-card p-4 text-left">
+      <p className="text-sm font-bold">Demande de remboursement</p>
+      <p className="text-sm text-muted-foreground mt-1">
+        Un montant de {formatPrice(LATE_REFUND_FEE)} € correspondant aux frais de l'opération sera retenu — vous
+        serez remboursé de {formatPrice(LATE_REFUND_AMOUNT)} € sur les {formatPrice(SERVICE_FEE)} € réglés.
+      </p>
+      <label className="block text-xs font-semibold mt-3">Motif de l'annulation (obligatoire)</label>
+      <textarea
+        value={reason}
+        onChange={(e) => setReason(e.target.value.slice(0, 300))}
+        rows={3}
+        maxLength={300}
+        placeholder="Expliquez brièvement la raison de votre annulation"
+        className="w-full mt-1 px-3 py-2 rounded-xl border-2 border-border bg-card text-sm"
+      />
+      <div className="grid grid-cols-2 gap-2 mt-3">
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="py-3 rounded-2xl border-2 border-border bg-card font-bold text-sm"
+        >
+          Revenir
+        </button>
+        <button
+          type="button"
+          disabled={!reason.trim()}
+          onClick={() =>
+            store.updateRequest(request.id, {
+              refundAmount: LATE_REFUND_AMOUNT,
+              refundReason: reason.trim(),
+            })
+          }
+          className="py-3 rounded-2xl bg-primary text-primary-foreground font-bold text-sm disabled:opacity-50"
+        >
+          Valider
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
 
 const SOS_TIMEOUT_MS = 20 * 60 * 1000; // 20 min sans réponse sur un besoin rapide
 const SCHEDULED_SOON_TIMEOUT_MS = 4 * 60 * 60 * 1000; // rendez-vous à moins de 48 h
@@ -1837,7 +1921,7 @@ function FamilyWait({
   onEditRequest: (req?: Request) => void;
   onDone: () => void;
 }) {
-  const [paid, setPaid] = useState(false);
+  const [paid, setPaid] = useState(() => !!request?.paid);
   const [contractOk, setContractOk] = useState(false);
   const [showPay, setShowPay] = useState(false);
   const [salaireDraft, setSalaireDraft] = useState<string | null>(null);
@@ -1888,10 +1972,11 @@ function FamilyWait({
         <p className="text-base text-muted-foreground">
           {paidAlready
             ? request.refunded
-              ? "Annulation à plus de 24 h : vous serez intégralement remboursé sous 3 jours ouvrés."
-              : "Annulation à moins de 24 h : conformément aux conditions, le paiement n'est pas remboursé."
+              ? "Vous annulez plus de 24h avant le rendez-vous : aucun frais ne vous sera prélevé."
+              : "Annulation à moins de 24 h : les frais de service ont été réglés."
             : "Demande en cours annulée. Vous pouvez maintenant modifier vos critères et relancer la recherche."}
         </p>
+        {paidAlready && !request.refunded && !!request.scheduledAt && <LateRefundRequest request={request} />}
         {!paidAlready && (
           <button
             onClick={() => { store.discardRequest(request.id); onEditRequest(request); }}
@@ -2160,6 +2245,12 @@ function FamilyWait({
                 Une demande SOS ne peut être ni modifiée ni annulée pendant la recherche. Pour un besoin planifiable,
                 utilisez « Prendre un rendez-vous ».
               </p>
+              <a
+                href="mailto:solelia.accompagnement@gmail.com?subject=Emp%C3%AAchement%20grave%20-%20demande%20urgente"
+                className="block text-[11px] text-muted-foreground underline mt-2"
+              >
+                Empêchement grave (urgence, hospitalisation) ? Contactez Solélia
+              </a>
             </div>
           ) : (
             <ScheduleManageBlock request={request} paid={false} />
@@ -2282,12 +2373,29 @@ function FamilyWait({
                   </p>
                 </div>
               )}
-              <a
-                href={`tel:${request.phone}`}
-                className="btn-huge bg-success text-success-foreground text-center w-full"
-              >
-                📞 Appeler le compagnon
-              </a>
+              <div className="grid grid-cols-2 gap-2 w-full">
+                <a
+                  href={`tel:${request.phone}`}
+                  className="py-4 rounded-2xl bg-success text-success-foreground font-bold text-center"
+                >
+                  📞 Appeler le compagnon
+                </a>
+                <a
+                  href={`sms:${request.phone}`}
+                  className="py-4 rounded-2xl border-2 border-success text-success font-bold text-center"
+                >
+                  💬 Envoyer un SMS
+                </a>
+              </div>
+              {isSos && (
+                <button
+                  type="button"
+                  onClick={() => onEditRequest()}
+                  className="py-4 rounded-2xl border-2 border-primary text-primary font-bold text-sm w-full"
+                >
+                  ✏️ Modifier les informations de ma demande
+                </button>
+              )}
               <ThumbUpButton
                 given={!!request.thumbsGiven}
                 onGive={() => store.giveThumb(request.id)}
@@ -2467,14 +2575,41 @@ function PaymentScreen({
         <div className="flex flex-col gap-3">
           <input
             value={card}
-            onChange={(e) => setCard(e.target.value)}
-            placeholder="Numéro de carte"
+            onChange={(e) =>
+              setCard(
+                e.target.value
+                  .replace(/\D/g, "")
+                  .slice(0, 16)
+                  .replace(/(\d{4})(?=\d)/g, "$1 "),
+              )
+            }
+            placeholder="XXXX XXXX XXXX XXXX"
             inputMode="numeric"
+            autoComplete="cc-number"
+            maxLength={19}
             required
             className="w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
           />
           <div className="grid grid-cols-2 gap-3">
-            <input value={exp} onChange={(e) => setExp(e.target.value)} placeholder="MM/AA" required className="px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none" />
+            <input
+              value={exp}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, "").slice(0, 4);
+                // Suppression : ne pas réinsérer le « / » quand l'utilisateur efface.
+                const deleting = e.target.value.length < exp.length;
+                setExp(
+                  digits.length > 2 || (digits.length === 2 && !deleting)
+                    ? `${digits.slice(0, 2)}/${digits.slice(2)}`
+                    : digits,
+                );
+              }}
+              placeholder="MM/AA"
+              inputMode="numeric"
+              autoComplete="cc-exp"
+              maxLength={5}
+              required
+              className="px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none"
+            />
             <input value={cvc} onChange={(e) => setCvc(e.target.value)} placeholder="CVC" required className="px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none" />
           </div>
         </div>
