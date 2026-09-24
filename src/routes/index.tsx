@@ -493,9 +493,18 @@ function MandatairePanel() {
 
 /* ---------------- FAMILY ---------------- */
 
+// Solélia ne propose pas de missions de nuit : fin de mission au plus tard à 22h30,
+// début au plus tôt à 7h00. Shared par FamilyFlow (blocage au clic) et FamilyForm.
+const MISSION_START_LIMIT_MIN = 7 * 60; // 7h00
+const MISSION_END_LIMIT_MIN = 22 * 60 + 30; // 22h30
+// 20h30 — tient compte du délai de réponse (jusqu'à 20 min) et d'arrivée (~10 min)
+// du compagnon avant le début réel de la mission.
+const MISSION_BUTTON_CUTOFF_MIN = 20 * 60 + 30;
+
 function FamilyFlow() {
   const [step, setStep] = useState<"home" | "form" | "wait" | "account">("home");
   const [requestMode, setRequestMode] = useState<"asap" | "scheduled">("asap");
+  const [nightClosed, setNightClosed] = useState(false);
   const [simulateNoAnswer, setSimulateNoAnswer] = useState(false);
   const [editRequest, setEditRequest] = useState<Request | null>(null);
   const currentId = useStore((s) => s.currentRequestId);
