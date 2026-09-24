@@ -956,6 +956,12 @@ function FamilyForm({
     // Aucune mission de nuit : la mission doit se terminer au plus tard à 22h30.
     if (mode === "scheduled" && nightBlocked) return;
 
+    // Filet de sécurité en mode asap : recalcul au moment du clic, l'affichage peut être obsolète.
+    if (mode === "asap") {
+      const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+      if (nowMin < MISSION_START_LIMIT_MIN || nowMin + durationHours * 60 > MISSION_END_LIMIT_MIN) return;
+    }
+
     if (mode === "scheduled" && autoSearch === false && pickedCompanion) {
       const check = runComplianceCheck(pickedCompanion);
       if (check?.requiresContract) {
@@ -973,6 +979,13 @@ function FamilyForm({
       <div className={`rounded-2xl p-3 text-sm font-semibold text-center ${mode === "asap" ? "bg-primary/10 text-primary" : "bg-accent text-foreground"}`}>
         {mode === "asap" ? "🆘 Urgence — maintenant" : "📅 Prendre un rendez-vous"}
       </div>
+      {mode === "asap" && nightBlocked && (
+        <p className="text-xs font-semibold text-destructive">
+          Solélia ne propose pas de mission au-delà de 22h30 ni avant 7h00. Pour un besoin urgent de nuit,
+          rapprochez-vous d'un service de soins infirmiers à domicile ou d'une structure spécialisée.
+          En cas d'urgence vitale, composez le 15 (SAMU).
+        </p>
+      )}
       <div>
         <label className="block text-lg font-bold mb-3">De quoi avez-vous besoin ?</label>
         <div className="grid grid-cols-2 gap-3">
