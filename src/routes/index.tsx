@@ -1583,7 +1583,7 @@ function FamilyForm({
           onSwitchCompanion={(id) => {
             setPickedCompanion(id);
             // Le nouveau compagnon est évalué sur ses données réelles (la simulation ne le suit pas).
-            const next = runComplianceCheck(id, simCompanion);
+            const next = runComplianceCheck(id, simCompanion || pickedCompanion);
             if (next?.requiresContract) {
               setComplianceCheck(next);
             } else {
