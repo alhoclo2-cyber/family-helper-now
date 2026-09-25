@@ -572,10 +572,7 @@ function FamilyFlow() {
               className="inline-flex items-center gap-1.5 rounded-full bg-accent border border-primary/20 px-3 py-1.5 text-xs font-semibold"
             >
               <span>{b.emoji}</span>
-              <span className="flex flex-col items-start leading-none">
-                <span>{b.label}</span>
-                {b.sub && <span className="text-[10px] text-muted-foreground font-medium mt-0.5">{b.sub}</span>}
-              </span>
+              <span className="leading-tight">{b.label}</span>
             </span>
           ))}
         </div>
