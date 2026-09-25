@@ -86,7 +86,7 @@ export type Request = {
   acknowledged?: boolean; // le client a cliqué sur « C'est noté ! »
   thumbsGiven?: boolean; // pouce levé attribué en fin de prestation
   declinedBy?: string[]; // compagnons ayant refusé
-  durationHours?: number; // durée demandée (spécifique à Compagnie/Présence)
+  durationHours?: number; // durée demandée
   parcelWeight?: string; // pour "Retrait ou dépôt d'un colis"
   parcelSize?: string;
   childLevel?: string; // niveau scolaire pour l'aide aux devoirs

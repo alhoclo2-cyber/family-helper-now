@@ -761,7 +761,6 @@ function FamilyForm({
   );
   const [escortDestination, setEscortDestination] = useState<string>(initial?.escortDestination ?? "À l'école");
   const [escortDetail, setEscortDetail] = useState<string>(initial?.escortDetail ?? "");
-  const [otherDetail, setOtherDetail] = useState<string>(initial?.otherDetail ?? "");
   const [extraInfo, setExtraInfo] = useState<string>(parsed.rest);
   const [missionInfo, setMissionInfo] = useState<string>(initial?.missionInfo ?? "");
   
@@ -871,7 +870,6 @@ function FamilyForm({
       childrenCount: isMultiChild ? childrenCount : undefined,
       escortDestination: isEscortChild ? escortDestination : undefined,
       escortDetail: isEscortChild && escortDestination === "Autre" ? escortDetail : undefined,
-      otherDetail: isOther ? otherDetail : undefined,
       extraInfo:
         [
           need === "Présence et Compagnie" && commissions.length > 0
@@ -1031,28 +1029,54 @@ function FamilyForm({
       )}
       <div>
         <label className="block text-lg font-bold mb-3">De quoi avez-vous besoin ?</label>
-        <div className="grid grid-cols-2 gap-3">
-          {needs.map((n) => (
-            <button
-              key={n.v}
-              type="button"
-              onClick={() => setNeed(n.v)}
-              className={`p-4 rounded-2xl border-2 text-left transition-all ${
-                need === n.v ? "border-primary bg-accent" : "border-border bg-card"
-              }`}
-            >
-              <div className="text-3xl mb-1">{n.icon}</div>
-              <NeedLabel need={n.v} />
-              {n.v === "Compagnie/Présence" && (
-                <p className="text-xs font-medium text-muted-foreground mt-1 leading-snug">
-                  {PRESENCE_SUBTITLE}
-                </p>
-              )}
-            </button>
-          ))}
+        <div className="flex flex-col gap-3">
+          {serviceCategories.map((category) => {
+            const isOpen = openCategory === category.title;
+            const containsSelection = category.services.some((service) => service.v === need);
+            return (
+              <div key={category.title} className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => setOpenCategory(isOpen ? "" : category.title)}
+                  aria-expanded={isOpen}
+                  className={`w-full min-h-16 px-4 py-3 rounded-2xl border-2 flex items-center gap-3 text-left transition-all ${
+                    containsSelection ? "border-primary bg-accent" : "border-border bg-card"
+                  }`}
+                >
+                  <span className="text-3xl" aria-hidden="true">{category.icon}</span>
+                  <span className="flex-1 text-base font-bold leading-tight">{category.title}</span>
+                  <span className="text-xl text-primary" aria-hidden="true">{isOpen ? "−" : "+"}</span>
+                </button>
+                {isOpen && (
+                  <div className="flex flex-col gap-2 pl-3">
+                    {category.services.map((service) => (
+                      <button
+                        key={service.v}
+                        type="button"
+                        onClick={() => setNeed(service.v)}
+                        className={`w-full min-h-16 px-4 py-3 rounded-2xl border-2 flex items-center gap-3 text-left transition-all ${
+                          need === service.v ? "border-primary bg-accent" : "border-border bg-card"
+                        }`}
+                      >
+                        <span className="text-2xl" aria-hidden="true">{service.icon}</span>
+                        <span className="flex-1">
+                          <NeedLabel need={service.v} />
+                          {service.v === "Présence et Compagnie" && (
+                            <span className="block text-xs font-medium text-muted-foreground mt-1 leading-snug">
+                              {PRESENCE_SUBTITLE}
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
-      {need === "Compagnie/Présence" && (
+      {need === "Présence et Compagnie" && (
         <div className="flex flex-col gap-3">
           <label className="block text-lg font-bold">Petites commissions en complément (optionnel)</label>
           <div className="grid grid-cols-2 gap-2">
@@ -1091,24 +1115,6 @@ function FamilyForm({
             </label>
           )}
           <Missing ok={okCommission} text="Certification obligatoire" />
-        </div>
-      )}
-      {isOther && (
-        <div>
-          <label className="block text-lg font-bold mb-2">Précisez votre besoin</label>
-          <textarea
-            value={otherDetail}
-            onChange={(e) => setOtherDetail(e.target.value)}
-            placeholder="Décrivez en quelques mots le service souhaité"
-            rows={3}
-            className={"w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none" + errCls(okOther)}
-          />
-          <Missing ok={okOther} text="Champ obligatoire" />
-          <p className="text-xs text-muted-foreground mt-2">
-            Le besoin doit tenir dans le cadre d'une mission d'entraide du quotidien, réalisable par une personne
-            non professionnelle, en toute sécurité.
-          </p>
-          <ServiceLimitsNotice />
         </div>
       )}
       {isChildNeed && (
@@ -2528,8 +2534,7 @@ function PaymentScreen({
         <p className="text-xs text-muted-foreground mt-2">
           Durée prévue : {hours}h — salaire estimé {formatPrice(salaireNum * hours)} €
         </p>
-        {(need === "Garde d'enfants (à partir de 3 ans)" ||
-          need === "Accompagner un enfant (à partir de 3 ans)") &&
+        {(need === "Garde d'enfants" || need === "Enfants de plus de 3 ans") &&
           (childAges?.length ?? 0) > 1 && (
             <p className="text-xs text-muted-foreground mt-2">
               👶 Pour {childAges!.length} enfants, il est habituel de majorer le salaire d'environ 1 €/h par
