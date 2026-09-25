@@ -128,24 +128,12 @@ function Header({ mode, setMode, session }: { mode: Mode; setMode: (m: Mode) => 
 }
 
 function NeedLabel({ need }: { need: NeedType }) {
-  if (need === "Accompagnement sorties extérieures") {
-    return <div className="text-sm font-semibold leading-tight">{need}</div>;
-  }
   const paren = need.match(/^(.*?)\s*\((.*)\)$/);
   if (paren) {
     return (
       <div className="text-base font-semibold leading-tight">
         <div>{paren[1]}</div>
         <div className="text-xs font-medium text-muted-foreground">{paren[2]}</div>
-      </div>
-    );
-  }
-  const [first, second] = need.split("/");
-  if (second) {
-    return (
-      <div className="text-base font-semibold leading-tight">
-        <div>{first}</div>
-        <div>{second}</div>
       </div>
     );
   }
@@ -572,11 +560,11 @@ function FamilyFlow() {
         </div>
         <div className="w-full flex flex-wrap justify-center gap-2">
           {[
-            { emoji: "👵", label: "Nos aînés" },
+            { emoji: "👵", label: "Seniors autonomes" },
             { emoji: "👶", label: "Nos enfants (dès 3 ans)" },
             { emoji: "🤰", label: "Grossesse & maternité" },
             { emoji: "🏥", label: "Retour d'hospitalisation & convalescence" },
-            { emoji: "🤝", label: "Handicap & invalidité", sub: "(temporaire ou permanent)" },
+            { emoji: "🤕", label: "Invalidité temporaire" },
             { emoji: "🩹", label: "Blessures & imprévus" },
           ].map((b) => (
             <span
@@ -713,7 +701,7 @@ function FamilyForm({
     if (!m) return { commissions: [] as string[], rest: text };
     return { commissions: m[1].split(", ").filter(Boolean), rest: (m[2] ?? "").trim() };
   })();
-  const [need, setNeed] = useState<NeedType>(initial?.need ?? "Compagnie/Présence");
+  const [need, setNeed] = useState<NeedType>(initial?.need ?? "Présence et Compagnie");
   const [address, setAddress] = useState(initial?.address ?? "");
   const [phone, setPhone] = useState(initial?.phone ?? "");
   const [durationHours, setDurationHours] = useState<number>(initial?.durationHours ?? 1);
@@ -788,17 +776,41 @@ function FamilyForm({
   const [commissions, setCommissions] = useState<string[]>(parsed.commissions);
   const [commissionCertified, setCommissionCertified] = useState(parsed.commissions.length > 0);
 
-  const needs: { v: NeedType; icon: string }[] = [
-    { v: "Compagnie/Présence", icon: "🤝" },
-    { v: "Ménage/Rangement intérieur", icon: "🧹" },
-    { v: "Jardinage/Rangement extérieur", icon: "🌿" },
-    { v: "Aide au repas", icon: "🍽️" },
-    { v: "Accompagnement sorties extérieures", icon: "🌳" },
-    { v: "Aide aux devoirs (primaire au lycée)", icon: "📚" },
-    { v: "Garde d'enfants (à partir de 3 ans)", icon: "🧸" },
-    { v: "Accompagner un enfant (à partir de 3 ans)", icon: "🚸" },
-    { v: "Autre (à préciser)", icon: "✏️" },
+  const serviceCategories: { title: string; icon: string; services: { v: NeedType; icon: string }[] }[] = [
+    {
+      title: "À domicile",
+      icon: "🏠",
+      services: [
+        { v: "Présence et Compagnie", icon: "🤝" },
+        { v: "Aide à la préparation des repas", icon: "🍲" },
+        { v: "Ménage / rangement intérieur", icon: "🧹" },
+        { v: "Jardinage extérieur", icon: "🌿" },
+        { v: "Rangement extérieur", icon: "🧺" },
+        { v: "Petit bricolage", icon: "🔧" },
+        { v: "Aide administrative", icon: "📄" },
+        { v: "Aide informatique & smartphone", icon: "📱" },
+      ],
+    },
+    {
+      title: "Accompagnement extérieur",
+      icon: "🚶",
+      services: [
+        { v: "Invalidité temporaire", icon: "🤕" },
+        { v: "Enfants de plus de 3 ans", icon: "🚸" },
+      ],
+    },
+    {
+      title: "Enfants de plus de 3 ans à domicile",
+      icon: "🧸",
+      services: [
+        { v: "Garde d'enfants", icon: "🧸" },
+        { v: "Aide aux devoirs", icon: "📚" },
+      ],
+    },
   ];
+  const categoryForNeed = (selected: NeedType) =>
+    serviceCategories.find((category) => category.services.some((service) => service.v === selected))?.title ?? "À domicile";
+  const [openCategory, setOpenCategory] = useState(() => categoryForNeed(initial?.need ?? "Présence et Compagnie"));
 
   const PRESENCE_SUBTITLE =
     "Présence bienveillante au domicile (inclut dans son prolongement les petites commissions : courses, pharmacie, colis, promenade d'animaux)";
@@ -809,11 +821,9 @@ function FamilyForm({
     "🐕 Animaux (sortir ou nourrir)",
   ];
 
-  const isOther = need === "Autre (à préciser)";
-
-  const isHomework = need === "Aide aux devoirs (primaire au lycée)";
-  const isChildcare = need === "Garde d'enfants (à partir de 3 ans)";
-  const isEscortChild = need === "Accompagner un enfant (à partir de 3 ans)";
+  const isHomework = need === "Aide aux devoirs";
+  const isChildcare = need === "Garde d'enfants";
+  const isEscortChild = need === "Enfants de plus de 3 ans";
   const isChildNeed = isHomework || isChildcare || isEscortChild;
   const isMultiChild = isChildcare || isEscortChild;
   const childCountNum =
@@ -829,8 +839,8 @@ function FamilyForm({
       while (next.length < n) next.push("");
       return next;
     });
-  const isCleaning = need === "Ménage/Rangement intérieur";
-  const isGardening = need === "Jardinage/Rangement extérieur";
+  const isCleaning = need === "Ménage / rangement intérieur";
+  const isGardening = need === "Jardinage extérieur" || need === "Rangement extérieur";
 
   const [continuity, setContinuity] = useState(initial?.continuityCertified ?? false);
   const isOutdoor =
@@ -864,7 +874,7 @@ function FamilyForm({
       otherDetail: isOther ? otherDetail : undefined,
       extraInfo:
         [
-          need === "Compagnie/Présence" && commissions.length > 0
+          need === "Présence et Compagnie" && commissions.length > 0
             ? `Commissions demandées dans le prolongement de la présence : ${commissions.join(", ")}`
             : "",
           extraInfo.trim(),
@@ -875,7 +885,7 @@ function FamilyForm({
       continuityCertified:
         isOutdoor
           ? continuity
-          : need === "Compagnie/Présence" && commissions.length > 0
+          : need === "Présence et Compagnie" && commissions.length > 0
             ? commissionCertified
             : undefined,
     };
@@ -905,7 +915,7 @@ function FamilyForm({
         const d = subWeeks(weekStart, i).getTime() + 24 * 60 * 60 * 1000;
         sims.push({
           id: `sim-w${i}`,
-          need: "Compagnie/Présence",
+          need: "Présence et Compagnie",
           address: "Simulation",
           city: "Simulation",
           phone: "",
@@ -921,7 +931,7 @@ function FamilyForm({
         const d = weekStart.getTime() + 60 * 60 * 1000;
         sims.push({
           id: "sim-h",
-          need: "Compagnie/Présence",
+          need: "Présence et Compagnie",
           address: "Simulation",
           city: "Simulation",
           phone: "",
@@ -946,14 +956,13 @@ function FamilyForm({
   const [showErrors, setShowErrors] = useState(false);
   const okAddress = !!address.trim();
   const okPhone = !!phone.trim();
-  const okOther = !(need === "Autre (à préciser)" && !otherDetail.trim());
-  const okCommission = !(need === "Compagnie/Présence" && commissions.length > 0 && !commissionCertified);
+  const okCommission = !(need === "Présence et Compagnie" && commissions.length > 0 && !commissionCertified);
   const okContinuity = !(isOutdoor && !continuity);
   const okChildAge = !(isHomework && (!childAge.trim() || Number(childAge) < 3));
   const okChildAgeAt = (i: number) => !(isMultiChild && (!(childAges[i] ?? "").trim() || Number(childAges[i]) < 3));
   const okWho = !(mode === "scheduled" && (autoSearch === null || (!autoSearch && !pickedCompanion)));
   const formValid =
-    okAddress && okPhone && okOther && okCommission && okContinuity && okChildAge &&
+    okAddress && okPhone && okCommission && okContinuity && okChildAge &&
     Array.from({ length: isMultiChild ? childCountNum : 0 }, (_, i) => okChildAgeAt(i)).every(Boolean) &&
     okWho && cguOk;
   const bad = (ok: boolean) => showErrors && !ok;
@@ -969,9 +978,7 @@ function FamilyForm({
     }
     setShowErrors(false);
     if (!address.trim() || !phone.trim()) return;
-    if (need === "Autre (à préciser)" && !otherDetail.trim()) return;
-    
-    if (need === "Compagnie/Présence" && commissions.length > 0 && !commissionCertified) return;
+    if (need === "Présence et Compagnie" && commissions.length > 0 && !commissionCertified) return;
     if (isOutdoor && !continuity) return;
     if (isHomework && (!childAge.trim() || Number(childAge) < 3)) return;
     if (
