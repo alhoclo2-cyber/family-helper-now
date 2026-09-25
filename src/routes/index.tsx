@@ -1034,7 +1034,15 @@ function FamilyForm({
               <div key={category.title} className="flex flex-col gap-2">
                 <button
                   type="button"
-                  onClick={() => setOpenCategory(isOpen ? "" : category.title)}
+                  onClick={() => {
+                    if (isOpen) {
+                      setOpenCategory("");
+                      return;
+                    }
+                    setOpenCategory(category.title);
+                    const firstService = category.services[0];
+                    if (firstService) setNeed(firstService.v);
+                  }}
                   aria-expanded={isOpen}
                   className={`w-full min-h-16 px-4 py-3 rounded-2xl border-2 flex items-center gap-3 text-left transition-all ${
                     containsSelection ? "border-primary bg-accent" : "border-border bg-card"
