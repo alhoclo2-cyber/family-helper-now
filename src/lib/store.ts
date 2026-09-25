@@ -2,20 +2,23 @@
 import { useRef, useSyncExternalStore } from "react";
 
 export type NeedType =
-  | "Compagnie/Présence"
+  | "Présence et Compagnie"
   | "Courses urgentes"
   | "Pharmacie"
-  | "Ménage/Rangement intérieur"
-  | "Jardinage/Rangement extérieur"
-  | "Aide au repas"
-  | "Accompagnement sorties extérieures"
+  | "Aide à la préparation des repas"
+  | "Ménage / rangement intérieur"
+  | "Jardinage extérieur"
+  | "Rangement extérieur"
+  | "Petit bricolage"
+  | "Aide administrative"
+  | "Aide informatique & smartphone"
+  | "Invalidité temporaire"
+  | "Enfants de plus de 3 ans"
   | "Sortir ou nourrir animal de compagnie"
   | "Arroser les plantes"
   | "Retrait ou dépôt d'un colis"
-  | "Aide aux devoirs (primaire au lycée)"
-  | "Garde d'enfants (à partir de 3 ans)"
-  | "Accompagner un enfant (à partir de 3 ans)"
-  | "Autre (à préciser)";
+  | "Garde d'enfants"
+  | "Aide aux devoirs";
 
 export type Companion = {
   id: string;
@@ -93,7 +96,7 @@ export type Request = {
   childrenCount?: string; // nombre d'enfants pour la garde
   escortDestination?: string; // destination pour l'accompagnement d'un enfant
   escortDetail?: string; // précision libre ("Autre")
-  otherDetail?: string; // précision libre pour le besoin "Autre (à préciser)"
+  otherDetail?: string; // conservé pour la compatibilité avec les anciennes demandes
   extraInfo?: string; // informations complémentaires libres (tous services) : code d'entrée, étage…
   missionInfo?: string; // précisions libres concernant la mission (tous services)
   continuityCertified?: boolean; // services extérieurs : continuité de l'aide à domicile
@@ -131,7 +134,7 @@ let state: {
     },
     {
       id: "seed-2",
-      need: "Compagnie/Présence",
+      need: "Présence et Compagnie",
       address: "3 avenue Foch, 69006 Lyon",
       city: "Lyon 6e",
       phone: "06 98 76 54 32",

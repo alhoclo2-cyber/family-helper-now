@@ -10,20 +10,18 @@ export type CompanionSettings = {
 };
 
 export const ALL_NEEDS: NeedType[] = [
-  "Compagnie/Présence",
-  "Courses urgentes",
-  "Pharmacie",
-  "Ménage/Rangement intérieur",
-  "Jardinage/Rangement extérieur",
-  "Aide au repas",
-  "Accompagnement sorties extérieures",
-  "Sortir ou nourrir animal de compagnie",
-  "Arroser les plantes",
-  "Retrait ou dépôt d'un colis",
-  "Aide aux devoirs (primaire au lycée)",
-  "Garde d'enfants (à partir de 3 ans)",
-  "Accompagner un enfant (à partir de 3 ans)",
-  "Autre (à préciser)",
+  "Présence et Compagnie",
+  "Aide à la préparation des repas",
+  "Ménage / rangement intérieur",
+  "Jardinage extérieur",
+  "Rangement extérieur",
+  "Petit bricolage",
+  "Aide administrative",
+  "Aide informatique & smartphone",
+  "Invalidité temporaire",
+  "Enfants de plus de 3 ans",
+  "Garde d'enfants",
+  "Aide aux devoirs",
 ];
 
 export const DEFAULT_SETTINGS: CompanionSettings = {
