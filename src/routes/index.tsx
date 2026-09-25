@@ -128,24 +128,12 @@ function Header({ mode, setMode, session }: { mode: Mode; setMode: (m: Mode) => 
 }
 
 function NeedLabel({ need }: { need: NeedType }) {
-  if (need === "Accompagnement sorties extérieures") {
-    return <div className="text-sm font-semibold leading-tight">{need}</div>;
-  }
   const paren = need.match(/^(.*?)\s*\((.*)\)$/);
   if (paren) {
     return (
       <div className="text-base font-semibold leading-tight">
         <div>{paren[1]}</div>
         <div className="text-xs font-medium text-muted-foreground">{paren[2]}</div>
-      </div>
-    );
-  }
-  const [first, second] = need.split("/");
-  if (second) {
-    return (
-      <div className="text-base font-semibold leading-tight">
-        <div>{first}</div>
-        <div>{second}</div>
       </div>
     );
   }
@@ -572,11 +560,11 @@ function FamilyFlow() {
         </div>
         <div className="w-full flex flex-wrap justify-center gap-2">
           {[
-            { emoji: "👵", label: "Nos aînés" },
+            { emoji: "👵", label: "Seniors autonomes" },
             { emoji: "👶", label: "Nos enfants (dès 3 ans)" },
             { emoji: "🤰", label: "Grossesse & maternité" },
             { emoji: "🏥", label: "Retour d'hospitalisation & convalescence" },
-            { emoji: "🤝", label: "Handicap & invalidité", sub: "(temporaire ou permanent)" },
+            { emoji: "🤕", label: "Invalidité temporaire" },
             { emoji: "🩹", label: "Blessures & imprévus" },
           ].map((b) => (
             <span
@@ -584,10 +572,7 @@ function FamilyFlow() {
               className="inline-flex items-center gap-1.5 rounded-full bg-accent border border-primary/20 px-3 py-1.5 text-xs font-semibold"
             >
               <span>{b.emoji}</span>
-              <span className="flex flex-col items-start leading-none">
-                <span>{b.label}</span>
-                {b.sub && <span className="text-[10px] text-muted-foreground font-medium mt-0.5">{b.sub}</span>}
-              </span>
+              <span className="leading-tight">{b.label}</span>
             </span>
           ))}
         </div>
@@ -713,7 +698,7 @@ function FamilyForm({
     if (!m) return { commissions: [] as string[], rest: text };
     return { commissions: m[1].split(", ").filter(Boolean), rest: (m[2] ?? "").trim() };
   })();
-  const [need, setNeed] = useState<NeedType>(initial?.need ?? "Compagnie/Présence");
+  const [need, setNeed] = useState<NeedType>(initial?.need ?? "Présence et Compagnie");
   const [address, setAddress] = useState(initial?.address ?? "");
   const [phone, setPhone] = useState(initial?.phone ?? "");
   const [durationHours, setDurationHours] = useState<number>(initial?.durationHours ?? 1);
@@ -773,7 +758,6 @@ function FamilyForm({
   );
   const [escortDestination, setEscortDestination] = useState<string>(initial?.escortDestination ?? "À l'école");
   const [escortDetail, setEscortDetail] = useState<string>(initial?.escortDetail ?? "");
-  const [otherDetail, setOtherDetail] = useState<string>(initial?.otherDetail ?? "");
   const [extraInfo, setExtraInfo] = useState<string>(parsed.rest);
   const [missionInfo, setMissionInfo] = useState<string>(initial?.missionInfo ?? "");
   
@@ -788,17 +772,41 @@ function FamilyForm({
   const [commissions, setCommissions] = useState<string[]>(parsed.commissions);
   const [commissionCertified, setCommissionCertified] = useState(parsed.commissions.length > 0);
 
-  const needs: { v: NeedType; icon: string }[] = [
-    { v: "Compagnie/Présence", icon: "🤝" },
-    { v: "Ménage/Rangement intérieur", icon: "🧹" },
-    { v: "Jardinage/Rangement extérieur", icon: "🌿" },
-    { v: "Aide au repas", icon: "🍽️" },
-    { v: "Accompagnement sorties extérieures", icon: "🌳" },
-    { v: "Aide aux devoirs (primaire au lycée)", icon: "📚" },
-    { v: "Garde d'enfants (à partir de 3 ans)", icon: "🧸" },
-    { v: "Accompagner un enfant (à partir de 3 ans)", icon: "🚸" },
-    { v: "Autre (à préciser)", icon: "✏️" },
+  const serviceCategories: { title: string; icon: string; services: { v: NeedType; icon: string }[] }[] = [
+    {
+      title: "À domicile",
+      icon: "🏠",
+      services: [
+        { v: "Présence et Compagnie", icon: "🤝" },
+        { v: "Aide à la préparation des repas", icon: "🍲" },
+        { v: "Ménage / rangement intérieur", icon: "🧹" },
+        { v: "Jardinage extérieur", icon: "🌿" },
+        { v: "Rangement extérieur", icon: "🧺" },
+        { v: "Petit bricolage", icon: "🔧" },
+        { v: "Aide administrative", icon: "📄" },
+        { v: "Aide informatique & smartphone", icon: "📱" },
+      ],
+    },
+    {
+      title: "Accompagnement extérieur",
+      icon: "🚶",
+      services: [
+        { v: "Invalidité temporaire", icon: "🤕" },
+        { v: "Enfants de plus de 3 ans", icon: "🚸" },
+      ],
+    },
+    {
+      title: "Enfants de plus de 3 ans à domicile",
+      icon: "🧸",
+      services: [
+        { v: "Garde d'enfants", icon: "🧸" },
+        { v: "Aide aux devoirs", icon: "📚" },
+      ],
+    },
   ];
+  const categoryForNeed = (selected: NeedType) =>
+    serviceCategories.find((category) => category.services.some((service) => service.v === selected))?.title ?? "À domicile";
+  const [openCategory, setOpenCategory] = useState(() => categoryForNeed(initial?.need ?? "Présence et Compagnie"));
 
   const PRESENCE_SUBTITLE =
     "Présence bienveillante au domicile (inclut dans son prolongement les petites commissions : courses, pharmacie, colis, promenade d'animaux)";
@@ -809,11 +817,9 @@ function FamilyForm({
     "🐕 Animaux (sortir ou nourrir)",
   ];
 
-  const isOther = need === "Autre (à préciser)";
-
-  const isHomework = need === "Aide aux devoirs (primaire au lycée)";
-  const isChildcare = need === "Garde d'enfants (à partir de 3 ans)";
-  const isEscortChild = need === "Accompagner un enfant (à partir de 3 ans)";
+  const isHomework = need === "Aide aux devoirs";
+  const isChildcare = need === "Garde d'enfants";
+  const isEscortChild = need === "Enfants de plus de 3 ans";
   const isChildNeed = isHomework || isChildcare || isEscortChild;
   const isMultiChild = isChildcare || isEscortChild;
   const childCountNum =
@@ -829,8 +835,8 @@ function FamilyForm({
       while (next.length < n) next.push("");
       return next;
     });
-  const isCleaning = need === "Ménage/Rangement intérieur";
-  const isGardening = need === "Jardinage/Rangement extérieur";
+  const isCleaning = need === "Ménage / rangement intérieur";
+  const isGardening = need === "Jardinage extérieur" || need === "Rangement extérieur";
 
   const [continuity, setContinuity] = useState(initial?.continuityCertified ?? false);
   const isOutdoor =
@@ -861,10 +867,9 @@ function FamilyForm({
       childrenCount: isMultiChild ? childrenCount : undefined,
       escortDestination: isEscortChild ? escortDestination : undefined,
       escortDetail: isEscortChild && escortDestination === "Autre" ? escortDetail : undefined,
-      otherDetail: isOther ? otherDetail : undefined,
       extraInfo:
         [
-          need === "Compagnie/Présence" && commissions.length > 0
+          need === "Présence et Compagnie" && commissions.length > 0
             ? `Commissions demandées dans le prolongement de la présence : ${commissions.join(", ")}`
             : "",
           extraInfo.trim(),
@@ -875,7 +880,7 @@ function FamilyForm({
       continuityCertified:
         isOutdoor
           ? continuity
-          : need === "Compagnie/Présence" && commissions.length > 0
+          : need === "Présence et Compagnie" && commissions.length > 0
             ? commissionCertified
             : undefined,
     };
@@ -905,7 +910,7 @@ function FamilyForm({
         const d = subWeeks(weekStart, i).getTime() + 24 * 60 * 60 * 1000;
         sims.push({
           id: `sim-w${i}`,
-          need: "Compagnie/Présence",
+          need: "Présence et Compagnie",
           address: "Simulation",
           city: "Simulation",
           phone: "",
@@ -921,7 +926,7 @@ function FamilyForm({
         const d = weekStart.getTime() + 60 * 60 * 1000;
         sims.push({
           id: "sim-h",
-          need: "Compagnie/Présence",
+          need: "Présence et Compagnie",
           address: "Simulation",
           city: "Simulation",
           phone: "",
@@ -946,14 +951,13 @@ function FamilyForm({
   const [showErrors, setShowErrors] = useState(false);
   const okAddress = !!address.trim();
   const okPhone = !!phone.trim();
-  const okOther = !(need === "Autre (à préciser)" && !otherDetail.trim());
-  const okCommission = !(need === "Compagnie/Présence" && commissions.length > 0 && !commissionCertified);
+  const okCommission = !(need === "Présence et Compagnie" && commissions.length > 0 && !commissionCertified);
   const okContinuity = !(isOutdoor && !continuity);
   const okChildAge = !(isHomework && (!childAge.trim() || Number(childAge) < 3));
   const okChildAgeAt = (i: number) => !(isMultiChild && (!(childAges[i] ?? "").trim() || Number(childAges[i]) < 3));
   const okWho = !(mode === "scheduled" && (autoSearch === null || (!autoSearch && !pickedCompanion)));
   const formValid =
-    okAddress && okPhone && okOther && okCommission && okContinuity && okChildAge &&
+    okAddress && okPhone && okCommission && okContinuity && okChildAge &&
     Array.from({ length: isMultiChild ? childCountNum : 0 }, (_, i) => okChildAgeAt(i)).every(Boolean) &&
     okWho && cguOk;
   const bad = (ok: boolean) => showErrors && !ok;
@@ -969,9 +973,7 @@ function FamilyForm({
     }
     setShowErrors(false);
     if (!address.trim() || !phone.trim()) return;
-    if (need === "Autre (à préciser)" && !otherDetail.trim()) return;
-    
-    if (need === "Compagnie/Présence" && commissions.length > 0 && !commissionCertified) return;
+    if (need === "Présence et Compagnie" && commissions.length > 0 && !commissionCertified) return;
     if (isOutdoor && !continuity) return;
     if (isHomework && (!childAge.trim() || Number(childAge) < 3)) return;
     if (
@@ -1024,28 +1026,62 @@ function FamilyForm({
       )}
       <div>
         <label className="block text-lg font-bold mb-3">De quoi avez-vous besoin ?</label>
-        <div className="grid grid-cols-2 gap-3">
-          {needs.map((n) => (
-            <button
-              key={n.v}
-              type="button"
-              onClick={() => setNeed(n.v)}
-              className={`p-4 rounded-2xl border-2 text-left transition-all ${
-                need === n.v ? "border-primary bg-accent" : "border-border bg-card"
-              }`}
-            >
-              <div className="text-3xl mb-1">{n.icon}</div>
-              <NeedLabel need={n.v} />
-              {n.v === "Compagnie/Présence" && (
-                <p className="text-xs font-medium text-muted-foreground mt-1 leading-snug">
-                  {PRESENCE_SUBTITLE}
-                </p>
-              )}
-            </button>
-          ))}
+        <div className="flex flex-col gap-3">
+          {serviceCategories.map((category) => {
+            const isOpen = openCategory === category.title;
+            const containsSelection = category.services.some((service) => service.v === need);
+            return (
+              <div key={category.title} className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isOpen) {
+                      setOpenCategory("");
+                      return;
+                    }
+                    setOpenCategory(category.title);
+                    const firstService = category.services[0];
+                    if (firstService) setNeed(firstService.v);
+                  }}
+                  aria-expanded={isOpen}
+                  className={`w-full min-h-16 px-4 py-3 rounded-2xl border-2 flex items-center gap-3 text-left transition-all ${
+                    containsSelection ? "border-primary bg-accent" : "border-border bg-card"
+                  }`}
+                >
+                  <span className="text-3xl" aria-hidden="true">{category.icon}</span>
+                  <span className="flex-1 text-base font-bold leading-tight">{category.title}</span>
+                  <span className="text-xl text-primary" aria-hidden="true">{isOpen ? "−" : "+"}</span>
+                </button>
+                {isOpen && (
+                  <div className="flex flex-col gap-2 pl-3">
+                    {category.services.map((service) => (
+                      <button
+                        key={service.v}
+                        type="button"
+                        onClick={() => setNeed(service.v)}
+                        className={`w-full min-h-16 px-4 py-3 rounded-2xl border-2 flex items-center gap-3 text-left transition-all ${
+                          need === service.v ? "border-primary bg-accent" : "border-border bg-card"
+                        }`}
+                      >
+                        <span className="text-2xl" aria-hidden="true">{service.icon}</span>
+                        <span className="flex-1">
+                          <NeedLabel need={service.v} />
+                          {service.v === "Présence et Compagnie" && (
+                            <span className="block text-xs font-medium text-muted-foreground mt-1 leading-snug">
+                              {PRESENCE_SUBTITLE}
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
-      {need === "Compagnie/Présence" && (
+      {need === "Présence et Compagnie" && (
         <div className="flex flex-col gap-3">
           <label className="block text-lg font-bold">Petites commissions en complément (optionnel)</label>
           <div className="grid grid-cols-2 gap-2">
@@ -1084,24 +1120,6 @@ function FamilyForm({
             </label>
           )}
           <Missing ok={okCommission} text="Certification obligatoire" />
-        </div>
-      )}
-      {isOther && (
-        <div>
-          <label className="block text-lg font-bold mb-2">Précisez votre besoin</label>
-          <textarea
-            value={otherDetail}
-            onChange={(e) => setOtherDetail(e.target.value)}
-            placeholder="Décrivez en quelques mots le service souhaité"
-            rows={3}
-            className={"w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none" + errCls(okOther)}
-          />
-          <Missing ok={okOther} text="Champ obligatoire" />
-          <p className="text-xs text-muted-foreground mt-2">
-            Le besoin doit tenir dans le cadre d'une mission d'entraide du quotidien, réalisable par une personne
-            non professionnelle, en toute sécurité.
-          </p>
-          <ServiceLimitsNotice />
         </div>
       )}
       {isChildNeed && (
@@ -2521,8 +2539,7 @@ function PaymentScreen({
         <p className="text-xs text-muted-foreground mt-2">
           Durée prévue : {hours}h — salaire estimé {formatPrice(salaireNum * hours)} €
         </p>
-        {(need === "Garde d'enfants (à partir de 3 ans)" ||
-          need === "Accompagner un enfant (à partir de 3 ans)") &&
+        {(need === "Garde d'enfants" || need === "Enfants de plus de 3 ans") &&
           (childAges?.length ?? 0) > 1 && (
             <p className="text-xs text-muted-foreground mt-2">
               👶 Pour {childAges!.length} enfants, il est habituel de majorer le salaire d'environ 1 €/h par
