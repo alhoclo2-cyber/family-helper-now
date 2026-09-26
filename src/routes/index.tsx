@@ -2384,13 +2384,6 @@ function FamilyWait({
             </div>
           </div>
 
-          <CompanionProfileHeader
-            firstName={request.student!.firstName}
-            missions={request.student!.missions}
-            thumbs={request.student!.thumbs}
-            missedCount={request.student!.missedCount}
-          />
-
           {!request.acknowledged && !paid && (
             <ReservationSummaryPanel request={request} serviceFee={SERVICE_FEE} />
           )}
@@ -2401,6 +2394,13 @@ function FamilyWait({
               hourlyRate={request.salaryNetHourly ?? (salaireDraft ? Number(salaireDraft.replace(",", ".")) : undefined)}
             />
           )}
+
+          <CompanionProfileHeader
+            firstName={request.student!.firstName}
+            missions={request.student!.missions}
+            thumbs={request.student!.thumbs}
+            missedCount={request.student!.missedCount}
+          />
 
           {complianceCheck ? (
             <CesuRecurrenceModal
