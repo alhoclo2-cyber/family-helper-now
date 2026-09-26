@@ -1290,24 +1290,6 @@ function FamilyForm({
           )}
         </div>
       )}
-      {isGardening && (
-        <div className="rounded-2xl border-2 border-border bg-accent p-3 text-xs leading-relaxed">
-          🌿 Petits travaux de jardinage : plafond fiscal spécifique de 5 000 € par an et par foyer fiscal
-          pour le crédit d'impôt (distinct du plafond global des autres services à la personne).
-        </div>
-      )}
-      {need === "Petit bricolage" && (
-        <div className="rounded-2xl border-2 border-border bg-accent p-3 text-xs leading-relaxed">
-          🔧 Petit bricolage : plafond fiscal spécifique de 500 € par an et par foyer fiscal pour le crédit d'impôt,
-          limité à 2h par intervention (distinct du plafond global des autres services à la personne).
-        </div>
-      )}
-      {need === "Aide informatique & smartphone" && (
-        <div className="rounded-2xl border-2 border-border bg-accent p-3 text-xs leading-relaxed">
-          📱 Aide informatique & smartphone : plafond fiscal spécifique de 3 000 € par an et par foyer fiscal pour le
-          crédit d'impôt (distinct du plafond global des autres services à la personne).
-        </div>
-      )}
       {(isCleaning || isGardening || isOutdoorTidying) && (
         <ServiceLimitsNotice
           hideBase
@@ -1453,6 +1435,24 @@ function FamilyForm({
           className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
         />
       </div>
+      {isGardening && (
+        <div className="rounded-2xl border-2 border-border bg-accent p-3 text-xs leading-relaxed">
+          🌿 Petits travaux de jardinage : plafond fiscal spécifique de 5 000 € par an et par foyer fiscal
+          pour le crédit d'impôt (distinct du plafond global des autres services à la personne).
+        </div>
+      )}
+      {need === "Petit bricolage" && (
+        <div className="rounded-2xl border-2 border-border bg-accent p-3 text-xs leading-relaxed">
+          🔧 Petit bricolage : plafond fiscal spécifique de 500 € par an et par foyer fiscal pour le crédit d'impôt,
+          limité à 2h par intervention (distinct du plafond global des autres services à la personne).
+        </div>
+      )}
+      {need === "Aide informatique & smartphone" && (
+        <div className="rounded-2xl border-2 border-border bg-accent p-3 text-xs leading-relaxed">
+          📱 Aide informatique & smartphone : plafond fiscal spécifique de 3 000 € par an et par foyer fiscal pour le
+          crédit d'impôt (distinct du plafond global des autres services à la personne).
+        </div>
+      )}
       {mode === "scheduled" && (
         <div>
           <label className="block text-lg font-bold mb-2">Qui doit venir ?</label>
