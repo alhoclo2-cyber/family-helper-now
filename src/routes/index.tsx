@@ -23,6 +23,7 @@ import { CompanionProfilePanel } from "@/components/CompanionProfilePanel";
 import { AccountInfoPanel } from "@/components/AccountInfoPanel";
 import { ClientDocumentsPanel } from "@/components/ClientDocumentsPanel";
 import { CompanionAvailabilityPanel } from "@/components/CompanionAvailabilityPanel";
+import { ReservationSummaryPanel } from "@/components/ReservationSummaryPanel";
 import { useCompanionSettings } from "@/lib/companionSettings";
 import soleliaLogoAsset from "@/assets/solelia-logo.png.asset.json";
 import floralBorderAsset from "@/assets/floral-border.jpg.asset.json";
@@ -2098,6 +2099,7 @@ function FamilyWait({
   if (accepted && showPay && !paid) {
     return (
       <PaymentScreen
+        request={request}
         companion={request.student!}
         hours={hours}
         need={request.need}
@@ -2120,10 +2122,11 @@ function FamilyWait({
           });
           if (deferred && chargeAt) {
             void recordDeferredCharge(request.id, chargeAt, request.student!.id);
-            store.updateRequest(request.id, { paid: true, deferredCharge: true, scheduledChargeAt: chargeAt });
+            store.updateRequest(request.id, { paid: true, salaryNetHourly: salaireNetHoraire, deferredCharge: true, scheduledChargeAt: chargeAt });
           } else {
-            store.updateRequest(request.id, { paid: true, deferredCharge: false });
+            store.updateRequest(request.id, { paid: true, salaryNetHourly: salaireNetHoraire, deferredCharge: false });
           }
+          setSalaireDraft(formatPrice(salaireNetHoraire));
           setPaid(true);
           setShowPay(false);
         }}
@@ -2388,6 +2391,17 @@ function FamilyWait({
             missedCount={request.student!.missedCount}
           />
 
+          {!request.acknowledged && (
+            <ReservationSummaryPanel request={request} serviceFee={SERVICE_FEE} />
+          )}
+          {paid && (
+            <ReservationSummaryPanel
+              request={request}
+              serviceFee={SERVICE_FEE}
+              hourlyRate={request.salaryNetHourly ?? (salaireDraft ? Number(salaireDraft.replace(",", ".")) : undefined)}
+            />
+          )}
+
           {complianceCheck ? (
             <CesuRecurrenceModal
               companionId={request.student!.id}
@@ -2498,6 +2512,7 @@ function FamilyWait({
 }
 
 function PaymentScreen({
+  request,
   companion,
   hours,
   salaire,
@@ -2509,6 +2524,7 @@ function PaymentScreen({
   onDone,
   onBack,
 }: {
+  request: Request;
   companion: Companion;
   hours: number;
   salaire: string; // contrôlé par l'écran parent : conservé en cas de navigation arrière
@@ -2589,6 +2605,8 @@ function PaymentScreen({
           Frais de service mandataire Solélia — forfait fixe, quelle que soit la durée.
         </p>
       </div>
+
+      <ReservationSummaryPanel request={request} serviceFee={SERVICE_FEE} hourlyRate={salaireNum || null} />
 
       {deferred && (
         <div className="bg-accent border-2 border-primary rounded-2xl p-4 text-left">
