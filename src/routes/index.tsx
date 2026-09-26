@@ -460,6 +460,11 @@ function MandatairePanel() {
             quels que soient la durée et le compagnon choisi.
           </li>
           <li>
+            <b className="text-foreground">Crédit d'impôt de 50 %</b> : les sommes versées ouvrent droit à un crédit
+            d'impôt de 50 %, dans la limite d'un plafond global de 12 000 €/an par foyer fiscal (majorable selon votre
+            situation). Certains services ont un plafond spécifique inférieur, précisé lors de la sélection du service.
+          </li>
+          <li>
             <b className="text-foreground">Vous êtes particulier employeur</b> : le salaire net conseillé est de{" "}
             {formatPrice(DEFAULT_HOURLY_RATE)} €/h (congés payés inclus), modifiable. Pour une mission concernant
             plusieurs enfants, une majoration d'environ +1 €/h par enfant supplémentaire est habituellement suggérée —
@@ -836,7 +841,8 @@ function FamilyForm({
       return next;
     });
   const isCleaning = need === "Ménage / rangement intérieur";
-  const isGardening = need === "Jardinage extérieur" || need === "Rangement extérieur";
+  const isGardening = need === "Jardinage extérieur";
+  const isOutdoorTidying = need === "Rangement extérieur";
 
   const [continuity, setContinuity] = useState(initial?.continuityCertified ?? false);
   const isOutdoor =
@@ -1045,12 +1051,12 @@ function FamilyForm({
                   }}
                   aria-expanded={isOpen}
                   className={`w-full min-h-16 px-4 py-3 rounded-2xl border-2 flex items-center gap-3 text-left transition-all ${
-                    containsSelection ? "border-primary bg-accent" : "border-border bg-card"
+                    containsSelection ? "border-primary bg-primary text-primary-foreground" : "border-primary/40 bg-primary/10 text-foreground"
                   }`}
                 >
                   <span className="text-3xl" aria-hidden="true">{category.icon}</span>
                   <span className="flex-1 text-base font-bold leading-tight">{category.title}</span>
-                  <span className="text-xl text-primary" aria-hidden="true">{isOpen ? "−" : "+"}</span>
+                  <span className={`text-xl ${containsSelection ? "text-primary-foreground" : "text-primary"}`} aria-hidden="true">{isOpen ? "−" : "+"}</span>
                 </button>
                 {isOpen && (
                   <div className="flex flex-col gap-2 pl-3">
@@ -1059,7 +1065,7 @@ function FamilyForm({
                         key={service.v}
                         type="button"
                         onClick={() => setNeed(service.v)}
-                        className={`w-full min-h-16 px-4 py-3 rounded-2xl border-2 flex items-center gap-3 text-left transition-all ${
+                        className={`w-full min-h-12 px-3 py-2 rounded-2xl border-2 flex items-center gap-3 text-left transition-all ${
                           need === service.v ? "border-primary bg-accent" : "border-border bg-card"
                         }`}
                       >
@@ -1284,18 +1290,14 @@ function FamilyForm({
           )}
         </div>
       )}
-      {isGardening && (
-        <div className="rounded-2xl border-2 border-border bg-accent p-3 text-xs leading-relaxed">
-          🌿 Petits travaux de jardinage : plafond fiscal spécifique de 5 000 € par an et par foyer fiscal
-          pour le crédit d'impôt (distinct du plafond global des autres services à la personne).
-        </div>
-      )}
-      {(isCleaning || isGardening) && (
+      {(isCleaning || isGardening || isOutdoorTidying) && (
         <ServiceLimitsNotice
           hideBase
           extra={
             isGardening
               ? "Le compagnon ne peut utiliser aucun outil motorisé dangereux (tronçonneuse, taille-haie thermique, débroussailleuse), ne peut intervenir en hauteur (élagage, taille d'arbres) ni utiliser de produits phytosanitaires professionnels. Seuls les petits travaux d'entretien courant sont autorisés (tonte, désherbage manuel, arrosage, petit rangement)."
+              : isOutdoorTidying
+                ? "Le compagnon ne peut utiliser aucun outil motorisé dangereux, ni intervenir en hauteur, ni porter de charges lourdes au-delà de ce qui est raisonnable pour une personne seule."
               : "Le compagnon ne peut effectuer aucun nettoyage en hauteur sans équipement adapté (vitres extérieures, lustres), ni utiliser de produits d'entretien professionnels ou dangereux. Seul l'entretien courant du logement est autorisé (rangement, dépoussiérage, sols, vaisselle, linge)."
           }
         />
@@ -1433,6 +1435,24 @@ function FamilyForm({
           className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
         />
       </div>
+      {isGardening && (
+        <div className="rounded-2xl border-2 border-border bg-accent p-3 text-xs leading-relaxed">
+          🌿 Petits travaux de jardinage : plafond fiscal spécifique de 5 000 € par an et par foyer fiscal
+          pour le crédit d'impôt (distinct du plafond global des autres services à la personne).
+        </div>
+      )}
+      {need === "Petit bricolage" && (
+        <div className="rounded-2xl border-2 border-border bg-accent p-3 text-xs leading-relaxed">
+          🔧 Petit bricolage : plafond fiscal spécifique de 500 € par an et par foyer fiscal pour le crédit d'impôt,
+          limité à 2h par intervention (distinct du plafond global des autres services à la personne).
+        </div>
+      )}
+      {need === "Aide informatique & smartphone" && (
+        <div className="rounded-2xl border-2 border-border bg-accent p-3 text-xs leading-relaxed">
+          📱 Aide informatique & smartphone : plafond fiscal spécifique de 3 000 € par an et par foyer fiscal pour le
+          crédit d'impôt (distinct du plafond global des autres services à la personne).
+        </div>
+      )}
       {mode === "scheduled" && (
         <div>
           <label className="block text-lg font-bold mb-2">Qui doit venir ?</label>
