@@ -2391,7 +2391,7 @@ function FamilyWait({
             missedCount={request.student!.missedCount}
           />
 
-          {!request.acknowledged && (
+          {!request.acknowledged && !paid && (
             <ReservationSummaryPanel request={request} serviceFee={SERVICE_FEE} />
           )}
           {paid && (
