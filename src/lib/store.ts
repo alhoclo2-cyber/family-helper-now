@@ -87,6 +87,7 @@ export type Request = {
   thumbsGiven?: boolean; // pouce levé attribué en fin de prestation
   declinedBy?: string[]; // compagnons ayant refusé
   durationHours?: number; // durée demandée
+  salaryNetHourly?: number; // salaire net horaire effectivement choisi à l'étape carte
   parcelWeight?: string; // pour "Retrait ou dépôt d'un colis"
   parcelSize?: string;
   childLevel?: string; // niveau scolaire pour l'aide aux devoirs
