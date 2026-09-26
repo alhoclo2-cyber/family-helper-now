@@ -1,0 +1,3 @@
+- [ ] Créer un détail de réservation partagé, repliable, avec états en attente.
+- [ ] L'afficher avant l'accusé de réception, sur l'écran de carte bancaire et après confirmation ; conserver le salaire réellement choisi.
+- [ ] Vérifier l'affichage et l'absence d'ajout à l'étape intermédiaire.
