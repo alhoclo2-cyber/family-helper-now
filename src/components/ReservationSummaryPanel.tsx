@@ -28,7 +28,9 @@ export function ReservationSummaryPanel({ request, hourlyRate, serviceFee }: Pro
     : null;
   const date = start && !Number.isNaN(start.getTime())
     ? `${new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(start)} · ${new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit" }).format(start)}${end ? ` – ${new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit" }).format(end)}` : ""}`
-    : request.flow === "sos" || !request.scheduledAt ? "Dès que possible" : null;
+    : !request.scheduledAt && request.createdAt
+      ? `${new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" }).format(new Date(request.createdAt))} · Dès que possible`
+      : null;
   const childService = ["Garde d'enfants", "Aide aux devoirs", "Enfants de plus de 3 ans"].includes(request.need);
   const childCount = request.childrenCount || (request.childAges?.filter(Boolean).length
     ? `${request.childAges.filter(Boolean).length} enfant${request.childAges.filter(Boolean).length > 1 ? "s" : ""}`
