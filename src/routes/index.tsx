@@ -175,6 +175,15 @@ function formatSchedule(ts: number) {
 const SERVICE_FEE = 6; // frais de service mandataire Solélia (forfait fixe)
 const DEFAULT_HOURLY_RATE = 11.5; // salaire net horaire conseillé, congés payés inclus
 
+// Estimation indicative du coût employeur, avant/après crédit d'impôt de 50 %.
+function estimateMissionCost(salaireNetHoraire: number, durationHours: number) {
+  const brut1h = salaireNetHoraire / 0.78;
+  const charges1h = brut1h * 0.45 - 2.0 + brut1h * 0.22;
+  const cout1h = salaireNetHoraire + charges1h;
+  const avant = cout1h * durationHours;
+  return { avant, apres: avant / 2 };
+}
+
 /**
  * Prise de RDV (mission à plus de 24 h) : la carte est enregistrée (SetupIntent),
  * aucun débit n'a lieu le jour de la réservation. Le débit des frais de service
@@ -766,6 +775,7 @@ function FamilyForm({
   const [escortDetail, setEscortDetail] = useState<string>(initial?.escortDetail ?? "");
   const [extraInfo, setExtraInfo] = useState<string>(parsed.rest);
   const [missionInfo, setMissionInfo] = useState<string>(initial?.missionInfo ?? "");
+  const [salaireNetHoraire, setSalaireNetHoraire] = useState<number>(initial?.salaryNetHourly ?? DEFAULT_HOURLY_RATE);
   
   const [cguOk, setCguOk] = useState(false);
   const [complianceCheck, setComplianceCheck] = useState<ContractCheckResult | null>(null);
@@ -848,6 +858,7 @@ function FamilyForm({
   const [continuity, setContinuity] = useState(initial?.continuityCertified ?? false);
   const isOutdoor =
     need === "Retrait ou dépôt d'un colis" || need === "Pharmacie" || need === "Courses urgentes";
+  const costEstimate = estimateMissionCost(salaireNetHoraire, durationHours);
 
   const createAndGo = (companionOverride?: string) => {
     const companion = companionOverride ?? pickedCompanion;
@@ -864,6 +875,7 @@ function FamilyForm({
       preferredCompanionId:
         mode === "scheduled" && autoSearch === false && companion ? companion : undefined,
       durationHours: dh,
+      salaryNetHourly: salaireNetHoraire,
 
       parcelWeight: isParcel ? parcelWeight : undefined,
       parcelSize: isParcel ? parcelSize : undefined,
@@ -1352,6 +1364,35 @@ function FamilyForm({
           </div>
         )}
         <ServiceFeeHint className="mt-2" />
+      </div>
+      <div className="bg-card rounded-2xl p-5 border-2 border-border">
+        <label htmlFor="salaire-net" className="block text-lg font-bold">Tarif horaire net proposé (€)</label>
+        <p className="text-xs text-muted-foreground mt-1">Recommandé par Solélia (10% congés payés inclus)</p>
+        <div className="flex items-center gap-2 mt-3">
+          <input
+            id="salaire-net"
+            type="number"
+            step="0.10"
+            min="0"
+            value={salaireNetHoraire}
+            onChange={(e) => setSalaireNetHoraire(Number(e.target.value) || 0)}
+            className="flex-1 min-w-0 w-full px-5 py-4 rounded-2xl border-2 border-border bg-background text-lg focus:border-primary outline-none"
+          />
+          <span className="shrink-0 text-lg font-bold">€/h</span>
+        </div>
+        <div className="mt-4 space-y-1">
+          <p className="text-base font-semibold">
+            Coût total avant crédit d'impôt : {formatPrice(costEstimate.avant)} €
+          </p>
+          <p className="text-lg font-black text-success">
+            Coût total après crédit d'impôt (-50%) : {formatPrice(costEstimate.apres)} €
+          </p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Estimation indicative. Le montant définitif est calculé et prélevé par l'URSSAF.
+          </p>
+        </div>
+        <div className="h-px bg-border my-3" />
+        <p className="text-sm font-semibold">Frais de mise en relation Solélia : {formatPrice(SERVICE_FEE)} €</p>
       </div>
       {need === "Retrait ou dépôt d'un colis" && (
         <div className="flex flex-col gap-4">
@@ -2002,7 +2043,6 @@ function FamilyWait({
   const [paid, setPaid] = useState(() => !!request?.paid);
   const [contractOk, setContractOk] = useState(false);
   const [showPay, setShowPay] = useState(false);
-  const [salaireDraft, setSalaireDraft] = useState<string | null>(null);
   const [restartedAt, setRestartedAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
@@ -2106,8 +2146,6 @@ function FamilyWait({
         childAges={request.childAges}
         deferred={deferred}
         chargeAt={chargeAt}
-        salaire={salaireDraft ?? formatPrice(request.student!.hourlyRate ?? DEFAULT_HOURLY_RATE)}
-        onSalaire={setSalaireDraft}
         onDone={(salaireNetHoraire) => {
           addOrderToAccount({
             id: request.id,
@@ -2126,7 +2164,6 @@ function FamilyWait({
           } else {
             store.updateRequest(request.id, { paid: true, salaryNetHourly: salaireNetHoraire, deferredCharge: false });
           }
-          setSalaireDraft(formatPrice(salaireNetHoraire));
           setPaid(true);
           setShowPay(false);
         }}
@@ -2391,7 +2428,7 @@ function FamilyWait({
             <ReservationSummaryPanel
               request={request}
               serviceFee={SERVICE_FEE}
-              hourlyRate={request.salaryNetHourly ?? (salaireDraft ? Number(salaireDraft.replace(",", ".")) : undefined)}
+              hourlyRate={request.salaryNetHourly}
             />
           )}
 
@@ -2515,24 +2552,20 @@ function PaymentScreen({
   request,
   companion,
   hours,
-  salaire,
   need,
   childAges,
   deferred = false,
   chargeAt = null,
-  onSalaire,
   onDone,
   onBack,
 }: {
   request: Request;
   companion: Companion;
   hours: number;
-  salaire: string; // contrôlé par l'écran parent : conservé en cas de navigation arrière
   need: NeedType;
   childAges?: string[];
   deferred?: boolean; // mission à plus de 24 h : enregistrement de carte, pas de débit
   chargeAt?: number | null; // date/heure prévue du débit (J-24 h)
-  onSalaire: (v: string) => void;
   onDone: (salaireNetHoraire: number) => void;
   onBack: () => void;
 }) {
@@ -2541,7 +2574,9 @@ function PaymentScreen({
   const [card, setCard] = useState("");
   const [exp, setExp] = useState("");
   const [cvc, setCvc] = useState("");
-  const salaireNum = Number(salaire.replace(",", ".")) || 0;
+  // Tarif choisi dans le formulaire de réservation, connu dès la création de la demande.
+  const salaireNum = request.salaryNetHourly ?? DEFAULT_HOURLY_RATE;
+  const costEstimate = estimateMissionCost(salaireNum, hours);
 
   const pay = (e: React.FormEvent) => {
     e.preventDefault();
@@ -2558,23 +2593,23 @@ function PaymentScreen({
       </div>
 
       <div className="bg-card rounded-2xl p-5 border-2 border-border">
-        <label className="block text-base font-bold">Salaire net horaire</label>
+        <p className="text-base font-bold">Salaire net horaire proposé</p>
+        <p className="text-lg font-black mt-1">{formatPrice(salaireNum)} €/h</p>
         <p className="text-xs text-muted-foreground mt-1">
-          Salaire net conseillé (congés payés inclus). En tant que particulier employeur, vous pouvez modifier ce
-          montant.
+          Tarif choisi dans le formulaire de réservation. Durée prévue : {hours}h — salaire estimé{" "}
+          {formatPrice(salaireNum * hours)} €
         </p>
-        <div className="flex items-center gap-2 mt-3">
-          <input
-            value={salaire}
-            onChange={(e) => onSalaire(e.target.value)}
-            inputMode="decimal"
-            className="flex-1 min-w-0 w-full px-5 py-4 rounded-2xl border-2 border-border bg-background text-lg focus:border-primary outline-none"
-          />
-          <span className="shrink-0 text-lg font-bold">€/h</span>
+        <div className="mt-3 space-y-1">
+          <p className="text-base font-semibold">
+            Coût total avant crédit d'impôt : {formatPrice(costEstimate.avant)} €
+          </p>
+          <p className="text-lg font-black text-success">
+            Coût total après crédit d'impôt (-50%) : {formatPrice(costEstimate.apres)} €
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Estimation indicative. Le montant définitif est calculé et prélevé par l'URSSAF.
+          </p>
         </div>
-        <p className="text-xs text-muted-foreground mt-2">
-          Durée prévue : {hours}h — salaire estimé {formatPrice(salaireNum * hours)} €
-        </p>
         {(need === "Garde d'enfants" || need === "Enfants de plus de 3 ans") &&
           (childAges?.length ?? 0) > 1 && (
             <p className="text-xs text-muted-foreground mt-2">
@@ -3195,6 +3230,12 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
               disparaît alors chez les autres.
             </div>
           )}
+          <div className="bg-card rounded-2xl p-4 border-2 border-border">
+            <p className="text-xs text-muted-foreground font-bold uppercase">Rémunération</p>
+            <p className="text-lg font-black mt-1">
+              Salaire net horaire proposé : {formatPrice(request.salaryNetHourly ?? DEFAULT_HOURLY_RATE)} €/h
+            </p>
+          </div>
           <div className="flex-1" />
           <button onClick={accept} className="btn-huge bg-success text-success-foreground">
             ✅ Accepter la mission
