@@ -775,6 +775,7 @@ function FamilyForm({
   const [escortDetail, setEscortDetail] = useState<string>(initial?.escortDetail ?? "");
   const [extraInfo, setExtraInfo] = useState<string>(parsed.rest);
   const [missionInfo, setMissionInfo] = useState<string>(initial?.missionInfo ?? "");
+  const [salaireNetHoraire, setSalaireNetHoraire] = useState<number>(initial?.salaryNetHourly ?? DEFAULT_HOURLY_RATE);
   
   const [cguOk, setCguOk] = useState(false);
   const [complianceCheck, setComplianceCheck] = useState<ContractCheckResult | null>(null);
