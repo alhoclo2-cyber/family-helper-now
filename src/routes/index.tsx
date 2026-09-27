@@ -2043,7 +2043,6 @@ function FamilyWait({
   const [paid, setPaid] = useState(() => !!request?.paid);
   const [contractOk, setContractOk] = useState(false);
   const [showPay, setShowPay] = useState(false);
-  const [salaireDraft, setSalaireDraft] = useState<string | null>(null);
   const [restartedAt, setRestartedAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
@@ -2147,8 +2146,6 @@ function FamilyWait({
         childAges={request.childAges}
         deferred={deferred}
         chargeAt={chargeAt}
-        salaire={salaireDraft ?? formatPrice(request.student!.hourlyRate ?? DEFAULT_HOURLY_RATE)}
-        onSalaire={setSalaireDraft}
         onDone={(salaireNetHoraire) => {
           addOrderToAccount({
             id: request.id,
@@ -2167,7 +2164,6 @@ function FamilyWait({
           } else {
             store.updateRequest(request.id, { paid: true, salaryNetHourly: salaireNetHoraire, deferredCharge: false });
           }
-          setSalaireDraft(formatPrice(salaireNetHoraire));
           setPaid(true);
           setShowPay(false);
         }}
@@ -2432,7 +2428,7 @@ function FamilyWait({
             <ReservationSummaryPanel
               request={request}
               serviceFee={SERVICE_FEE}
-              hourlyRate={request.salaryNetHourly ?? (salaireDraft ? Number(salaireDraft.replace(",", ".")) : undefined)}
+              hourlyRate={request.salaryNetHourly}
             />
           )}
 
