@@ -175,6 +175,15 @@ function formatSchedule(ts: number) {
 const SERVICE_FEE = 6; // frais de service mandataire Solélia (forfait fixe)
 const DEFAULT_HOURLY_RATE = 11.5; // salaire net horaire conseillé, congés payés inclus
 
+// Estimation indicative du coût employeur, avant/après crédit d'impôt de 50 %.
+function estimateMissionCost(salaireNetHoraire: number, durationHours: number) {
+  const brut1h = salaireNetHoraire / 0.78;
+  const charges1h = brut1h * 0.45 - 2.0 + brut1h * 0.22;
+  const cout1h = salaireNetHoraire + charges1h;
+  const avant = cout1h * durationHours;
+  return { avant, apres: avant / 2 };
+}
+
 /**
  * Prise de RDV (mission à plus de 24 h) : la carte est enregistrée (SetupIntent),
  * aucun débit n'a lieu le jour de la réservation. Le débit des frais de service
