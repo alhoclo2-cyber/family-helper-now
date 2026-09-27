@@ -1365,6 +1365,35 @@ function FamilyForm({
         )}
         <ServiceFeeHint className="mt-2" />
       </div>
+      <div className="bg-card rounded-2xl p-5 border-2 border-border">
+        <label htmlFor="salaire-net" className="block text-lg font-bold">Tarif horaire net proposé (€)</label>
+        <p className="text-xs text-muted-foreground mt-1">Recommandé par Solélia (10% congés payés inclus)</p>
+        <div className="flex items-center gap-2 mt-3">
+          <input
+            id="salaire-net"
+            type="number"
+            step="0.10"
+            min="0"
+            value={salaireNetHoraire}
+            onChange={(e) => setSalaireNetHoraire(Number(e.target.value) || 0)}
+            className="flex-1 min-w-0 w-full px-5 py-4 rounded-2xl border-2 border-border bg-background text-lg focus:border-primary outline-none"
+          />
+          <span className="shrink-0 text-lg font-bold">€/h</span>
+        </div>
+        <div className="mt-4 space-y-1">
+          <p className="text-base font-semibold">
+            Coût total avant crédit d'impôt : {formatPrice(costEstimate.avant)} €
+          </p>
+          <p className="text-lg font-black text-success">
+            Coût total après crédit d'impôt (-50%) : {formatPrice(costEstimate.apres)} €
+          </p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Estimation indicative. Le montant définitif est calculé et prélevé par l'URSSAF.
+          </p>
+        </div>
+        <div className="h-px bg-border my-3" />
+        <p className="text-sm font-semibold">Frais de mise en relation Solélia : {formatPrice(SERVICE_FEE)} €</p>
+      </div>
       {need === "Retrait ou dépôt d'un colis" && (
         <div className="flex flex-col gap-4">
           <div>
