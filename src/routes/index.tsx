@@ -2552,24 +2552,20 @@ function PaymentScreen({
   request,
   companion,
   hours,
-  salaire,
   need,
   childAges,
   deferred = false,
   chargeAt = null,
-  onSalaire,
   onDone,
   onBack,
 }: {
   request: Request;
   companion: Companion;
   hours: number;
-  salaire: string; // contrôlé par l'écran parent : conservé en cas de navigation arrière
   need: NeedType;
   childAges?: string[];
   deferred?: boolean; // mission à plus de 24 h : enregistrement de carte, pas de débit
   chargeAt?: number | null; // date/heure prévue du débit (J-24 h)
-  onSalaire: (v: string) => void;
   onDone: (salaireNetHoraire: number) => void;
   onBack: () => void;
 }) {
@@ -2578,7 +2574,9 @@ function PaymentScreen({
   const [card, setCard] = useState("");
   const [exp, setExp] = useState("");
   const [cvc, setCvc] = useState("");
-  const salaireNum = Number(salaire.replace(",", ".")) || 0;
+  // Tarif choisi dans le formulaire de réservation, connu dès la création de la demande.
+  const salaireNum = request.salaryNetHourly ?? DEFAULT_HOURLY_RATE;
+  const costEstimate = estimateMissionCost(salaireNum, hours);
 
   const pay = (e: React.FormEvent) => {
     e.preventDefault();
@@ -2595,23 +2593,23 @@ function PaymentScreen({
       </div>
 
       <div className="bg-card rounded-2xl p-5 border-2 border-border">
-        <label className="block text-base font-bold">Salaire net horaire</label>
+        <p className="text-base font-bold">Salaire net horaire proposé</p>
+        <p className="text-lg font-black mt-1">{formatPrice(salaireNum)} €/h</p>
         <p className="text-xs text-muted-foreground mt-1">
-          Salaire net conseillé (congés payés inclus). En tant que particulier employeur, vous pouvez modifier ce
-          montant.
+          Tarif choisi dans le formulaire de réservation. Durée prévue : {hours}h — salaire estimé{" "}
+          {formatPrice(salaireNum * hours)} €
         </p>
-        <div className="flex items-center gap-2 mt-3">
-          <input
-            value={salaire}
-            onChange={(e) => onSalaire(e.target.value)}
-            inputMode="decimal"
-            className="flex-1 min-w-0 w-full px-5 py-4 rounded-2xl border-2 border-border bg-background text-lg focus:border-primary outline-none"
-          />
-          <span className="shrink-0 text-lg font-bold">€/h</span>
+        <div className="mt-3 space-y-1">
+          <p className="text-base font-semibold">
+            Coût total avant crédit d'impôt : {formatPrice(costEstimate.avant)} €
+          </p>
+          <p className="text-lg font-black text-success">
+            Coût total après crédit d'impôt (-50%) : {formatPrice(costEstimate.apres)} €
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Estimation indicative. Le montant définitif est calculé et prélevé par l'URSSAF.
+          </p>
         </div>
-        <p className="text-xs text-muted-foreground mt-2">
-          Durée prévue : {hours}h — salaire estimé {formatPrice(salaireNum * hours)} €
-        </p>
         {(need === "Garde d'enfants" || need === "Enfants de plus de 3 ans") &&
           (childAges?.length ?? 0) > 1 && (
             <p className="text-xs text-muted-foreground mt-2">
