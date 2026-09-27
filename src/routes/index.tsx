@@ -858,6 +858,7 @@ function FamilyForm({
   const [continuity, setContinuity] = useState(initial?.continuityCertified ?? false);
   const isOutdoor =
     need === "Retrait ou dépôt d'un colis" || need === "Pharmacie" || need === "Courses urgentes";
+  const costEstimate = estimateMissionCost(salaireNetHoraire, durationHours);
 
   const createAndGo = (companionOverride?: string) => {
     const companion = companionOverride ?? pickedCompanion;
@@ -874,6 +875,7 @@ function FamilyForm({
       preferredCompanionId:
         mode === "scheduled" && autoSearch === false && companion ? companion : undefined,
       durationHours: dh,
+      salaryNetHourly: salaireNetHoraire,
 
       parcelWeight: isParcel ? parcelWeight : undefined,
       parcelSize: isParcel ? parcelSize : undefined,
