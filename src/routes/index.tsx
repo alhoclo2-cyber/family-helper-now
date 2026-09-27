@@ -1392,7 +1392,13 @@ function FamilyForm({
           </p>
         </div>
         <div className="h-px bg-border my-3" />
-        <p className="text-sm font-semibold">Frais de mise en relation Solélia : {formatPrice(SERVICE_FEE)} €</p>
+        <p className="text-sm font-semibold">
+          <span className="text-2xl font-black text-foreground">+ </span>
+          Frais de mise en relation Solélia : {formatPrice(SERVICE_FEE)} €
+        </p>
+        <p className="text-xs text-muted-foreground mt-2">
+          Également éligible au crédit d'impôt de 50 %.
+        </p>
       </div>
       {need === "Retrait ou dépôt d'un colis" && (
         <div className="flex flex-col gap-4">
@@ -2422,7 +2428,7 @@ function FamilyWait({
           </div>
 
           {!request.acknowledged && !paid && (
-            <ReservationSummaryPanel request={request} serviceFee={SERVICE_FEE} />
+            <ReservationSummaryPanel request={request} serviceFee={SERVICE_FEE} hourlyRate={request.salaryNetHourly} />
           )}
           {paid && (
             <ReservationSummaryPanel
