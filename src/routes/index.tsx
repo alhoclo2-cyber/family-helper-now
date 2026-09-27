@@ -3230,6 +3230,12 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
               disparaît alors chez les autres.
             </div>
           )}
+          <div className="bg-card rounded-2xl p-4 border-2 border-border">
+            <p className="text-xs text-muted-foreground font-bold uppercase">Rémunération</p>
+            <p className="text-lg font-black mt-1">
+              Salaire net horaire proposé : {formatPrice(request.salaryNetHourly ?? DEFAULT_HOURLY_RATE)} €/h
+            </p>
+          </div>
           <div className="flex-1" />
           <button onClick={accept} className="btn-huge bg-success text-success-foreground">
             ✅ Accepter la mission
