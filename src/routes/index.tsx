@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ShieldCheck } from "lucide-react";
+import { z } from "zod";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -141,7 +142,7 @@ function NeedLabel({ need }: { need: NeedType }) {
   return <div className="text-base font-semibold leading-tight">{need}</div>;
 }
 
-function ServiceLimitsNotice({ className = "", extra, hideBase = false }: { className?: string; extra?: string; hideBase?: boolean }) {
+function ServiceLimitsNotice({ className = "", extra, hideBase = false, children }: { className?: string; extra?: string; hideBase?: boolean; children?: React.ReactNode }) {
   return (
     <div className={`mt-3 rounded-2xl border-2 border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed ${className}`}>
       <p className="font-bold mb-1">⚠️ Services non autorisés</p>
@@ -156,6 +157,7 @@ function ServiceLimitsNotice({ className = "", extra, hideBase = false }: { clas
         </p>
       )}
       {extra && <p className={hideBase ? "" : "mt-2 font-semibold"}>{extra}</p>}
+      {children}
     </div>
   );
 }
@@ -174,6 +176,19 @@ function formatSchedule(ts: number) {
 /** Modèle mandataire : seul montant réglé sur la plateforme */
 const SERVICE_FEE = 6; // frais de service mandataire Solélia (forfait fixe)
 const DEFAULT_HOURLY_RATE = 11.5; // salaire net horaire conseillé, congés payés inclus
+
+const bookingAddressSchema = z.object({
+  street: z.string().trim().regex(/^\d+[\s\S]+$/).max(150),
+  postalCode: z.string().trim().regex(/^\d{5}$/),
+  city: z.string().trim().min(1).max(100),
+});
+
+function splitBookingAddress(address: string) {
+  const match = address.match(/^(.+),\s*(\d{5})\s+(.+)$/);
+  return match
+    ? { street: match[1].trim(), postalCode: match[2], city: match[3].trim() }
+    : { street: address, postalCode: "", city: "" };
+}
 
 // Estimation indicative du coût employeur, avant/après crédit d'impôt de 50 %.
 function estimateMissionCost(salaireNetHoraire: number, durationHours: number) {
@@ -714,7 +729,7 @@ function FamilyForm({
     return { commissions: m[1].split(", ").filter(Boolean), rest: (m[2] ?? "").trim() };
   })();
   const [need, setNeed] = useState<NeedType>(initial?.need ?? "Présence et Compagnie");
-  const [address, setAddress] = useState(initial?.address ?? "");
+  const [addressParts, setAddressParts] = useState(() => splitBookingAddress(initial?.address ?? ""));
   const [phone, setPhone] = useState(initial?.phone ?? "");
   const [durationHours, setDurationHours] = useState<number>(initial?.durationHours ?? 1);
   const [parcelWeight, setParcelWeight] = useState<string>(initial?.parcelWeight ?? "moins de 2 kg");
@@ -776,6 +791,7 @@ function FamilyForm({
   const [extraInfo, setExtraInfo] = useState<string>(parsed.rest);
   const [missionInfo, setMissionInfo] = useState<string>(initial?.missionInfo ?? "");
   const [salaireNetHoraire, setSalaireNetHoraire] = useState<number>(initial?.salaryNetHourly ?? DEFAULT_HOURLY_RATE);
+  const [acknowledgedLimits, setAcknowledgedLimits] = useState<Record<string, boolean>>({});
   
   const [cguOk, setCguOk] = useState(false);
   const [complianceCheck, setComplianceCheck] = useState<ContractCheckResult | null>(null);
@@ -859,6 +875,12 @@ function FamilyForm({
   const isOutdoor =
     need === "Retrait ou dépôt d'un colis" || need === "Pharmacie" || need === "Courses urgentes";
   const costEstimate = estimateMissionCost(salaireNetHoraire, durationHours);
+  const addressCheck = bookingAddressSchema.safeParse(addressParts);
+  const address = `${addressParts.street.trim()}, ${addressParts.postalCode.trim()} ${addressParts.city.trim()}`;
+  const requiresLimitsAcknowledgement = isCleaning || isGardening || isOutdoorTidying;
+  const requiresFiscalAcknowledgement = need === "Petit bricolage" || need === "Aide informatique & smartphone";
+  const okAcknowledgement = !(requiresLimitsAcknowledgement || requiresFiscalAcknowledgement) || !!acknowledgedLimits[need];
+  const setAcknowledged = (checked: boolean) => setAcknowledgedLimits((prev) => ({ ...prev, [need]: checked }));
 
   const createAndGo = (companionOverride?: string) => {
     const companion = companionOverride ?? pickedCompanion;
@@ -968,7 +990,10 @@ function FamilyForm({
   };
 
   const [showErrors, setShowErrors] = useState(false);
-  const okAddress = !!address.trim();
+  const okStreet = bookingAddressSchema.shape.street.safeParse(addressParts.street).success;
+  const okPostalCode = bookingAddressSchema.shape.postalCode.safeParse(addressParts.postalCode).success;
+  const okCity = bookingAddressSchema.shape.city.safeParse(addressParts.city).success;
+  const okAddress = addressCheck.success;
   const okPhone = !!phone.trim();
   const okCommission = !(need === "Présence et Compagnie" && commissions.length > 0 && !commissionCertified);
   const okContinuity = !(isOutdoor && !continuity);
@@ -978,7 +1003,7 @@ function FamilyForm({
   const formValid =
     okAddress && okPhone && okCommission && okContinuity && okChildAge &&
     Array.from({ length: isMultiChild ? childCountNum : 0 }, (_, i) => okChildAgeAt(i)).every(Boolean) &&
-    okWho && cguOk;
+    okWho && okAcknowledgement && cguOk;
   const bad = (ok: boolean) => showErrors && !ok;
   const errCls = (ok: boolean) => (bad(ok) ? " border-destructive bg-destructive/5" : "");
   const Missing = ({ ok, text }: { ok: boolean; text: string }) =>
@@ -991,7 +1016,7 @@ function FamilyForm({
       return;
     }
     setShowErrors(false);
-    if (!address.trim() || !phone.trim()) return;
+    if (!addressCheck.success || !phone.trim() || !okAcknowledgement) return;
     if (need === "Présence et Compagnie" && commissions.length > 0 && !commissionCertified) return;
     if (isOutdoor && !continuity) return;
     if (isHomework && (!childAge.trim() || Number(childAge) < 3)) return;
@@ -1303,17 +1328,46 @@ function FamilyForm({
           )}
         </div>
       )}
-      {(isCleaning || isGardening || isOutdoorTidying) && (
-        <ServiceLimitsNotice
-          hideBase
-          extra={
-            isGardening
-              ? "Le compagnon ne peut utiliser aucun outil motorisé dangereux (tronçonneuse, taille-haie thermique, débroussailleuse), ne peut intervenir en hauteur (élagage, taille d'arbres) ni utiliser de produits phytosanitaires professionnels. Seuls les petits travaux d'entretien courant sont autorisés (tonte, désherbage manuel, arrosage, petit rangement)."
-              : isOutdoorTidying
-                ? "Le compagnon ne peut utiliser aucun outil motorisé dangereux, ni intervenir en hauteur, ni porter de charges lourdes au-delà de ce qui est raisonnable pour une personne seule."
-              : "Le compagnon ne peut effectuer aucun nettoyage en hauteur sans équipement adapté (vitres extérieures, lustres), ni utiliser de produits d'entretien professionnels ou dangereux. Seul l'entretien courant du logement est autorisé (rangement, dépoussiérage, sols, vaisselle, linge)."
-          }
-        />
+      {requiresLimitsAcknowledgement && (
+        <div className={bad(okAcknowledgement) ? "rounded-2xl border-2 border-destructive p-2" : ""}>
+          <ServiceLimitsNotice
+            hideBase
+            className="mt-0"
+            extra={
+              isGardening
+                ? "Le compagnon ne peut utiliser aucun outil motorisé dangereux (tronçonneuse, taille-haie thermique, débroussailleuse), ne peut intervenir en hauteur (élagage, taille d'arbres) ni utiliser de produits phytosanitaires professionnels. Seuls les petits travaux d'entretien courant sont autorisés (tonte, désherbage manuel, arrosage, petit rangement)."
+                : isOutdoorTidying
+                  ? "Le compagnon ne peut utiliser aucun outil motorisé dangereux, ni intervenir en hauteur, ni porter de charges lourdes au-delà de ce qui est raisonnable pour une personne seule."
+                  : "Le compagnon ne peut effectuer aucun nettoyage en hauteur sans équipement adapté (vitres extérieures, lustres), ni utiliser de produits d'entretien professionnels ou dangereux. Seul l'entretien courant du logement est autorisé (rangement, dépoussiérage, sols, vaisselle, linge)."
+            }
+          >
+            {isGardening && (
+              <div className="rounded-2xl border-2 border-border bg-accent p-3 text-xs leading-relaxed mt-2">
+                🌿 Petits travaux de jardinage : plafond fiscal spécifique de 5 000 € par an et par foyer fiscal
+                pour le crédit d'impôt (distinct du plafond global des autres services à la personne).
+              </div>
+            )}
+            <label className="flex items-center gap-3 mt-3 text-sm font-semibold cursor-pointer">
+              <input type="checkbox" checked={!!acknowledgedLimits[need]} onChange={(e) => setAcknowledged(e.target.checked)} className="h-5 w-5 shrink-0 accent-primary" />
+              Je certifie en avoir pris connaissance.
+            </label>
+          </ServiceLimitsNotice>
+          <Missing ok={okAcknowledgement} text="Veuillez confirmer avoir pris connaissance de ces informations." />
+        </div>
+      )}
+      {requiresFiscalAcknowledgement && (
+        <div className={bad(okAcknowledgement) ? "rounded-2xl border-2 border-destructive p-2" : ""}>
+          <div className="rounded-2xl border-2 border-border bg-accent p-3 text-xs leading-relaxed">
+            {need === "Petit bricolage"
+              ? "🔧 Petit bricolage : plafond fiscal spécifique de 500 € par an et par foyer fiscal pour le crédit d'impôt, limité à 2h par intervention (distinct du plafond global des autres services à la personne)."
+              : "📱 Aide informatique & smartphone : plafond fiscal spécifique de 3 000 € par an et par foyer fiscal pour le crédit d'impôt (distinct du plafond global des autres services à la personne)."}
+            <label className="flex items-center gap-3 mt-3 text-sm font-semibold cursor-pointer">
+              <input type="checkbox" checked={!!acknowledgedLimits[need]} onChange={(e) => setAcknowledged(e.target.checked)} className="h-5 w-5 shrink-0 accent-primary" />
+              Je certifie en avoir pris connaissance.
+            </label>
+          </div>
+          <Missing ok={okAcknowledgement} text="Veuillez confirmer avoir pris connaissance de ce plafond." />
+        </div>
       )}
       <div>
         <label className="block text-lg font-bold mb-2">Durée souhaitée</label>
@@ -1368,6 +1422,8 @@ function FamilyForm({
       <div className="bg-card rounded-2xl p-5 border-2 border-border">
         <label htmlFor="salaire-net" className="block text-lg font-bold">Tarif horaire net proposé (€)</label>
         <p className="text-xs text-muted-foreground mt-1">Recommandé par Solélia (10% congés payés inclus)</p>
+        <p className="text-xs text-muted-foreground mt-1">vous pouvez modifier le salaire horaire net/h en respectant le salaire minimum de la convention collective des particuliers employeurs (IDCC 3239), applicable au CESU.</p>
+        {isChildNeed && <p className="text-xs text-muted-foreground mt-1">Solélia recommande d'ajouter 1 €/h par enfant supplémentaire</p>}
         <div className="flex items-center gap-2 mt-3">
           <input
             id="salaire-net"
@@ -1380,6 +1436,7 @@ function FamilyForm({
           />
           <span className="shrink-0 text-lg font-bold">€/h</span>
         </div>
+        <p className="text-sm font-semibold mt-2">Soit un salaire de {formatPrice(durationHours * salaireNetHoraire)} € net à verser au salarié</p>
         <div className="mt-4 space-y-1">
           <p className="text-base font-semibold">
             Coût total avant crédit d'impôt : {formatPrice(costEstimate.avant)} €
@@ -1483,24 +1540,6 @@ function FamilyForm({
           className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
         />
       </div>
-      {isGardening && (
-        <div className="rounded-2xl border-2 border-border bg-accent p-3 text-xs leading-relaxed">
-          🌿 Petits travaux de jardinage : plafond fiscal spécifique de 5 000 € par an et par foyer fiscal
-          pour le crédit d'impôt (distinct du plafond global des autres services à la personne).
-        </div>
-      )}
-      {need === "Petit bricolage" && (
-        <div className="rounded-2xl border-2 border-border bg-accent p-3 text-xs leading-relaxed">
-          🔧 Petit bricolage : plafond fiscal spécifique de 500 € par an et par foyer fiscal pour le crédit d'impôt,
-          limité à 2h par intervention (distinct du plafond global des autres services à la personne).
-        </div>
-      )}
-      {need === "Aide informatique & smartphone" && (
-        <div className="rounded-2xl border-2 border-border bg-accent p-3 text-xs leading-relaxed">
-          📱 Aide informatique & smartphone : plafond fiscal spécifique de 3 000 € par an et par foyer fiscal pour le
-          crédit d'impôt (distinct du plafond global des autres services à la personne).
-        </div>
-      )}
       {mode === "scheduled" && (
         <div>
           <label className="block text-lg font-bold mb-2">Qui doit venir ?</label>
@@ -1588,13 +1627,23 @@ function FamilyForm({
 
       <div>
         <label className="block text-lg font-bold mb-2">Adresse</label>
-        <input
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          placeholder="12 rue des Lilas, 75014 Paris"
-          className={"w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none" + errCls(okAddress)}
-        />
-        <Missing ok={okAddress} text="Champ obligatoire" />
+        <div className="space-y-3">
+          <div>
+            <label htmlFor="booking-street" className="block text-sm font-semibold mb-1">Numéro et rue</label>
+            <input id="booking-street" value={addressParts.street} maxLength={150} onChange={(e) => setAddressParts((prev) => ({ ...prev, street: e.target.value }))} placeholder="12 rue des Lilas" className={"w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none" + errCls(okStreet)} />
+            <Missing ok={okStreet} text="Indiquez le numéro et la rue (ex. 12 rue des Lilas)." />
+          </div>
+          <div>
+            <label htmlFor="booking-postal" className="block text-sm font-semibold mb-1">Code postal</label>
+            <input id="booking-postal" inputMode="numeric" autoComplete="postal-code" value={addressParts.postalCode} maxLength={5} onChange={(e) => setAddressParts((prev) => ({ ...prev, postalCode: e.target.value }))} placeholder="75014" className={"w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none" + errCls(okPostalCode)} />
+            <Missing ok={okPostalCode} text="Indiquez un code postal à 5 chiffres." />
+          </div>
+          <div>
+            <label htmlFor="booking-city" className="block text-sm font-semibold mb-1">Ville</label>
+            <input id="booking-city" autoComplete="address-level2" value={addressParts.city} maxLength={100} onChange={(e) => setAddressParts((prev) => ({ ...prev, city: e.target.value }))} placeholder="Paris" className={"w-full px-5 py-4 rounded-2xl border-2 border-border bg-card text-lg focus:border-primary outline-none" + errCls(okCity)} />
+            <Missing ok={okCity} text="Indiquez la ville." />
+          </div>
+        </div>
       </div>
       <div>
         <label className="block text-lg font-bold mb-2">Téléphone</label>
