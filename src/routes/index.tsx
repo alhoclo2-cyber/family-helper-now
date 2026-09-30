@@ -575,7 +575,8 @@ function FamilyFlow() {
         <img
           src={accueilFamilleAsset.url}
           alt="La bienveillance et la présence à domicile, quand vous en avez le plus besoin. Des compagnons vérifiés, proches de chez vous. Solélia Accompagnement crée le lien."
-          className="w-[calc(100%+3rem)] -mx-6 h-auto select-none"
+          style={{ width: "calc(100% + 3rem)", marginLeft: "-1.5rem", marginRight: "-1.5rem" }}
+          className="h-auto select-none"
           draggable={false}
         />
         </div>
