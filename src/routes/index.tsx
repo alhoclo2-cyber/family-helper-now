@@ -25,6 +25,9 @@ import { AccountInfoPanel } from "@/components/AccountInfoPanel";
 import { ClientDocumentsPanel } from "@/components/ClientDocumentsPanel";
 import { CompanionAvailabilityPanel } from "@/components/CompanionAvailabilityPanel";
 import { ReservationSummaryPanel } from "@/components/ReservationSummaryPanel";
+import { AudienceMedallion } from "@/components/AudienceIllustrations";
+import { Button } from "@/components/ui/button";
+import { ChevronDown, X } from "lucide-react";
 import { useCompanionSettings } from "@/lib/companionSettings";
 import soleliaLogoAsset from "@/assets/solelia-logo.png.asset.json";
 import floralBorderAsset from "@/assets/floral-border.jpg.asset.json";
@@ -523,6 +526,7 @@ const MISSION_BUTTON_CUTOFF_MIN = 20 * 60 + 30;
 
 function FamilyFlow() {
   const [step, setStep] = useState<"home" | "form" | "wait" | "account">("home");
+  const [audiencesOpen, setAudiencesOpen] = useState(false);
   const [requestMode, setRequestMode] = useState<"asap" | "scheduled">("asap");
   const [nightClosed, setNightClosed] = useState(false);
   const [simulateNoAnswer, setSimulateNoAnswer] = useState(false);
@@ -580,24 +584,58 @@ function FamilyFlow() {
           draggable={false}
         />
         </div>
-        <div className="w-full flex flex-wrap justify-center gap-2">
-          {[
-            { emoji: "👵", label: "Seniors autonomes" },
-            { emoji: "👶", label: "Nos enfants (dès 3 ans)" },
-            { emoji: "🤰", label: "Grossesse & maternité" },
-            { emoji: "🏥", label: "Retour d'hospitalisation & convalescence" },
-            { emoji: "🤕", label: "Invalidité temporaire" },
-            { emoji: "🩹", label: "Blessures & imprévus" },
-          ].map((b) => (
-            <span
-              key={b.label}
-              className="inline-flex items-center gap-1.5 rounded-full bg-accent border border-primary/20 px-3 py-1.5 text-xs font-semibold"
-            >
-              <span>{b.emoji}</span>
-              <span className="leading-tight">{b.label}</span>
+        <section className="w-full">
+          <Button
+            type="button"
+            variant="ghost"
+            id="audiences-toggle"
+            aria-expanded={audiencesOpen}
+            aria-controls="audiences-content"
+            onClick={() => setAudiencesOpen((open) => !open)}
+            className="h-auto min-h-20 w-full justify-between whitespace-normal rounded-2xl border border-audience-ring bg-audience-surface px-4 py-3 text-left shadow-sm hover:bg-audience-peach"
+          >
+            <span className="flex flex-col items-start gap-1">
+              <span className="text-base font-bold text-foreground">Pour vous ou pour vos proches ?</span>
+              <span className="text-sm font-normal text-muted-foreground">Découvrez nos accompagnements</span>
             </span>
-          ))}
-        </div>
+            <ChevronDown aria-hidden="true" className={`shrink-0 text-primary transition-transform duration-300 motion-reduce:transition-none ${audiencesOpen ? "rotate-180" : ""}`} />
+          </Button>
+          <div
+            id="audiences-content"
+            role="region"
+            aria-labelledby="audiences-toggle"
+            aria-hidden={!audiencesOpen}
+            inert={!audiencesOpen}
+            className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none ${audiencesOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+          >
+            <div className="min-h-0 overflow-hidden">
+              <div className="pt-2">
+                <div className="mb-2 flex justify-end">
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setAudiencesOpen(false)} className="gap-1 text-muted-foreground hover:text-foreground">
+                    Fermer <X aria-hidden="true" />
+                  </Button>
+                </div>
+                <div className="flex flex-col gap-2.5">
+                  {([
+                    { audience: "seniors", title: "Seniors autonomes", description: "Rompre l'isolement, partager une promenade, des discussions et les petits moments du quotidien dans la bonne humeur." },
+                    { audience: "children", title: "Vos enfants (dès 3 ans)", description: "Une présence douce et attentionnée après l'école pour souffler et vous relayer en tant que parents." },
+                    { audience: "maternity", title: "Grossesse & maternité", description: "Un coup de main bienveillant pour la maison et le quotidien quand le corps a besoin de repos." },
+                    { audience: "recovery", title: "Retour d'hospitalisation & convalescence", description: "Une compagnie rassurante à la maison pour reprendre son rythme pas à pas, en toute sérénité." },
+                    { audience: "injury", title: "Blessures & invalidité temporaire", description: "Un relais humain et attentionné, chaleureux et réactif, pour faciliter chaque journée et faire face aux imprévus le temps de la récupération." },
+                  ] as const).map((item) => (
+                    <article key={item.audience} className="flex items-center gap-3 rounded-2xl border border-audience-ring/60 bg-audience-surface p-3 shadow-sm">
+                      <AudienceMedallion audience={item.audience} />
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-sm font-bold leading-snug text-foreground">{item.title}</h3>
+                        <p className="mt-1 text-sm leading-snug text-muted-foreground">{item.description}</p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
         <div className="w-full bg-card border-2 border-primary/30 rounded-2xl p-4 text-center">
           <p className="text-base font-black">Un besoin = un compagnon à proximité.</p>
           <ul className="mt-2 text-sm text-muted-foreground space-y-0.5">

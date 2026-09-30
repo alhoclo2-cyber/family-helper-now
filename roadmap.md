@@ -2,3 +2,4 @@
 - [x] L'afficher avant l'accusé de réception, sur l'écran de carte bancaire et après confirmation ; conserver le salaire réellement choisi.
 - [x] Vérifier l'affichage et l'absence d'ajout à l'étape intermédiaire.
 - [x] Adapter le tarif, l'adresse en trois champs et les confirmations obligatoires du formulaire Famille ; vérifier le parcours.
+- [x] Remplacer les pastilles Famille par cinq cartes illustrées repliables et vérifier les affichages mobile et ordinateur.
