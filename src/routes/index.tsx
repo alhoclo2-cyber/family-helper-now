@@ -28,6 +28,7 @@ import { ReservationSummaryPanel } from "@/components/ReservationSummaryPanel";
 import { useCompanionSettings } from "@/lib/companionSettings";
 import soleliaLogoAsset from "@/assets/solelia-logo.png.asset.json";
 import floralBorderAsset from "@/assets/floral-border.jpg.asset.json";
+import accueilFamilleAsset from "@/assets/accueil-famille.png.asset.json";
 
 
 export const Route = createFileRoute("/")({
@@ -571,22 +572,12 @@ function FamilyFlow() {
           {session ? `👤 ${sessionFirstName || "Mon compte"}` : "👤 Mon compte"}
         </button>
         <div className="flex flex-col items-center gap-1">
-          <div
-            className="text-center space-y-1 text-lg leading-snug"
-            style={{ fontFamily: "'Parisienne', cursive", color: "#4A1525" }}
-          >
-            <p>Pour rompre l'isolement,</p>
-            <p>Accompagner les enfants,</p>
-            <p>Soutenir une personne temporairement ou durablement fragilisée,</p>
-            <p>Et être présent dans les moments où l'on a simplement besoin de quelqu'un.</p>
-          </div>
-          <div className="h-24 w-full max-w-[320px] overflow-hidden" aria-hidden="true">
-            <img
-              src={floralBorderAsset.url}
-              alt=""
-              className="h-full w-full object-cover opacity-90"
-            />
-          </div>
+        <img
+          src={accueilFamilleAsset.url}
+          alt="La bienveillance et la présence à domicile, quand vous en avez le plus besoin. Des compagnons vérifiés, proches de chez vous. Solélia Accompagnement crée le lien."
+          className="w-[calc(100%+3rem)] -mx-6 h-auto select-none"
+          draggable={false}
+        />
         </div>
         <div className="w-full flex flex-wrap justify-center gap-2">
           {[
