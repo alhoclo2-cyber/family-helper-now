@@ -34,6 +34,11 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-audience-peach: var(--audience-peach);
+  --color-audience-terracotta: var(--audience-terracotta);
+  --color-audience-sage: var(--audience-sage);
+  --color-audience-ring: var(--audience-ring);
+  --color-audience-surface: var(--audience-surface);
 }
 
 :root {
@@ -61,6 +66,11 @@
   --border: oklch(0.9 0.01 260);
   --input: oklch(0.92 0.01 260);
   --ring: oklch(0.55 0.22 28);
+  --audience-peach: oklch(0.97 0.025 53);
+  --audience-terracotta: oklch(0.55 0.12 35);
+  --audience-sage: oklch(0.79 0.055 144);
+  --audience-ring: oklch(0.88 0.055 45);
+  --audience-surface: oklch(0.985 0.011 56);
 }
 
 @layer base {
