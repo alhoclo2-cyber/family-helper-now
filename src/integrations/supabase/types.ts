@@ -48,11 +48,13 @@ export type Database = {
         Row: {
           address: string
           address_proof_path: string | null
+          cesu_number: string | null
           city: string | null
           created_at: string
           criminal_record_path: string | null
           email: string
           first_name: string
+          has_cesu_number: boolean | null
           host_address_proof_path: string | null
           host_attestation_path: string | null
           host_id_path: string | null
@@ -61,6 +63,8 @@ export type Database = {
           id: string
           id_card_back_path: string | null
           id_card_path: string | null
+          id_passport_path: string | null
+          id_type: string | null
           last_name: string
           motivation: string
           nir: string
@@ -80,11 +84,13 @@ export type Database = {
         Insert: {
           address?: string
           address_proof_path?: string | null
+          cesu_number?: string | null
           city?: string | null
           created_at?: string
           criminal_record_path?: string | null
           email: string
           first_name: string
+          has_cesu_number?: boolean | null
           host_address_proof_path?: string | null
           host_attestation_path?: string | null
           host_id_path?: string | null
@@ -93,6 +99,8 @@ export type Database = {
           id?: string
           id_card_back_path?: string | null
           id_card_path?: string | null
+          id_passport_path?: string | null
+          id_type?: string | null
           last_name: string
           motivation?: string
           nir?: string
@@ -112,11 +120,13 @@ export type Database = {
         Update: {
           address?: string
           address_proof_path?: string | null
+          cesu_number?: string | null
           city?: string | null
           created_at?: string
           criminal_record_path?: string | null
           email?: string
           first_name?: string
+          has_cesu_number?: boolean | null
           host_address_proof_path?: string | null
           host_attestation_path?: string | null
           host_id_path?: string | null
@@ -125,6 +135,8 @@ export type Database = {
           id?: string
           id_card_back_path?: string | null
           id_card_path?: string | null
+          id_passport_path?: string | null
+          id_type?: string | null
           last_name?: string
           motivation?: string
           nir?: string
@@ -209,38 +221,47 @@ export type Database = {
       profiles: {
         Row: {
           address_line: string
+          cesu_number: string | null
           city: string
           created_at: string
           email: string
           first_name: string
+          has_cesu_number: boolean | null
           id: string
           last_name: string
           phone: string
           postal_code: string
+          tax_number: string | null
           updated_at: string
         }
         Insert: {
           address_line?: string
+          cesu_number?: string | null
           city?: string
           created_at?: string
           email?: string
           first_name?: string
+          has_cesu_number?: boolean | null
           id: string
           last_name?: string
           phone?: string
           postal_code?: string
+          tax_number?: string | null
           updated_at?: string
         }
         Update: {
           address_line?: string
+          cesu_number?: string | null
           city?: string
           created_at?: string
           email?: string
           first_name?: string
+          has_cesu_number?: boolean | null
           id?: string
           last_name?: string
           phone?: string
           postal_code?: string
+          tax_number?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -293,6 +314,7 @@ export type Database = {
         | "proof_of_address"
         | "identity_front"
         | "identity_back"
+        | "identity_passport"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -434,6 +456,7 @@ export const Constants = {
         "proof_of_address",
         "identity_front",
         "identity_back",
+        "identity_passport",
       ],
     },
   },
