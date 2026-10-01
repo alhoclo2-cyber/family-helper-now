@@ -309,8 +309,12 @@ function CompanionsTab({ apps }: { apps: UseQueryResult<App[]> }) {
           <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-bold">
             {(
               [
-                ["Identité recto", a.id_card_path],
-                ["Identité verso", a.id_card_back_path],
+                ...(a.id_type === "passport"
+                  ? ([["Passeport", a.id_passport_path]] as const)
+                  : ([
+                      ["Identité recto", a.id_card_path],
+                      ["Identité verso", a.id_card_back_path],
+                    ] as const)),
                 ["Situation", a.situation_proof_path],
                 ["B3", a.criminal_record_path],
                 ["RIB", a.iban_path],
@@ -447,6 +451,20 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
           🏠 Logement :{" "}
           {app.housing_status === "hosted" ? "Hébergé(e) par un tiers" : "Titulaire du logement"}
         </p>
+        <p>
+          🪪 Pièce fournie :{" "}
+          <b>{app.id_type === "passport" ? "Passeport" : app.id_type === "id_card" ? "Carte d'identité" : "Carte d'identité (non précisé)"}</b>
+        </p>
+        <p>
+          💼 Numéro CESU :{" "}
+          {app.has_cesu_number === true ? (
+            <span className="font-mono font-bold">{app.cesu_number || "Non renseigné"}</span>
+          ) : app.has_cesu_number === false ? (
+            "Aucun"
+          ) : (
+            "Non renseigné"
+          )}
+        </p>
         <p>🗓️ Candidature du {new Date(app.created_at).toLocaleString("fr-FR")}</p>
         {app.motivation && (
           <p className="pt-2 text-muted-foreground italic">« {app.motivation} »</p>
@@ -454,8 +472,14 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
       </div>
 
       <h3 className="font-black">Pièces justificatives</h3>
-      <DocCard label="🪪 Pièce d'identité — recto" path={app.id_card_path} />
-      <DocCard label="🪪 Pièce d'identité — verso" path={app.id_card_back_path} />
+      {app.id_type === "passport" ? (
+        <DocCard label="🛂 Passeport (page photo)" path={app.id_passport_path} />
+      ) : (
+        <>
+          <DocCard label="🪪 Pièce d'identité — recto" path={app.id_card_path} />
+          <DocCard label="🪪 Pièce d'identité — verso" path={app.id_card_back_path} />
+        </>
+      )}
       <DocCard label="💳 Carte Vitale (recto)" path={app.vitale_card_path} />
       <DocCard label="🎓 Justificatif de situation" path={app.situation_proof_path} />
       <DocCard label="⚖️ Casier judiciaire (B3, moins de 3 mois)" path={app.criminal_record_path} />
@@ -528,12 +552,25 @@ type ClientRow = Awaited<ReturnType<typeof listClientRegistrations>>[number];
 type ClientDoc = ClientRow["documents"][number];
 type ClientStatus = "incomplete" | "to_check" | "complete";
 
-const CLIENT_DOC_TYPES = [
+const CLIENT_DOC_TYPES_ID_CARD = [
   { type: "rib", label: "RIB" },
   { type: "identity_front", label: "Pièce d'identité — recto" },
   { type: "identity_back", label: "Pièce d'identité — verso" },
   { type: "proof_of_address", label: "Justificatif de domicile" },
 ] as const;
+const CLIENT_DOC_TYPES_PASSPORT = [
+  { type: "rib", label: "RIB" },
+  { type: "identity_passport", label: "Passeport (page photo)" },
+  { type: "proof_of_address", label: "Justificatif de domicile" },
+] as const;
+
+/** Pièces attendues selon le type d'identité déposé (passeport si seul un passeport est présent). */
+function clientDocTypes(c: ClientRow): readonly { type: ClientDoc["doc_type"]; label: string }[] {
+  const has = (t: string) => c.documents.some((d) => d.doc_type === t && d.file_path);
+  return has("identity_passport") && !has("identity_front") && !has("identity_back")
+    ? CLIENT_DOC_TYPES_PASSPORT
+    : CLIENT_DOC_TYPES_ID_CARD;
+}
 
 const CLIENT_STATUS_LABEL: Record<ClientStatus, string> = {
   incomplete: "🔴 Dossier incomplet",
@@ -543,8 +580,9 @@ const CLIENT_STATUS_LABEL: Record<ClientStatus, string> = {
 
 function clientStatus(c: ClientRow): ClientStatus {
   const byType = new Map(c.documents.map((d) => [d.doc_type, d]));
-  const present = CLIENT_DOC_TYPES.filter((t) => byType.get(t.type)?.file_path);
-  if (present.length < CLIENT_DOC_TYPES.length) return "incomplete";
+  const types = clientDocTypes(c);
+  const present = types.filter((t) => byType.get(t.type)?.file_path);
+  if (present.length < types.length) return "incomplete";
   return present.every((t) => byType.get(t.type)?.status === "validated") ? "complete" : "to_check";
 }
 
@@ -657,7 +695,7 @@ function ClientCard({ client }: { client: ClientRow }) {
         <span className="text-xs font-bold whitespace-nowrap">{CLIENT_STATUS_LABEL[status]}</span>
       </button>
       <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-bold">
-        {CLIENT_DOC_TYPES.map((t) => {
+        {clientDocTypes(client).map((t) => {
           const d = byType.get(t.type);
           const ok = d?.status === "validated";
           return (
@@ -672,7 +710,7 @@ function ClientCard({ client }: { client: ClientRow }) {
       </button>
       {open && (
         <div className="flex flex-col gap-3">
-          {CLIENT_DOC_TYPES.map((t) => (
+          {clientDocTypes(client).map((t) => (
             <ClientDocCard key={t.type} label={t.label} doc={byType.get(t.type) ?? null} />
           ))}
         </div>
