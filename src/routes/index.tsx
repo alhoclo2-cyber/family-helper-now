@@ -4188,7 +4188,7 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
         </div>
       </div>
 
-      <AccountInfoPanel />
+      <AccountInfoPanel familyFields />
 
       <ClientDocumentsPanel />
 
