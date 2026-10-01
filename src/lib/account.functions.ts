@@ -27,9 +27,26 @@ export const bootstrapAccount = createServerFn({ method: "POST" })
 
     const { data: existing } = await supabase
       .from("profiles")
-      .select("id")
+      .select("id, tax_number, has_cesu_number")
       .eq("id", userId)
       .maybeSingle();
+
+    // Numéro fiscal / CESU saisis à l'inscription : copiés dans le profil (RLS) puis retirés des métadonnées
+    const metaAny = meta as Record<string, unknown>;
+    const metaTax = typeof metaAny["tax_number"] === "string" ? (metaAny["tax_number"] as string) : "";
+    const hasMetaFiscal = /^\d{13}$/.test(metaTax) || typeof metaAny["has_cesu_number"] === "boolean";
+    const fiscal = hasMetaFiscal
+      ? {
+          ...(/^\d{13}$/.test(metaTax) ? { tax_number: metaTax } : {}),
+          ...(typeof metaAny["has_cesu_number"] === "boolean"
+            ? {
+                has_cesu_number: metaAny["has_cesu_number"] as boolean,
+                cesu_number: metaAny["has_cesu_number"] ? String(metaAny["cesu_number"] ?? "") : null,
+              }
+            : {}),
+        }
+      : {};
+
     if (!existing) {
       await supabase.from("profiles").insert({
         id: userId,
@@ -40,7 +57,20 @@ export const bootstrapAccount = createServerFn({ method: "POST" })
         postal_code: meta["postal_code"] ?? "",
         city: meta["city"] ?? "",
         phone: meta["phone"] ?? "",
+        ...fiscal,
       });
+    } else if (hasMetaFiscal && !existing.tax_number && existing.has_cesu_number === null) {
+      await supabase.from("profiles").update(fiscal).eq("id", userId);
+    }
+    if (hasMetaFiscal || "cesu_number" in metaAny) {
+      try {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        await supabaseAdmin.auth.admin.updateUserById(userId, {
+          user_metadata: { tax_number: null, has_cesu_number: null, cesu_number: null },
+        });
+      } catch {
+        /* nettoyage best effort, sans journaliser les valeurs */
+      }
     }
 
     const { data: hasRole } = await supabase.rpc("has_role", {

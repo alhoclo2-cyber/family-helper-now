@@ -707,6 +707,7 @@ function FamilyFlow() {
           </button>
           <AuthCard
             title="Connectez-vous pour continuer"
+            familyFields
             subtitle="Un compte est nécessaire pour réserver un compagnon."
             onSuccess={() => {}}
           />
@@ -4097,6 +4098,7 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
         <AuthCard
           title="Mon espace Solélia"
           subtitle="Particuliers"
+          familyFields
           onSuccess={() => {
             /* la session met à jour la vue automatiquement */
           }}
