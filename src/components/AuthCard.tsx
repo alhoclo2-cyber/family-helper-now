@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { inputCls } from "@/lib/auth";
+import { TaxCesuFields, cleanTaxNumber, isTaxCesuComplete, type TaxCesuValue } from "@/components/TaxCesuFields";
 
 type Mode = "login" | "signup" | "forgot" | "check-email";
 
@@ -58,11 +59,14 @@ export function AuthCard({
   title = "Connexion",
   subtitle,
   initialMode = "login",
+  familyFields = false,
 }: {
   onSuccess: () => void;
   title?: string;
   subtitle?: string;
   initialMode?: "login" | "signup";
+  /** Demande le numéro fiscal et le numéro CESU (particulier employeur). */
+  familyFields?: boolean;
 }) {
   const [mode, setMode] = useState<Mode>(initialMode);
   const [busy, setBusy] = useState(false);
@@ -75,6 +79,8 @@ export function AuthCard({
   const [postalCode, setPostalCode] = useState("");
   const [city, setCity] = useState("");
   const [phone, setPhone] = useState("");
+  const [taxCesu, setTaxCesu] = useState<TaxCesuValue>({ taxNumber: "", hasCesu: null, cesuNumber: "" });
+  const [showTaxErrors, setShowTaxErrors] = useState(false);
 
   const login = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,6 +102,10 @@ export function AuthCard({
   const signup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password.length < 8) return setErr("Le mot de passe doit contenir au moins 8 caractères.");
+    if (familyFields && !isTaxCesuComplete(taxCesu)) {
+      setShowTaxErrors(true);
+      return setErr("Merci de compléter le numéro fiscal et la question CESU.");
+    }
     setBusy(true);
     setErr(null);
     const { data, error } = await supabase.auth.signUp({
@@ -110,6 +120,14 @@ export function AuthCard({
           postal_code: postalCode.trim(),
           city: city.trim(),
           phone: phone.trim(),
+          // Copiés dans le profil (RLS) à la première connexion puis effacés des métadonnées
+          ...(familyFields
+            ? {
+                tax_number: cleanTaxNumber(taxCesu.taxNumber),
+                has_cesu_number: taxCesu.hasCesu,
+                cesu_number: taxCesu.hasCesu ? taxCesu.cesuNumber.trim() : "",
+              }
+            : {}),
         },
       },
     });
@@ -239,6 +257,9 @@ export function AuthCard({
               onChange={(e) => setPhone(e.target.value)}
               className={inputCls}
             />
+            {familyFields && (
+              <TaxCesuFields value={taxCesu} onChange={setTaxCesu} inputCls={inputCls} showErrors={showTaxErrors} />
+            )}
           </>
         )}
         <input

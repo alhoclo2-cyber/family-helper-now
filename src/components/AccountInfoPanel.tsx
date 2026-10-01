@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/auth";
+import { TaxCesuFields, cleanTaxNumber, isTaxNumberValid, type TaxCesuValue } from "@/components/TaxCesuFields";
 
 const inputCls =
   "w-full px-4 py-3 rounded-2xl border-2 border-border bg-background text-base focus:border-primary outline-none";
@@ -27,10 +28,12 @@ const EMPTY: ProfileForm = {
  * Panneau dépliable d'édition des informations personnelles (profil, email, mot de passe).
  * Utilisé dans l'espace Client et l'espace Compagnon.
  */
-export function AccountInfoPanel() {
+export function AccountInfoPanel({ familyFields = false }: { familyFields?: boolean } = {}) {
   const { session } = useSession();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<ProfileForm>(EMPTY);
+  const [taxCesu, setTaxCesu] = useState<TaxCesuValue>({ taxNumber: "", hasCesu: null, cesuNumber: "" });
+  const [fiscalMissing, setFiscalMissing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,11 +52,15 @@ export function AccountInfoPanel() {
     setEmail(session.user.email ?? "");
     supabase
       .from("profiles")
-      .select("first_name,last_name,address_line,postal_code,city,phone")
+      .select("first_name,last_name,address_line,postal_code,city,phone,tax_number,has_cesu_number,cesu_number")
       .eq("id", session.user.id)
       .maybeSingle()
       .then(({ data }) => {
-        if (data) setForm({ ...EMPTY, ...data });
+        if (!data) return;
+        const { tax_number, has_cesu_number, cesu_number, ...rest } = data;
+        setForm({ ...EMPTY, ...rest });
+        setTaxCesu({ taxNumber: tax_number ?? "", hasCesu: has_cesu_number, cesuNumber: cesu_number ?? "" });
+        setFiscalMissing(!tax_number || has_cesu_number === null);
       });
   }, [session?.user.id]);
 
@@ -72,8 +79,19 @@ export function AccountInfoPanel() {
     setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const saveProfile = async () => {
-    setLoading(true);
     setError(null);
+    const fiscalTouched = !!taxCesu.taxNumber.trim() || taxCesu.hasCesu !== null;
+    if (familyFields && fiscalTouched) {
+      if (taxCesu.taxNumber.trim() && !isTaxNumberValid(taxCesu.taxNumber)) {
+        setError("Le numéro fiscal doit comporter 13 chiffres.");
+        return;
+      }
+      if (taxCesu.hasCesu === true && !taxCesu.cesuNumber.trim()) {
+        setError("Merci de renseigner votre numéro CESU.");
+        return;
+      }
+    }
+    setLoading(true);
     const { error: err } = await supabase
       .from("profiles")
       .update({
@@ -83,6 +101,13 @@ export function AccountInfoPanel() {
         postal_code: form.postal_code.trim(),
         city: form.city.trim(),
         phone: form.phone.trim(),
+        ...(familyFields && fiscalTouched
+          ? {
+              tax_number: taxCesu.taxNumber.trim() ? cleanTaxNumber(taxCesu.taxNumber) : null,
+              has_cesu_number: taxCesu.hasCesu,
+              cesu_number: taxCesu.hasCesu ? taxCesu.cesuNumber.trim() : null,
+            }
+          : {}),
       })
       .eq("id", session.user.id);
     setLoading(false);
@@ -90,6 +115,7 @@ export function AccountInfoPanel() {
       setError("Une erreur est survenue. Réessayez.");
       return;
     }
+    if (familyFields) setFiscalMissing(!isTaxNumberValid(taxCesu.taxNumber) || taxCesu.hasCesu === null);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -154,6 +180,12 @@ export function AccountInfoPanel() {
         </span>
         <span className="text-sm font-bold text-primary shrink-0">{open ? "Fermer" : "Modifier"}</span>
       </button>
+      {familyFields && fiscalMissing && (
+        <p className="mt-3 rounded-2xl bg-accent p-3 text-xs font-semibold">
+          📝 Merci de compléter votre numéro fiscal et d'indiquer si vous avez un numéro CESU (cela ne bloque pas vos
+          demandes de mission).
+        </p>
+      )}
 
       {open && (
         <div className="mt-4 flex flex-col gap-5">
@@ -168,6 +200,7 @@ export function AccountInfoPanel() {
               <input placeholder="Ville" value={form.city} onChange={set("city")} className={inputCls} />
             </div>
             <input placeholder="Téléphone" type="tel" value={form.phone} onChange={set("phone")} className={inputCls} />
+            {familyFields && <TaxCesuFields value={taxCesu} onChange={setTaxCesu} inputCls={inputCls} />}
             <button
               type="button"
               onClick={saveProfile}

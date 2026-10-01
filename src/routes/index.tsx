@@ -21,6 +21,7 @@ import {
   ThumbUpButton,
 } from "@/components/CompanionBadges";
 import { CompanionProfilePanel } from "@/components/CompanionProfilePanel";
+import { YesNoChoice } from "@/components/TaxCesuFields";
 import { AccountInfoPanel } from "@/components/AccountInfoPanel";
 import { ClientDocumentsPanel } from "@/components/ClientDocumentsPanel";
 import { CompanionAvailabilityPanel } from "@/components/CompanionAvailabilityPanel";
@@ -707,6 +708,7 @@ function FamilyFlow() {
           </button>
           <AuthCard
             title="Connectez-vous pour continuer"
+            familyFields
             subtitle="Un compte est nécessaire pour réserver un compagnon."
             onSuccess={() => {}}
           />
@@ -821,6 +823,7 @@ function FamilyForm({
   const [extraInfo, setExtraInfo] = useState<string>(parsed.rest);
   const [missionInfo, setMissionInfo] = useState<string>(initial?.missionInfo ?? "");
   const [salaireNetHoraire, setSalaireNetHoraire] = useState<number>(initial?.salaryNetHourly ?? DEFAULT_HOURLY_RATE);
+  const [salaireText, setSalaireText] = useState<string>(() => formatPrice(initial?.salaryNetHourly ?? DEFAULT_HOURLY_RATE));
   const [acknowledgedLimits, setAcknowledgedLimits] = useState<Record<string, boolean>>({});
   
   const [cguOk, setCguOk] = useState(false);
@@ -1453,15 +1456,24 @@ function FamilyForm({
         <label htmlFor="salaire-net" className="block text-lg font-bold">Tarif horaire net proposé (€)</label>
         <p className="text-xs text-muted-foreground mt-1">Recommandé par Solélia (10% congés payés inclus)</p>
         <p className="text-xs text-muted-foreground mt-1">vous pouvez modifier le salaire horaire net/h en respectant le salaire minimum de la convention collective des particuliers employeurs (IDCC 3239), applicable au CESU.</p>
-        {isChildNeed && <p className="text-xs text-muted-foreground mt-1">Solélia recommande d'ajouter 1 €/h par enfant supplémentaire</p>}
+        {isChildNeed && !isHomework && (
+          <div className="mt-3 rounded-2xl bg-primary/10 border-2 border-primary/30 p-3 text-sm font-bold text-foreground">
+            👶 Solélia recommande d'ajouter 1 €/h par enfant supplémentaire
+          </div>
+        )}
         <div className="flex items-center gap-2 mt-3">
           <input
             id="salaire-net"
-            type="number"
-            step="0.10"
-            min="0"
-            value={salaireNetHoraire}
-            onChange={(e) => setSalaireNetHoraire(Number(e.target.value) || 0)}
+            type="text"
+            inputMode="decimal"
+            value={salaireText}
+            onChange={(e) => {
+              const raw = e.target.value.replace(/[^0-9.,]/g, "");
+              setSalaireText(raw);
+              const n = Number(raw.replace(",", "."));
+              setSalaireNetHoraire(Number.isFinite(n) ? n : 0);
+            }}
+            onBlur={() => setSalaireText(formatPrice(salaireNetHoraire))}
             className="flex-1 min-w-0 w-full px-5 py-4 rounded-2xl border-2 border-border bg-background text-lg focus:border-primary outline-none"
           />
           <span className="shrink-0 text-lg font-bold">€/h</span>
@@ -2022,7 +2034,8 @@ function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolea
       )}
       <p className="text-xs text-muted-foreground mt-2">
         Modification et annulation gratuites jusqu'à 24 h avant le rendez-vous, sous réserve qu'un compagnon soit
-        disponible sur le nouveau créneau. Passé 24 h, la mission reste due.
+        disponible sur le nouveau créneau. Annulation à moins de 24 h avant la mission : vous pouvez demander un
+        remboursement de 5,00 € (1,00 € de frais d'opération retenu).
       </p>
     </div>
   );
@@ -2176,7 +2189,9 @@ function FamilyWait({
           {paidAlready
             ? request.refunded
               ? "Vous annulez plus de 24h avant le rendez-vous : aucun frais ne vous sera prélevé."
-              : "Annulation à moins de 24 h : les frais de service ont été réglés."
+              : request.scheduledAt
+                ? "Annulation à moins de 24 h : les frais de service ont été réglés. Vous pouvez demander un remboursement de 5,00 € (1,00 € de frais d'opération retenu)."
+                : "Annulation à moins de 24 h : les frais de service ont été réglés."
             : "Demande en cours annulée. Vous pouvez maintenant modifier vos critères et relancer la recherche."}
         </p>
         {paidAlready && !request.refunded && !!request.scheduledAt && <LateRefundRequest request={request} />}
@@ -3369,6 +3384,7 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
 type DocKey =
   | "idCard"
   | "idCardBack"
+  | "idPassport"
   | "vitaleCard"
   | "studentCard"
   | "criminalRecord"
@@ -3388,6 +3404,9 @@ type EnrollForm = {
   motivation: string;
   nir: string;
   housing: HousingStatus;
+  idType: "id_card" | "passport" | null;
+  hasCesu: boolean | null;
+  cesuNumber: string;
   selfie?: File;
   selfiePreview?: string;
   docs: Partial<Record<DocKey, File>>;
@@ -3396,6 +3415,7 @@ type EnrollForm = {
 type DocColumn =
   | "id_card_path"
   | "id_card_back_path"
+  | "id_passport_path"
   | "vitale_card_path"
   | "situation_proof_path"
   | "criminal_record_path"
@@ -3408,6 +3428,7 @@ type DocColumn =
 const DOC_COLUMN: Record<DocKey, DocColumn> = {
   idCard: "id_card_path",
   idCardBack: "id_card_back_path",
+  idPassport: "id_passport_path",
   vitaleCard: "vitale_card_path",
   studentCard: "situation_proof_path",
   criminalRecord: "criminal_record_path",
@@ -3420,8 +3441,9 @@ const DOC_COLUMN: Record<DocKey, DocColumn> = {
 
 /** Mots-clés permettant de mettre en rouge les pièces citées dans le motif du Mandataire */
 const DOC_KEYWORDS: Record<DocKey, string[]> = {
-  idCard: ["identité", "identite", "cni", "passeport", "recto"],
-  idCardBack: ["identité", "identite", "cni", "passeport", "verso"],
+  idCard: ["carte d'identité", "carte d'identite", "cni", "recto"],
+  idCardBack: ["carte d'identité", "carte d'identite", "cni", "verso"],
+  idPassport: ["passeport"],
   vitaleCard: ["vitale"],
   studentCard: ["situation", "étudiante", "etudiante", "contrat", "retraite", "france travail"],
   criminalRecord: ["casier", "judiciaire", "b3", "bulletin"],
@@ -3502,6 +3524,9 @@ function StudentEnroll({
     motivation: "",
     nir: "",
     housing: "owner",
+    idType: null,
+    hasCesu: null,
+    cesuNumber: "",
     docs: {},
   });
 
@@ -3523,6 +3548,15 @@ function StudentEnroll({
         motivation: prev.motivation || app?.motivation || "",
         nir: prev.nir || app?.nir || "",
         housing: (app?.housing_status as HousingStatus) || prev.housing,
+        idType:
+          prev.idType ??
+          (app?.id_type === "passport" || app?.id_type === "id_card"
+            ? app.id_type
+            : app?.id_card_path || app?.id_card_back_path
+              ? "id_card"
+              : null),
+        hasCesu: prev.hasCesu ?? app?.has_cesu_number ?? null,
+        cesuNumber: prev.cesuNumber || app?.cesu_number || "",
       }));
     })();
     return () => {
@@ -3716,6 +3750,9 @@ function StudentEnroll({
         motivation: p.motivation.trim(),
         nir: p.nir.replace(/\D/g, ""),
         housing_status: p.housing,
+        id_type: p.idType,
+        has_cesu_number: p.hasCesu,
+        cesu_number: p.hasCesu ? p.cesuNumber.trim() : null,
         status: "pending" as const,
         reject_reason: null,
         reviewed_at: null,
@@ -3740,9 +3777,17 @@ function StudentEnroll({
     if (f) setP({ ...p, docs: { ...p.docs, [key]: f } });
   };
 
+  const idDocs: { k: DocKey; label: string; icon: string }[] =
+    p.idType === "passport"
+      ? [{ k: "idPassport", label: "Passeport (page photo)", icon: "🛂" }]
+      : p.idType === "id_card"
+        ? [
+            { k: "idCard", label: "Pièce d'identité — recto", icon: "🪪" },
+            { k: "idCardBack", label: "Pièce d'identité — verso", icon: "🪪" },
+          ]
+        : [];
   const docs: { k: DocKey; label: string; icon: string }[] = [
-    { k: "idCard", label: "Pièce d'identité — recto", icon: "🪪" },
-    { k: "idCardBack", label: "Pièce d'identité — verso", icon: "🪪" },
+    ...idDocs,
     { k: "vitaleCard", label: "Copie ou photo du recto de la carte Vitale", icon: "💳" },
     { k: "studentCard", label: "Justificatif de situation (carte étudiante, contrat, attestation…)", icon: "📑" },
     { k: "criminalRecord", label: "Casier judiciaire (B3, moins de 3 mois)", icon: "📄" },
@@ -3769,6 +3814,7 @@ function StudentEnroll({
   const nirLenOk = nirDigits.length === 15;
   const nirKeyOk = isNirValid(nirDigits);
   const nirOk = nirLenOk && nirKeyOk;
+  const cesuOk = p.hasCesu === false || (p.hasCesu === true && !!p.cesuNumber.trim());
   const valid = Boolean(
     p.firstName.trim() &&
       p.lastName.trim() &&
@@ -3777,6 +3823,8 @@ function StudentEnroll({
       p.phone.trim() &&
       p.situation &&
       nirOk &&
+      p.idType !== null &&
+      cesuOk &&
       hasSelfie &&
       allDocs &&
       cguOk,
@@ -3883,6 +3931,28 @@ function StudentEnroll({
       </div>
 
       <div>
+        <YesNoChoice
+          label="Avez-vous un numéro CESU ?"
+          value={p.hasCesu}
+          onChange={(v) => setP({ ...p, hasCesu: v, cesuNumber: v ? p.cesuNumber : "" })}
+          invalid={bad(p.hasCesu !== null)}
+        />
+        <Missing ok={p.hasCesu !== null} text="Sélection obligatoire" />
+        {p.hasCesu === true && (
+          <div className="mt-2">
+            <input
+              placeholder="Numéro CESU"
+              autoComplete="off"
+              value={p.cesuNumber}
+              onChange={(e) => setP({ ...p, cesuNumber: e.target.value })}
+              className={field + " w-full" + errCls(!!p.cesuNumber.trim())}
+            />
+            <Missing ok={!!p.cesuNumber.trim()} text="Champ obligatoire" />
+          </div>
+        )}
+      </div>
+
+      <div>
         <p className="font-bold mb-2 text-sm">Quel est votre statut d'occupation ?</p>
         <div className="flex flex-col gap-2">
           {(
@@ -3928,6 +3998,36 @@ function StudentEnroll({
 
       <div className="mt-2">
         <p className="font-bold mb-2">Documents à fournir</p>
+        <div className="mb-3">
+          <p className="text-sm font-bold mb-2">Pièce d'identité : quel document ?</p>
+          <div className="grid grid-cols-2 gap-2">
+            {([
+              ["id_card", "Carte d'identité"],
+              ["passport", "Passeport"],
+            ] as const).map(([v, l]) => (
+              <label
+                key={v}
+                className={`flex items-center gap-2 py-3 px-3 rounded-2xl border-2 cursor-pointer text-sm font-bold ${
+                  p.idType === v
+                    ? "border-primary bg-accent"
+                    : bad(p.idType !== null) ||
+                        (!!motif && p.idType === null && DOC_KEYWORDS[v === "passport" ? "idPassport" : "idCard"].some((w) => motif.includes(w)))
+                      ? "border-destructive bg-destructive/5"
+                      : "border-border bg-card"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={p.idType === v}
+                  onChange={() => setP({ ...p, idType: v })}
+                  className="accent-primary w-4 h-4"
+                />
+                {l}
+              </label>
+            ))}
+          </div>
+          <Missing ok={p.idType !== null} text="Choisissez le type de pièce d'identité" />
+        </div>
         <div className="flex flex-col gap-2">
           {[...docs, ...housingDocs].map((d) => (
             <div key={d.k}>
@@ -4084,6 +4184,7 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
         <AuthCard
           title="Mon espace Solélia"
           subtitle="Particuliers"
+          familyFields
           onSuccess={() => {
             /* la session met à jour la vue automatiquement */
           }}
@@ -4173,7 +4274,7 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
         </div>
       </div>
 
-      <AccountInfoPanel />
+      <AccountInfoPanel familyFields />
 
       <ClientDocumentsPanel />
 

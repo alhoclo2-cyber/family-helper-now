@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/auth";
 
-type DocType = "rib" | "identity" | "identity_front" | "identity_back" | "proof_of_address";
+type DocType = "rib" | "identity" | "identity_front" | "identity_back" | "identity_passport" | "proof_of_address";
+type IdChoice = "id_card" | "passport";
 type DocStatus = "missing" | "pending" | "validated" | "rejected";
 
 type DocRow = {
@@ -22,6 +23,7 @@ const DOCS: { type: DocType; label: string; hint: string }[] = [
   },
   { type: "identity_front", label: "Pièce d'identité — recto", hint: "Nécessaire à la déclaration URSSAF." },
   { type: "identity_back", label: "Pièce d'identité — verso", hint: "Nécessaire à la déclaration URSSAF." },
+  { type: "identity_passport", label: "Passeport (page photo)", hint: "Nécessaire à la déclaration URSSAF." },
   {
     type: "proof_of_address",
     label: "Justificatif de domicile",
@@ -43,6 +45,7 @@ export function ClientDocumentsPanel() {
   const [rows, setRows] = useState<Record<string, DocRow>>({});
   const [busy, setBusy] = useState<DocType | null>(null);
   const [errors, setErrors] = useState<Record<string, string | null>>({});
+  const [idChoice, setIdChoice] = useState<IdChoice | null>(null);
 
   useEffect(() => {
     if (!userId) return;
@@ -56,6 +59,9 @@ export function ClientDocumentsPanel() {
           next[r.doc_type] = r as DocRow;
         });
         setRows(next);
+        // Type de pièce déduit des documents déjà déposés (aucune présélection sinon)
+        if (next.identity_passport && !next.identity_front && !next.identity_back) setIdChoice("passport");
+        else if (next.identity_front || next.identity_back) setIdChoice("id_card");
       });
   }, [userId]);
 
@@ -108,7 +114,35 @@ export function ClientDocumentsPanel() {
       </p>
 
       <div className="mt-4 flex flex-col gap-4">
-        {DOCS.map((d) => {
+        <div className="rounded-2xl border-2 border-border p-3">
+          <p className="text-sm font-bold mb-2">Pièce d'identité : quel document ?</p>
+          <div className="grid grid-cols-2 gap-2">
+            {([
+              ["id_card", "Carte d'identité"],
+              ["passport", "Passeport"],
+            ] as const).map(([v, l]) => (
+              <label
+                key={v}
+                className={`flex items-center gap-2 py-3 px-3 rounded-2xl border-2 cursor-pointer text-sm font-bold ${
+                  idChoice === v ? "border-primary bg-accent" : "border-border bg-card"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={idChoice === v}
+                  onChange={() => setIdChoice(v)}
+                  className="accent-primary w-4 h-4"
+                />
+                {l}
+              </label>
+            ))}
+          </div>
+        </div>
+        {DOCS.filter((d) => {
+          if (d.type === "identity_front" || d.type === "identity_back") return idChoice === "id_card";
+          if (d.type === "identity_passport") return idChoice === "passport";
+          return true;
+        }).map((d) => {
           const row = rows[d.type];
           const status: DocStatus = row?.status ?? "missing";
           const ui = STATUS_UI[status];
