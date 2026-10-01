@@ -62,7 +62,7 @@ export const bootstrapAccount = createServerFn({ method: "POST" })
     } else if (hasMetaFiscal && !existing.tax_number && existing.has_cesu_number === null) {
       await supabase.from("profiles").update(fiscal).eq("id", userId);
     }
-    if (hasMetaFiscal || "cesu_number" in metaAny) {
+    if (hasMetaFiscal || metaAny["tax_number"] != null || metaAny["cesu_number"] != null) {
       try {
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         await supabaseAdmin.auth.admin.updateUserById(userId, {
