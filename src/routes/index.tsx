@@ -821,6 +821,7 @@ function FamilyForm({
   const [extraInfo, setExtraInfo] = useState<string>(parsed.rest);
   const [missionInfo, setMissionInfo] = useState<string>(initial?.missionInfo ?? "");
   const [salaireNetHoraire, setSalaireNetHoraire] = useState<number>(initial?.salaryNetHourly ?? DEFAULT_HOURLY_RATE);
+  const [salaireText, setSalaireText] = useState<string>(() => formatPrice(initial?.salaryNetHourly ?? DEFAULT_HOURLY_RATE));
   const [acknowledgedLimits, setAcknowledgedLimits] = useState<Record<string, boolean>>({});
   
   const [cguOk, setCguOk] = useState(false);
@@ -1453,15 +1454,24 @@ function FamilyForm({
         <label htmlFor="salaire-net" className="block text-lg font-bold">Tarif horaire net proposé (€)</label>
         <p className="text-xs text-muted-foreground mt-1">Recommandé par Solélia (10% congés payés inclus)</p>
         <p className="text-xs text-muted-foreground mt-1">vous pouvez modifier le salaire horaire net/h en respectant le salaire minimum de la convention collective des particuliers employeurs (IDCC 3239), applicable au CESU.</p>
-        {isChildNeed && <p className="text-xs text-muted-foreground mt-1">Solélia recommande d'ajouter 1 €/h par enfant supplémentaire</p>}
+        {isChildNeed && !isHomework && (
+          <div className="mt-3 rounded-2xl bg-primary/10 border-2 border-primary/30 p-3 text-sm font-bold text-foreground">
+            👶 Solélia recommande d'ajouter 1 €/h par enfant supplémentaire
+          </div>
+        )}
         <div className="flex items-center gap-2 mt-3">
           <input
             id="salaire-net"
-            type="number"
-            step="0.10"
-            min="0"
-            value={salaireNetHoraire}
-            onChange={(e) => setSalaireNetHoraire(Number(e.target.value) || 0)}
+            type="text"
+            inputMode="decimal"
+            value={salaireText}
+            onChange={(e) => {
+              const raw = e.target.value.replace(/[^0-9.,]/g, "");
+              setSalaireText(raw);
+              const n = Number(raw.replace(",", "."));
+              setSalaireNetHoraire(Number.isFinite(n) ? n : 0);
+            }}
+            onBlur={() => setSalaireText(formatPrice(salaireNetHoraire))}
             className="flex-1 min-w-0 w-full px-5 py-4 rounded-2xl border-2 border-border bg-background text-lg focus:border-primary outline-none"
           />
           <span className="shrink-0 text-lg font-bold">€/h</span>
@@ -2022,7 +2032,8 @@ function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolea
       )}
       <p className="text-xs text-muted-foreground mt-2">
         Modification et annulation gratuites jusqu'à 24 h avant le rendez-vous, sous réserve qu'un compagnon soit
-        disponible sur le nouveau créneau. Passé 24 h, la mission reste due.
+        disponible sur le nouveau créneau. Annulation à moins de 24 h avant la mission : vous pouvez demander un
+        remboursement de 5,00 € (1,00 € de frais d'opération retenu).
       </p>
     </div>
   );
@@ -2176,7 +2187,9 @@ function FamilyWait({
           {paidAlready
             ? request.refunded
               ? "Vous annulez plus de 24h avant le rendez-vous : aucun frais ne vous sera prélevé."
-              : "Annulation à moins de 24 h : les frais de service ont été réglés."
+              : request.scheduledAt
+                ? "Annulation à moins de 24 h : les frais de service ont été réglés. Vous pouvez demander un remboursement de 5,00 € (1,00 € de frais d'opération retenu)."
+                : "Annulation à moins de 24 h : les frais de service ont été réglés."
             : "Demande en cours annulée. Vous pouvez maintenant modifier vos critères et relancer la recherche."}
         </p>
         {paidAlready && !request.refunded && !!request.scheduledAt && <LateRefundRequest request={request} />}
