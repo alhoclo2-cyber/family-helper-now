@@ -21,6 +21,7 @@ import {
   ThumbUpButton,
 } from "@/components/CompanionBadges";
 import { CompanionProfilePanel } from "@/components/CompanionProfilePanel";
+import { YesNoChoice } from "@/components/TaxCesuFields";
 import { AccountInfoPanel } from "@/components/AccountInfoPanel";
 import { ClientDocumentsPanel } from "@/components/ClientDocumentsPanel";
 import { CompanionAvailabilityPanel } from "@/components/CompanionAvailabilityPanel";
@@ -3383,6 +3384,7 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
 type DocKey =
   | "idCard"
   | "idCardBack"
+  | "idPassport"
   | "vitaleCard"
   | "studentCard"
   | "criminalRecord"
@@ -3402,6 +3404,9 @@ type EnrollForm = {
   motivation: string;
   nir: string;
   housing: HousingStatus;
+  idType: "id_card" | "passport" | null;
+  hasCesu: boolean | null;
+  cesuNumber: string;
   selfie?: File;
   selfiePreview?: string;
   docs: Partial<Record<DocKey, File>>;
@@ -3410,6 +3415,7 @@ type EnrollForm = {
 type DocColumn =
   | "id_card_path"
   | "id_card_back_path"
+  | "id_passport_path"
   | "vitale_card_path"
   | "situation_proof_path"
   | "criminal_record_path"
@@ -3422,6 +3428,7 @@ type DocColumn =
 const DOC_COLUMN: Record<DocKey, DocColumn> = {
   idCard: "id_card_path",
   idCardBack: "id_card_back_path",
+  idPassport: "id_passport_path",
   vitaleCard: "vitale_card_path",
   studentCard: "situation_proof_path",
   criminalRecord: "criminal_record_path",
@@ -3434,8 +3441,9 @@ const DOC_COLUMN: Record<DocKey, DocColumn> = {
 
 /** Mots-clés permettant de mettre en rouge les pièces citées dans le motif du Mandataire */
 const DOC_KEYWORDS: Record<DocKey, string[]> = {
-  idCard: ["identité", "identite", "cni", "passeport", "recto"],
-  idCardBack: ["identité", "identite", "cni", "passeport", "verso"],
+  idCard: ["carte d'identité", "carte d'identite", "cni", "recto"],
+  idCardBack: ["carte d'identité", "carte d'identite", "cni", "verso"],
+  idPassport: ["passeport"],
   vitaleCard: ["vitale"],
   studentCard: ["situation", "étudiante", "etudiante", "contrat", "retraite", "france travail"],
   criminalRecord: ["casier", "judiciaire", "b3", "bulletin"],
@@ -3516,6 +3524,9 @@ function StudentEnroll({
     motivation: "",
     nir: "",
     housing: "owner",
+    idType: null,
+    hasCesu: null,
+    cesuNumber: "",
     docs: {},
   });
 
@@ -3537,6 +3548,15 @@ function StudentEnroll({
         motivation: prev.motivation || app?.motivation || "",
         nir: prev.nir || app?.nir || "",
         housing: (app?.housing_status as HousingStatus) || prev.housing,
+        idType:
+          prev.idType ??
+          (app?.id_type === "passport" || app?.id_type === "id_card"
+            ? app.id_type
+            : app?.id_card_path || app?.id_card_back_path
+              ? "id_card"
+              : null),
+        hasCesu: prev.hasCesu ?? app?.has_cesu_number ?? null,
+        cesuNumber: prev.cesuNumber || app?.cesu_number || "",
       }));
     })();
     return () => {
@@ -3730,6 +3750,9 @@ function StudentEnroll({
         motivation: p.motivation.trim(),
         nir: p.nir.replace(/\D/g, ""),
         housing_status: p.housing,
+        id_type: p.idType,
+        has_cesu_number: p.hasCesu,
+        cesu_number: p.hasCesu ? p.cesuNumber.trim() : null,
         status: "pending" as const,
         reject_reason: null,
         reviewed_at: null,
@@ -3754,9 +3777,17 @@ function StudentEnroll({
     if (f) setP({ ...p, docs: { ...p.docs, [key]: f } });
   };
 
+  const idDocs: { k: DocKey; label: string; icon: string }[] =
+    p.idType === "passport"
+      ? [{ k: "idPassport", label: "Passeport (page photo)", icon: "🛂" }]
+      : p.idType === "id_card"
+        ? [
+            { k: "idCard", label: "Pièce d'identité — recto", icon: "🪪" },
+            { k: "idCardBack", label: "Pièce d'identité — verso", icon: "🪪" },
+          ]
+        : [];
   const docs: { k: DocKey; label: string; icon: string }[] = [
-    { k: "idCard", label: "Pièce d'identité — recto", icon: "🪪" },
-    { k: "idCardBack", label: "Pièce d'identité — verso", icon: "🪪" },
+    ...idDocs,
     { k: "vitaleCard", label: "Copie ou photo du recto de la carte Vitale", icon: "💳" },
     { k: "studentCard", label: "Justificatif de situation (carte étudiante, contrat, attestation…)", icon: "📑" },
     { k: "criminalRecord", label: "Casier judiciaire (B3, moins de 3 mois)", icon: "📄" },
@@ -3783,6 +3814,7 @@ function StudentEnroll({
   const nirLenOk = nirDigits.length === 15;
   const nirKeyOk = isNirValid(nirDigits);
   const nirOk = nirLenOk && nirKeyOk;
+  const cesuOk = p.hasCesu === false || (p.hasCesu === true && !!p.cesuNumber.trim());
   const valid = Boolean(
     p.firstName.trim() &&
       p.lastName.trim() &&
@@ -3791,6 +3823,8 @@ function StudentEnroll({
       p.phone.trim() &&
       p.situation &&
       nirOk &&
+      p.idType !== null &&
+      cesuOk &&
       hasSelfie &&
       allDocs &&
       cguOk,
@@ -3897,6 +3931,28 @@ function StudentEnroll({
       </div>
 
       <div>
+        <YesNoChoice
+          label="Avez-vous un numéro CESU ?"
+          value={p.hasCesu}
+          onChange={(v) => setP({ ...p, hasCesu: v, cesuNumber: v ? p.cesuNumber : "" })}
+          invalid={bad(p.hasCesu !== null)}
+        />
+        <Missing ok={p.hasCesu !== null} text="Sélection obligatoire" />
+        {p.hasCesu === true && (
+          <div className="mt-2">
+            <input
+              placeholder="Numéro CESU"
+              autoComplete="off"
+              value={p.cesuNumber}
+              onChange={(e) => setP({ ...p, cesuNumber: e.target.value })}
+              className={field + " w-full" + errCls(!!p.cesuNumber.trim())}
+            />
+            <Missing ok={!!p.cesuNumber.trim()} text="Champ obligatoire" />
+          </div>
+        )}
+      </div>
+
+      <div>
         <p className="font-bold mb-2 text-sm">Quel est votre statut d'occupation ?</p>
         <div className="flex flex-col gap-2">
           {(
@@ -3942,6 +3998,36 @@ function StudentEnroll({
 
       <div className="mt-2">
         <p className="font-bold mb-2">Documents à fournir</p>
+        <div className="mb-3">
+          <p className="text-sm font-bold mb-2">Pièce d'identité : quel document ?</p>
+          <div className="grid grid-cols-2 gap-2">
+            {([
+              ["id_card", "Carte d'identité"],
+              ["passport", "Passeport"],
+            ] as const).map(([v, l]) => (
+              <label
+                key={v}
+                className={`flex items-center gap-2 py-3 px-3 rounded-2xl border-2 cursor-pointer text-sm font-bold ${
+                  p.idType === v
+                    ? "border-primary bg-accent"
+                    : bad(p.idType !== null) ||
+                        (!!motif && p.idType === null && DOC_KEYWORDS[v === "passport" ? "idPassport" : "idCard"].some((w) => motif.includes(w)))
+                      ? "border-destructive bg-destructive/5"
+                      : "border-border bg-card"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={p.idType === v}
+                  onChange={() => setP({ ...p, idType: v })}
+                  className="accent-primary w-4 h-4"
+                />
+                {l}
+              </label>
+            ))}
+          </div>
+          <Missing ok={p.idType !== null} text="Choisissez le type de pièce d'identité" />
+        </div>
         <div className="flex flex-col gap-2">
           {[...docs, ...housingDocs].map((d) => (
             <div key={d.k}>
