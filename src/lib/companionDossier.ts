@@ -28,7 +28,6 @@ export function missingCompanionItems(a: AppRow): string[] {
     if (!a.id_card_path || !a.id_card_back_path) m.push("pièce d'identité recto et verso");
   } else m.push("type de pièce d'identité");
   if (!a.vitale_card_path) m.push("carte Vitale");
-  if (!a.situation_proof_path) m.push("justificatif de situation");
   if (!a.criminal_record_path) m.push("casier judiciaire B3");
   if (!a.iban_path) m.push("RIB");
   if (a.housing_status === "hosted") {

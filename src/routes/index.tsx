@@ -3872,7 +3872,6 @@ function StudentEnroll({
   const docs: { k: DocKey; label: string; icon: string }[] = [
     ...idDocs,
     { k: "vitaleCard", label: "Copie ou photo du recto de la carte Vitale", icon: "💳" },
-    { k: "studentCard", label: "Justificatif de situation (carte étudiante, contrat, attestation…)", icon: "📑" },
     { k: "criminalRecord", label: "Casier judiciaire (B3, moins de 3 mois)", icon: "📄" },
     { k: "iban", label: "RIB", icon: "🏦" },
   ];
