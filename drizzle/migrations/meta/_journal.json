@@ -71,6 +71,13 @@
       "when": 1790937322822,
       "tag": "0009_profiles_birth_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790937761530,
+      "tag": "0010_companion_birth_fields",
+      "breakpoints": true
     }
   ]
 }

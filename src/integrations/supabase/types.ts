@@ -48,6 +48,9 @@ export type Database = {
         Row: {
           address: string
           address_proof_path: string | null
+          birth_date: string | null
+          birth_department: string | null
+          birth_place: string | null
           cesu_number: string | null
           city: string | null
           created_at: string
@@ -84,6 +87,9 @@ export type Database = {
         Insert: {
           address?: string
           address_proof_path?: string | null
+          birth_date?: string | null
+          birth_department?: string | null
+          birth_place?: string | null
           cesu_number?: string | null
           city?: string | null
           created_at?: string
@@ -120,6 +126,9 @@ export type Database = {
         Update: {
           address?: string
           address_proof_path?: string | null
+          birth_date?: string | null
+          birth_department?: string | null
+          birth_place?: string | null
           cesu_number?: string | null
           city?: string | null
           created_at?: string
