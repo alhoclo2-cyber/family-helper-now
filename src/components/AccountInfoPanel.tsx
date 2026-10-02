@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/auth";
+import { useQueryClient } from "@tanstack/react-query";
 import { TaxCesuFields, cleanTaxNumber, isTaxNumberValid, type TaxCesuValue } from "@/components/TaxCesuFields";
+import { BirthFields, EMPTY_BIRTH, isBirthComplete, isBirthDateValid, type BirthValue } from "@/components/BirthFields";
+import { clientDossierKey } from "@/lib/clientDossier";
 
 const inputCls =
   "w-full px-4 py-3 rounded-2xl border-2 border-border bg-background text-base focus:border-primary outline-none";
@@ -28,9 +31,15 @@ const EMPTY: ProfileForm = {
  * Panneau dépliable d'édition des informations personnelles (profil, email, mot de passe).
  * Utilisé dans l'espace Client et l'espace Compagnon.
  */
-export function AccountInfoPanel({ familyFields = false }: { familyFields?: boolean } = {}) {
+export function AccountInfoPanel({
+  familyFields = false,
+  defaultOpen = false,
+  showErrors = false,
+}: { familyFields?: boolean; defaultOpen?: boolean; showErrors?: boolean } = {}) {
   const { session } = useSession();
-  const [open, setOpen] = useState(false);
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(defaultOpen);
+  const [birth, setBirth] = useState<BirthValue>(EMPTY_BIRTH);
   const [form, setForm] = useState<ProfileForm>(EMPTY);
   const [taxCesu, setTaxCesu] = useState<TaxCesuValue>({ taxNumber: "", hasCesu: null, cesuNumber: "" });
   const [fiscalMissing, setFiscalMissing] = useState(false);
@@ -52,15 +61,22 @@ export function AccountInfoPanel({ familyFields = false }: { familyFields?: bool
     setEmail(session.user.email ?? "");
     supabase
       .from("profiles")
-      .select("first_name,last_name,address_line,postal_code,city,phone,tax_number,has_cesu_number,cesu_number")
+      .select("first_name,last_name,address_line,postal_code,city,phone,tax_number,has_cesu_number,cesu_number,birth_date,birth_place,birth_department")
       .eq("id", session.user.id)
       .maybeSingle()
       .then(({ data }) => {
         if (!data) return;
-        const { tax_number, has_cesu_number, cesu_number, ...rest } = data;
+        const { tax_number, has_cesu_number, cesu_number, birth_date, birth_place, birth_department, ...rest } = data;
         setForm({ ...EMPTY, ...rest });
         setTaxCesu({ taxNumber: tax_number ?? "", hasCesu: has_cesu_number, cesuNumber: cesu_number ?? "" });
-        setFiscalMissing(!tax_number || has_cesu_number === null);
+        const b = { birthDate: birth_date ?? "", birthPlace: birth_place ?? "", birthDepartment: birth_department ?? "" };
+        setBirth(b);
+        setFiscalMissing(
+          !isTaxNumberValid(tax_number ?? "") ||
+            has_cesu_number === null ||
+            (has_cesu_number && !cesu_number?.trim()) ||
+            !isBirthComplete(b),
+        );
       });
   }, [session?.user.id]);
 
@@ -75,6 +91,8 @@ export function AccountInfoPanel({ familyFields = false }: { familyFields?: bool
     );
   }
 
+  const miss = (k: keyof ProfileForm) =>
+    showErrors && !form[k].trim() ? inputCls + " border-destructive bg-destructive/5" : inputCls;
   const set = (k: keyof ProfileForm) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -90,6 +108,10 @@ export function AccountInfoPanel({ familyFields = false }: { familyFields?: bool
         setError("Merci de renseigner votre numéro CESU.");
         return;
       }
+    }
+    if (familyFields && birth.birthDate && !isBirthDateValid(birth.birthDate)) {
+      setError("La date de naissance ne peut pas être dans le futur.");
+      return;
     }
     setLoading(true);
     const { error: err } = await supabase
@@ -108,6 +130,13 @@ export function AccountInfoPanel({ familyFields = false }: { familyFields?: bool
               cesu_number: taxCesu.hasCesu ? taxCesu.cesuNumber.trim() : null,
             }
           : {}),
+        ...(familyFields
+          ? {
+              birth_date: birth.birthDate || null,
+              birth_place: birth.birthPlace.trim() || null,
+              birth_department: birth.birthDepartment || null,
+            }
+          : {}),
       })
       .eq("id", session.user.id);
     setLoading(false);
@@ -115,7 +144,15 @@ export function AccountInfoPanel({ familyFields = false }: { familyFields?: bool
       setError("Une erreur est survenue. Réessayez.");
       return;
     }
-    if (familyFields) setFiscalMissing(!isTaxNumberValid(taxCesu.taxNumber) || taxCesu.hasCesu === null);
+    if (familyFields) {
+      setFiscalMissing(
+        !isTaxNumberValid(taxCesu.taxNumber) ||
+          taxCesu.hasCesu === null ||
+          (taxCesu.hasCesu && !taxCesu.cesuNumber.trim()) ||
+          !isBirthComplete(birth),
+      );
+      void qc.invalidateQueries({ queryKey: clientDossierKey(session.user.id) });
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -181,9 +218,9 @@ export function AccountInfoPanel({ familyFields = false }: { familyFields?: bool
         <span className="text-sm font-bold text-primary shrink-0">{open ? "Fermer" : "Modifier"}</span>
       </button>
       {familyFields && fiscalMissing && (
-        <p className="mt-3 rounded-2xl bg-accent p-3 text-xs font-semibold">
-          📝 Merci de compléter votre numéro fiscal et d'indiquer si vous avez un numéro CESU (cela ne bloque pas vos
-          demandes de mission).
+        <p className="mt-3 rounded-2xl bg-destructive/10 p-3 text-xs font-semibold text-destructive">
+          📝 Merci de compléter votre numéro fiscal, votre numéro CESU et vos informations de naissance. Ces éléments
+          sont obligatoires pour utiliser votre compte Solélia.
         </p>
       )}
 
@@ -191,16 +228,21 @@ export function AccountInfoPanel({ familyFields = false }: { familyFields?: bool
         <div className="mt-4 flex flex-col gap-5">
           <div className="flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-2">
-              <input placeholder="Prénom" value={form.first_name} onChange={set("first_name")} className={inputCls} />
-              <input placeholder="Nom" value={form.last_name} onChange={set("last_name")} className={inputCls} />
+              <input placeholder="Prénom" value={form.first_name} onChange={set("first_name")} className={miss("first_name")} />
+              <input placeholder="Nom" value={form.last_name} onChange={set("last_name")} className={miss("last_name")} />
             </div>
-            <input placeholder="Adresse" value={form.address_line} onChange={set("address_line")} className={inputCls} />
+            <input placeholder="Adresse" value={form.address_line} onChange={set("address_line")} className={miss("address_line")} />
             <div className="grid grid-cols-2 gap-2">
-              <input placeholder="Code postal" value={form.postal_code} onChange={set("postal_code")} className={inputCls} />
-              <input placeholder="Ville" value={form.city} onChange={set("city")} className={inputCls} />
+              <input placeholder="Code postal" value={form.postal_code} onChange={set("postal_code")} className={miss("postal_code")} />
+              <input placeholder="Ville" value={form.city} onChange={set("city")} className={miss("city")} />
             </div>
-            <input placeholder="Téléphone" type="tel" value={form.phone} onChange={set("phone")} className={inputCls} />
-            {familyFields && <TaxCesuFields value={taxCesu} onChange={setTaxCesu} inputCls={inputCls} />}
+            <input placeholder="Téléphone" type="tel" value={form.phone} onChange={set("phone")} className={miss("phone")} />
+            {familyFields && (
+              <TaxCesuFields value={taxCesu} onChange={setTaxCesu} inputCls={inputCls} showErrors={showErrors} />
+            )}
+            {familyFields && (
+              <BirthFields value={birth} onChange={setBirth} inputCls={inputCls} showErrors={showErrors} />
+            )}
             <button
               type="button"
               onClick={saveProfile}
