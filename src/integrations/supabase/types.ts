@@ -239,6 +239,9 @@ export type Database = {
       profiles: {
         Row: {
           address_line: string
+          birth_date: string | null
+          birth_department: string | null
+          birth_place: string | null
           cesu_number: string | null
           city: string
           created_at: string
@@ -254,6 +257,9 @@ export type Database = {
         }
         Insert: {
           address_line?: string
+          birth_date?: string | null
+          birth_department?: string | null
+          birth_place?: string | null
           cesu_number?: string | null
           city?: string
           created_at?: string
@@ -269,6 +275,9 @@ export type Database = {
         }
         Update: {
           address_line?: string
+          birth_date?: string | null
+          birth_department?: string | null
+          birth_place?: string | null
           cesu_number?: string | null
           city?: string
           created_at?: string
