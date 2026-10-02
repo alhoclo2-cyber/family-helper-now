@@ -3,3 +3,4 @@
 - [x] Vérifier l'affichage et l'absence d'ajout à l'étape intermédiaire.
 - [x] Adapter le tarif, l'adresse en trois champs et les confirmations obligatoires du formulaire Famille ; vérifier le parcours.
 - [x] Remplacer les pastilles Famille par cinq cartes illustrées repliables et vérifier les affichages mobile et ordinateur.
+- [x] Placer l'acceptation des services non autorisés avant l'envoi de la candidature, renommer l'action de carte, retirer le modèle mandataire de la connexion Famille et placer les pièces d'identité avant le RIB.
