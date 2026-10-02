@@ -683,14 +683,6 @@ function FamilyFlow() {
             </div>
           </div>
         </section>
-        <div className="w-full bg-card border-2 border-primary/30 rounded-2xl p-4 text-center">
-          <p className="text-base font-black">Un besoin = un compagnon à proximité.</p>
-          <ul className="mt-2 text-sm text-muted-foreground space-y-0.5">
-            <li>0 € de frais de dossier</li>
-            <li>0 € d'abonnement</li>
-            <li>Sans engagement.</li>
-          </ul>
-        </div>
         {nightClosed && (
           <div className="w-full bg-destructive/10 border-2 border-destructive/40 rounded-2xl p-4 text-center">
             <p className="text-sm font-semibold text-destructive">
