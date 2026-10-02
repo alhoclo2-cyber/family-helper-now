@@ -27,6 +27,8 @@ import { YesNoChoice } from "@/components/TaxCesuFields";
 import { AccountInfoPanel } from "@/components/AccountInfoPanel";
 import { ClientDocumentsPanel } from "@/components/ClientDocumentsPanel";
 import { useClientDossier } from "@/lib/clientDossier";
+import { missingCompanionItems } from "@/lib/companionDossier";
+import { BirthFields, EMPTY_BIRTH, isBirthComplete, type BirthValue } from "@/components/BirthFields";
 import { CompanionAvailabilityPanel } from "@/components/CompanionAvailabilityPanel";
 import { ReservationSummaryPanel } from "@/components/ReservationSummaryPanel";
 import { AudienceMedallion } from "@/components/AudienceIllustrations";
@@ -3013,13 +3015,23 @@ function StudentFlow() {
   });
   const hiddenCount = allSearching.length - requests.length;
 
-  const status: EnrollStatus = demo ? "approved" : (myApp.data?.status ?? "none");
+  // Une candidature incomplète est toujours affichée « Dossier à compléter »
+  const missing = myApp.data ? missingCompanionItems(myApp.data) : [];
+  const effectiveApp =
+    myApp.data && missing.length > 0
+      ? {
+          ...myApp.data,
+          status: "changes_requested" as const,
+          reject_reason: myApp.data.reject_reason || `Éléments manquants : ${missing.join(", ")}.`,
+        }
+      : (myApp.data ?? null);
+  const status: EnrollStatus = demo ? "approved" : (effectiveApp?.status ?? "none");
 
   if (status !== "approved") {
     return (
       <StudentEnroll
         session={session}
-        app={myApp.data ?? null}
+        app={effectiveApp}
         loading={sessionLoading || (!!session && myApp.isLoading)}
         onDemo={() => saveDemo(true)}
         onSubmitted={() => qc.invalidateQueries({ queryKey: ["my-application"] })}
@@ -3584,6 +3596,7 @@ function StudentEnroll({
   const [busy, setBusy] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [birth, setBirth] = useState<BirthValue>(EMPTY_BIRTH);
   const [p, setP] = useState<EnrollForm>({
     firstName: "",
     lastName: "",
@@ -3627,6 +3640,11 @@ function StudentEnroll({
               : null),
         hasCesu: prev.hasCesu ?? app?.has_cesu_number ?? null,
         cesuNumber: prev.cesuNumber || app?.cesu_number || "",
+      }));
+      setBirth((b) => ({
+        birthDate: b.birthDate || app?.birth_date || "",
+        birthPlace: b.birthPlace || app?.birth_place || "",
+        birthDepartment: b.birthDepartment || app?.birth_department || "",
       }));
     })();
     return () => {
@@ -3823,6 +3841,9 @@ function StudentEnroll({
         id_type: p.idType,
         has_cesu_number: p.hasCesu,
         cesu_number: p.hasCesu ? p.cesuNumber.trim() : null,
+        birth_date: birth.birthDate,
+        birth_place: birth.birthPlace.trim(),
+        birth_department: birth.birthDepartment,
         status: "pending" as const,
         reject_reason: null,
         reviewed_at: null,
@@ -3895,6 +3916,7 @@ function StudentEnroll({
       nirOk &&
       p.idType !== null &&
       cesuOk &&
+      isBirthComplete(birth) &&
       hasSelfie &&
       allDocs &&
       cguOk,
@@ -3999,6 +4021,8 @@ function StudentEnroll({
         )}
         <Missing ok={nirOk || nirDigits.length > 0} text="Champ obligatoire" />
       </div>
+
+      <BirthFields value={birth} onChange={setBirth} inputCls={field + " w-full"} showErrors={showErrors} />
 
       <div>
         <YesNoChoice
