@@ -27,13 +27,26 @@ export const bootstrapAccount = createServerFn({ method: "POST" })
 
     const { data: existing } = await supabase
       .from("profiles")
-      .select("id, tax_number, has_cesu_number")
+      .select("id, tax_number, has_cesu_number, birth_date, birth_place, birth_department")
       .eq("id", userId)
       .maybeSingle();
 
     // Numéro fiscal / CESU saisis à l'inscription : copiés dans le profil (RLS) puis retirés des métadonnées
     const metaAny = meta as Record<string, unknown>;
     const metaTax = typeof metaAny["tax_number"] === "string" ? (metaAny["tax_number"] as string) : "";
+    const metaBirthDate =
+      typeof metaAny["birth_date"] === "string" && /^\d{4}-\d{2}-\d{2}$/.test(metaAny["birth_date"] as string)
+        ? (metaAny["birth_date"] as string)
+        : "";
+    const metaBirthPlace = typeof metaAny["birth_place"] === "string" ? (metaAny["birth_place"] as string).trim() : "";
+    const metaBirthDep =
+      typeof metaAny["birth_department"] === "string" ? (metaAny["birth_department"] as string).trim() : "";
+    const birth = {
+      ...(metaBirthDate ? { birth_date: metaBirthDate } : {}),
+      ...(metaBirthPlace ? { birth_place: metaBirthPlace } : {}),
+      ...(metaBirthDep ? { birth_department: metaBirthDep } : {}),
+    };
+    const hasMetaBirth = Object.keys(birth).length > 0;
     const hasMetaFiscal = /^\d{13}$/.test(metaTax) || typeof metaAny["has_cesu_number"] === "boolean";
     const fiscal = hasMetaFiscal
       ? {
@@ -58,15 +71,35 @@ export const bootstrapAccount = createServerFn({ method: "POST" })
         city: meta["city"] ?? "",
         phone: meta["phone"] ?? "",
         ...fiscal,
+        ...birth,
       });
-    } else if (hasMetaFiscal && !existing.tax_number && existing.has_cesu_number === null) {
-      await supabase.from("profiles").update(fiscal).eq("id", userId);
+    } else {
+      const patch = {
+        ...(hasMetaFiscal && !existing.tax_number && existing.has_cesu_number === null ? fiscal : {}),
+        ...(hasMetaBirth && !existing.birth_date && !existing.birth_place && !existing.birth_department ? birth : {}),
+      };
+      if (Object.keys(patch).length) await supabase.from("profiles").update(patch).eq("id", userId);
     }
-    if (hasMetaFiscal || metaAny["tax_number"] != null || metaAny["cesu_number"] != null) {
+    if (
+      hasMetaFiscal ||
+      hasMetaBirth ||
+      metaAny["tax_number"] != null ||
+      metaAny["cesu_number"] != null ||
+      metaAny["birth_date"] != null ||
+      metaAny["birth_place"] != null ||
+      metaAny["birth_department"] != null
+    ) {
       try {
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         await supabaseAdmin.auth.admin.updateUserById(userId, {
-          user_metadata: { tax_number: null, has_cesu_number: null, cesu_number: null },
+          user_metadata: {
+            tax_number: null,
+            has_cesu_number: null,
+            cesu_number: null,
+            birth_date: null,
+            birth_place: null,
+            birth_department: null,
+          },
         });
       } catch {
         /* nettoyage best effort, sans journaliser les valeurs */
@@ -146,7 +179,9 @@ export const listClientRegistrations = createServerFn({ method: "GET" })
     const [profilesRes, docsRes, appsRes] = await Promise.all([
       context.supabase
         .from("profiles")
-        .select("id, first_name, last_name, email, phone, city, created_at")
+        .select(
+          "id, first_name, last_name, email, phone, city, created_at, tax_number, has_cesu_number, cesu_number, birth_date, birth_place, birth_department",
+        )
         .order("created_at", { ascending: false }),
       context.supabase
         .from("client_documents")
