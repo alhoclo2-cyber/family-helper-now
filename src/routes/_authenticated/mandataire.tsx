@@ -884,6 +884,20 @@ function PaymentsTab() {
               : ""}
           </p>
           {p.failure_reason && <p className="text-xs text-destructive mt-1">{p.failure_reason}</p>}
+          {p.refund_status && p.refund_status !== "aucun" && (
+            <div className="mt-2 rounded-xl border-2 border-border bg-muted/40 p-2 text-xs">
+              <p className="font-bold">
+                {p.refund_status === "rembourse"
+                  ? "💶 Remboursé"
+                  : p.refund_status === "echec"
+                    ? "❌ Remboursement échoué"
+                    : "⏳ Remboursement demandé"}
+                {p.refund_amount_cents != null ? ` : ${(p.refund_amount_cents / 100).toFixed(2)} €` : ""}
+                {p.refunded_at ? ` · le ${new Date(p.refunded_at).toLocaleString("fr-FR")}` : ""}
+              </p>
+              {p.refund_reason && <p className="text-muted-foreground mt-1">Motif : {p.refund_reason}</p>}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-2 mt-3">
             <button
               onClick={() => mutate.mutate({ id: p.id, dueNow: true })}
