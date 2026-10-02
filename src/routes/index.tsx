@@ -36,7 +36,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronDown, X } from "lucide-react";
 import { useCompanionSettings } from "@/lib/companionSettings";
 import soleliaLogoAsset from "@/assets/solelia-logo.png.asset.json";
-import floralBorderAsset from "@/assets/floral-border.jpg.asset.json";
+import bandeauCompagnonAsset from "@/assets/bandeau_compagnon.png.asset.json";
 import accueilFamilleAsset from "@/assets/accueil-famille.png.asset.json";
 import unBesoinAsset from "@/assets/un-besoin-ordi-2.png.asset.json";
 
@@ -3725,21 +3725,13 @@ function StudentEnroll({
   if (step === "intro") {
     return (
       <div className="flex-1 flex flex-col px-6 py-8 gap-5">
-      <div className="text-center">
-          <div className="text-5xl mb-2">🤝</div>
-          <h2 className="text-2xl font-black">Devenir Compagnon</h2>
-          <p className="text-base text-muted-foreground mt-2">
-            Étudiant, salarié, indépendant, retraité ou en recherche d'emploi : aidez des familles près de chez vous
-            et gagnez un revenu complémentaire.
-          </p>
-        </div>
         <img
-          src={floralBorderAsset.url}
-          alt="Liseret floral"
-          className="w-full max-w-[320px] h-auto object-contain opacity-90 self-center"
+          src={bandeauCompagnonAsset.url}
+          alt="Solélia Accompagnement — Des missions qui s'adaptent à votre vie"
+          className="w-full h-auto object-contain"
         />
         <div className="bg-card border-2 border-border rounded-2xl p-5">
-          <p className="font-bold mb-3">Conditions</p>
+          <p className="font-bold mb-3">Devenir Compagnon</p>
           <ul className="space-y-2 text-sm">
             <li>✓ Être majeur (18 ans et +)</li>
             <li>✓ Pièce d'identité valide</li>
