@@ -38,6 +38,8 @@ import { useCompanionSettings } from "@/lib/companionSettings";
 import soleliaLogoAsset from "@/assets/solelia-logo.png.asset.json";
 import floralBorderAsset from "@/assets/floral-border.jpg.asset.json";
 import accueilFamilleAsset from "@/assets/accueil-famille.png.asset.json";
+import unBesoinOrdiAsset from "@/assets/un-besoin-ordi.png.asset.json";
+import unBesoinTelAsset from "@/assets/un-besoin-tel.png.asset.json";
 
 
 export const Route = createFileRoute("/")({
