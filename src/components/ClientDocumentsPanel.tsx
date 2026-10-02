@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/auth";
+import { useQueryClient } from "@tanstack/react-query";
+import { clientDossierKey } from "@/lib/clientDossier";
 
 type DocType = "rib" | "identity" | "identity_front" | "identity_back" | "identity_passport" | "proof_of_address";
 type IdChoice = "id_card" | "passport";
@@ -42,6 +44,7 @@ const STATUS_UI: Record<DocStatus, { text: string; cls: string }> = {
 export function ClientDocumentsPanel() {
   const { session } = useSession();
   const userId = session?.user.id;
+  const qc = useQueryClient();
   const [rows, setRows] = useState<Record<string, DocRow>>({});
   const [busy, setBusy] = useState<DocType | null>(null);
   const [errors, setErrors] = useState<Record<string, string | null>>({});
@@ -100,6 +103,7 @@ export function ClientDocumentsPanel() {
       setErrors((e) => ({ ...e, [type]: "Envoi impossible, réessayez." }));
       return;
     }
+    void qc.invalidateQueries({ queryKey: clientDossierKey(userId) });
     setRows((r) => ({
       ...r,
       [type]: { doc_type: type, file_path: path, status: "pending", reject_reason: null },
@@ -110,7 +114,7 @@ export function ClientDocumentsPanel() {
     <section className="rounded-2xl border-2 border-border bg-card p-4">
       <p className="text-sm font-black">📄 Mes documents</p>
       <p className="text-xs text-muted-foreground mt-1">
-        Ces documents sont administratifs : ils ne bloquent pas vos demandes de mission.
+        Ces éléments sont obligatoires pour utiliser votre compte Solélia.
       </p>
 
       <div className="mt-4 flex flex-col gap-4">

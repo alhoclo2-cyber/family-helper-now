@@ -1,3 +1,5 @@
+import { CopyButton } from "@/components/CopyButton";
+import { departmentLabel, formatBirthDate } from "@/components/BirthFields";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -620,8 +622,7 @@ function ClientsTab({ clients }: { clients: UseQueryResult<ClientRow[]> }) {
   return (
     <div className="flex flex-col gap-4">
       <p className="text-xs text-muted-foreground">
-        Suivi administratif uniquement : un compte Particulier est actif dès son inscription, quel
-        que soit l'état de ses documents.
+        Un compte Particulier n'est utilisable qu'une fois son dossier complet (champs et documents).
       </p>
       <div className="grid grid-cols-3 gap-2 text-center">
         {(["incomplete", "to_check", "complete"] as const).map((s) => (
@@ -710,11 +711,48 @@ function ClientCard({ client }: { client: ClientRow }) {
       </button>
       {open && (
         <div className="flex flex-col gap-3">
+          <UrssafInfo client={client} />
           {clientDocTypes(client).map((t) => (
             <ClientDocCard key={t.type} label={t.label} doc={byType.get(t.type) ?? null} />
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function UrssafInfo({ client }: { client: ClientRow }) {
+  const cesu =
+    client.has_cesu_number === false
+      ? { text: "Aucun", copy: "" }
+      : client.has_cesu_number === true && client.cesu_number?.trim()
+        ? { text: client.cesu_number, copy: client.cesu_number }
+        : { text: "", copy: "" };
+  const rows: { label: string; value: string; copy?: string }[] = [
+    { label: "Numéro fiscal", value: client.tax_number ?? "" },
+    { label: "Numéro CESU", value: cesu.text, copy: cesu.copy },
+    { label: "Date de naissance", value: formatBirthDate(client.birth_date) },
+    { label: "Lieu de naissance", value: client.birth_place ?? "" },
+    { label: "Département de naissance", value: departmentLabel(client.birth_department) },
+  ];
+  return (
+    <div className="rounded-2xl border-2 border-border p-3">
+      <p className="text-sm font-bold mb-2">Informations URSSAF</p>
+      <div className="flex flex-col gap-2">
+        {rows.map((r) => (
+          <div key={r.label} className="flex items-center justify-between gap-2 text-sm">
+            <span className="text-muted-foreground shrink-0">{r.label}</span>
+            <span className="flex items-center gap-2 min-w-0">
+              {r.value ? (
+                <span className="font-bold truncate">{r.value}</span>
+              ) : (
+                <span className="font-bold text-destructive">Non renseigné</span>
+              )}
+              <CopyButton value={r.copy ?? r.value} />
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

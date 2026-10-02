@@ -26,6 +26,7 @@ import { CompanionProfilePanel } from "@/components/CompanionProfilePanel";
 import { YesNoChoice } from "@/components/TaxCesuFields";
 import { AccountInfoPanel } from "@/components/AccountInfoPanel";
 import { ClientDocumentsPanel } from "@/components/ClientDocumentsPanel";
+import { useClientDossier } from "@/lib/clientDossier";
 import { CompanionAvailabilityPanel } from "@/components/CompanionAvailabilityPanel";
 import { ReservationSummaryPanel } from "@/components/ReservationSummaryPanel";
 import { AudienceMedallion } from "@/components/AudienceIllustrations";
@@ -564,6 +565,9 @@ function FamilyFlow() {
   const { session, loading: sessionLoading } = useSession();
   const sessionFirstName =
     (session?.user.user_metadata?.first_name as string | undefined)?.trim() || "";
+  // Dossier Particulier obligatoire : lu après la création du profil (bootstrap)
+  const access = useAccess(session?.user.id);
+  const dossier = useClientDossier(session?.user.id, access.isSuccess && !access.data?.isMandataire);
 
   // Simulation « premier répondant » : un compagnon disponible accepte la mission.
   useEffect(() => {
@@ -591,6 +595,9 @@ function FamilyFlow() {
     return () => clearTimeout(t);
   }, [step, current?.status, current?.preferredCompanionId, current?.scheduledAt, current?.durationHours, currentId, simulateNoAnswer]);
 
+
+  if (session && access.isSuccess && !access.data.isMandataire && dossier.data && !dossier.data.isCompanion && !dossier.data.complete)
+    return <FinalizeDossierScreen items={dossier.data.items} />;
 
   if (step === "account") return <FamilyAccountScreen onBack={() => setStep("home")} />;
 
@@ -4194,6 +4201,40 @@ function AttestationFiscaleBlock({
           </button>
         </>
       )}
+    </div>
+  );
+}
+
+/** Écran bloquant tant que le dossier Particulier est incomplet. */
+function FinalizeDossierScreen({ items }: { items: { key: string; label: string; ok: boolean; note?: string }[] }) {
+  return (
+    <div className="flex-1 flex flex-col px-5 py-6 gap-4">
+      <div className="text-center">
+        <h2 className="text-2xl font-black">Finalisez votre dossier</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Ces éléments sont obligatoires pour utiliser votre compte Solélia.
+        </p>
+      </div>
+      <section className="rounded-2xl border-2 border-border bg-card p-4">
+        <p className="text-sm font-black mb-2">Éléments requis</p>
+        <ul className="flex flex-col gap-1.5">
+          {items.map((i) => (
+            <li key={i.key} className={`text-sm font-bold ${i.ok ? "text-success" : "text-destructive"}`}>
+              {i.ok ? "✓" : "✗"} {i.label}
+              {i.note && <span className="block text-xs font-semibold">{i.note}</span>}
+            </li>
+          ))}
+        </ul>
+      </section>
+      <AccountInfoPanel familyFields defaultOpen showErrors />
+      <ClientDocumentsPanel />
+      <button
+        type="button"
+        onClick={() => { if (confirm("Se déconnecter de votre compte ?")) supabase.auth.signOut(); }}
+        className="py-3 rounded-2xl border-2 border-border font-bold text-muted-foreground"
+      >
+        Se déconnecter
+      </button>
     </div>
   );
 }
