@@ -166,13 +166,19 @@ export type Database = {
           failure_reason: string | null
           id: string
           last_run_at: string | null
+          mission_at: string | null
           mission_id: string
           next_retry_at: string | null
+          refund_amount_cents: number | null
+          refund_reason: string | null
+          refund_status: string
+          refunded_at: string | null
           retry_count: number
           scheduled_charge_at: string | null
           simulate_failure: boolean
           status: string
           stripe_payment_method_id: string | null
+          stripe_refund_id: string | null
           stripe_setup_intent_id: string | null
           updated_at: string
         }
@@ -186,13 +192,19 @@ export type Database = {
           failure_reason?: string | null
           id?: string
           last_run_at?: string | null
+          mission_at?: string | null
           mission_id: string
           next_retry_at?: string | null
+          refund_amount_cents?: number | null
+          refund_reason?: string | null
+          refund_status?: string
+          refunded_at?: string | null
           retry_count?: number
           scheduled_charge_at?: string | null
           simulate_failure?: boolean
           status?: string
           stripe_payment_method_id?: string | null
+          stripe_refund_id?: string | null
           stripe_setup_intent_id?: string | null
           updated_at?: string
         }
@@ -206,13 +218,19 @@ export type Database = {
           failure_reason?: string | null
           id?: string
           last_run_at?: string | null
+          mission_at?: string | null
           mission_id?: string
           next_retry_at?: string | null
+          refund_amount_cents?: number | null
+          refund_reason?: string | null
+          refund_status?: string
+          refunded_at?: string | null
           retry_count?: number
           scheduled_charge_at?: string | null
           simulate_failure?: boolean
           status?: string
           stripe_payment_method_id?: string | null
+          stripe_refund_id?: string | null
           stripe_setup_intent_id?: string | null
           updated_at?: string
         }
