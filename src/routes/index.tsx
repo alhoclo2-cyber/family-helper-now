@@ -631,6 +631,7 @@ function FamilyFlow() {
             draggable={false}
           />
         </picture>
+        </div>
         <section className="w-full">
           <Button
             type="button"
