@@ -220,7 +220,7 @@ function isDeferredCharge(scheduledAt?: number | null) {
  * les identifiants SetupIntent / PaymentMethod sont simulés : la structure de la
  * ligne est déjà celle attendue par le futur webhook.
  */
-async function recordDeferredCharge(missionId: string, chargeAt: number, companionRef: string) {
+async function recordDeferredCharge(missionId: string, chargeAt: number, companionRef: string, missionAt: number | null) {
   const { data } = await supabase.auth.getSession();
   const userId = data.session?.user.id;
   if (!userId) return;
@@ -233,7 +233,32 @@ async function recordDeferredCharge(missionId: string, chargeAt: number, compani
       stripe_payment_method_id: `pm_sim_${missionId}`,
       amount_cents: Math.round(SERVICE_FEE * 100),
       scheduled_charge_at: new Date(chargeAt).toISOString(),
+      mission_at: missionAt ? new Date(missionAt).toISOString() : null,
       status: "en_attente_debit",
+    },
+    { onConflict: "mission_id" },
+  );
+}
+
+/**
+ * RDV à moins de 24 h : les 6 € sont réglés tout de suite (simulé). La ligne est
+ * enregistrée en « debit_reussi » pour permettre un éventuel remboursement.
+ */
+async function recordImmediateCharge(missionId: string, missionAt: number, companionRef: string) {
+  const { data } = await supabase.auth.getSession();
+  const userId = data.session?.user.id;
+  if (!userId) return;
+  const nowIso = new Date().toISOString();
+  await supabase.from("mission_payments").upsert(
+    {
+      mission_id: missionId,
+      client_id: userId,
+      companion_ref: companionRef,
+      stripe_payment_method_id: `pm_sim_${missionId}`,
+      amount_cents: Math.round(SERVICE_FEE * 100),
+      mission_at: new Date(missionAt).toISOString(),
+      status: "debit_reussi",
+      charged_at: nowIso,
     },
     { onConflict: "mission_id" },
   );
@@ -2049,13 +2074,51 @@ const LATE_REFUND_FEE = 1;
 function LateRefundRequest({ request }: { request: Request }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
-  if (request.refundAmount)
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [refundStatus, setRefundStatus] = useState<string | null>(null);
+  const callRefund = useServerFn(requestLateRefund);
+  const fetchState = useServerFn(getRefundState);
+
+  useEffect(() => {
+    let alive = true;
+    fetchState({ data: { requestId: request.id } })
+      .then((row) => { if (alive && row) setRefundStatus(row.refund_status); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [request.id, fetchState]);
+
+  const submit = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await callRefund({ data: { requestId: request.id, reason: reason.trim() } });
+      setRefundStatus("rembourse");
+      store.updateRequest(request.id, { refundAmount: LATE_REFUND_AMOUNT, refundReason: reason.trim() });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Le remboursement n'a pas pu être effectué.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (refundStatus === "rembourse" || refundStatus === "demande")
     return (
       <div className="w-full rounded-2xl border-2 border-success bg-success/10 p-4 text-left">
-        <p className="text-sm font-bold text-success">✅ Votre demande a été prise en compte.</p>
-        <p className="text-xs text-muted-foreground mt-1">
-          Remboursement de {formatPrice(request.refundAmount)} € en cours.
+        <p className="text-sm font-bold text-success">
+          {refundStatus === "rembourse"
+            ? `✅ Remboursement de ${formatPrice(LATE_REFUND_AMOUNT)} € effectué`
+            : "⏳ Remboursement en cours de traitement"}
         </p>
+        <p className="text-xs text-muted-foreground mt-1">
+          {formatPrice(LATE_REFUND_FEE)} € de frais d'opération retenu.
+        </p>
+      </div>
+    );
+  if (refundStatus === "echec")
+    return (
+      <div className="w-full rounded-2xl border-2 border-destructive bg-destructive/10 p-4 text-left">
+        <p className="text-sm font-bold text-destructive">Le remboursement a échoué. Contactez Solélia.</p>
       </div>
     );
   if (!open)
@@ -2084,9 +2147,11 @@ function LateRefundRequest({ request }: { request: Request }) {
         placeholder="Expliquez brièvement la raison de votre annulation"
         className="w-full mt-1 px-3 py-2 rounded-xl border-2 border-border bg-card text-sm"
       />
+      {error && <p className="text-xs font-semibold text-destructive mt-2">{error}</p>}
       <div className="grid grid-cols-2 gap-2 mt-3">
         <button
           type="button"
+          disabled={loading}
           onClick={() => setOpen(false)}
           className="py-3 rounded-2xl border-2 border-border bg-card font-bold text-sm"
         >
@@ -2094,16 +2159,11 @@ function LateRefundRequest({ request }: { request: Request }) {
         </button>
         <button
           type="button"
-          disabled={!reason.trim()}
-          onClick={() =>
-            store.updateRequest(request.id, {
-              refundAmount: LATE_REFUND_AMOUNT,
-              refundReason: reason.trim(),
-            })
-          }
+          disabled={!reason.trim() || loading}
+          onClick={submit}
           className="py-3 rounded-2xl bg-primary text-primary-foreground font-bold text-sm disabled:opacity-50"
         >
-          Valider
+          {loading ? "Remboursement…" : "Valider"}
         </button>
       </div>
     </div>
@@ -2259,9 +2319,10 @@ function FamilyWait({
             studentName: request.student!.firstName,
           });
           if (deferred && chargeAt) {
-            void recordDeferredCharge(request.id, chargeAt, request.student!.id);
+            void recordDeferredCharge(request.id, chargeAt, request.student!.id, request.scheduledAt ?? null);
             store.updateRequest(request.id, { paid: true, salaryNetHourly: salaireNetHoraire, deferredCharge: true, scheduledChargeAt: chargeAt });
           } else {
+            if (request.scheduledAt) void recordImmediateCharge(request.id, request.scheduledAt, request.student!.id);
             store.updateRequest(request.id, { paid: true, salaryNetHourly: salaireNetHoraire, deferredCharge: false });
           }
           setPaid(true);
