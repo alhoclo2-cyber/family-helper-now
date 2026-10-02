@@ -622,7 +622,15 @@ function FamilyFlow() {
           className="h-auto select-none"
           draggable={false}
         />
-        </div>
+        <picture className="block w-full" style={{ width: "calc(100% + 3rem)", maxWidth: "none", marginLeft: "-1.5rem", marginRight: "-1.5rem" }}>
+          <source srcSet={unBesoinOrdiAsset.url} media="(min-width: 768px)" />
+          <img
+            src={unBesoinTelAsset.url}
+            alt="Un besoin = un compagnon à proximité. 0 € d'abonnement, sans engagement."
+            className="h-auto w-full select-none"
+            draggable={false}
+          />
+        </picture>
         <section className="w-full">
           <Button
             type="button"
