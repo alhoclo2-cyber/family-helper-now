@@ -38,8 +38,7 @@ import { useCompanionSettings } from "@/lib/companionSettings";
 import soleliaLogoAsset from "@/assets/solelia-logo.png.asset.json";
 import floralBorderAsset from "@/assets/floral-border.jpg.asset.json";
 import accueilFamilleAsset from "@/assets/accueil-famille.png.asset.json";
-import unBesoinOrdiAsset from "@/assets/un-besoin-ordi.png.asset.json";
-import unBesoinTelAsset from "@/assets/un-besoin-tel.png.asset.json";
+import unBesoinAsset from "@/assets/un-besoin-ordi-2.png.asset.json";
 
 
 export const Route = createFileRoute("/")({
@@ -622,15 +621,13 @@ function FamilyFlow() {
           className="h-auto select-none"
           draggable={false}
         />
-        <picture className="block w-full" style={{ width: "calc(100% + 3rem)", maxWidth: "none", marginLeft: "-1.5rem", marginRight: "-1.5rem" }}>
-          <source srcSet={unBesoinOrdiAsset.url} media="(min-width: 768px)" />
-          <img
-            src={unBesoinTelAsset.url}
-            alt="Un besoin = un compagnon à proximité. 0 € d'abonnement, sans engagement."
-            className="h-auto w-full select-none"
-            draggable={false}
-          />
-        </picture>
+        <img
+          src={unBesoinAsset.url}
+          alt="Un besoin = un compagnon à proximité. 0 € d'abonnement, sans engagement."
+          style={{ width: "calc(100% + 3rem)", maxWidth: "none", marginLeft: "-1.5rem", marginRight: "-1.5rem" }}
+          className="h-auto select-none"
+          draggable={false}
+        />
         </div>
         <section className="w-full">
           <Button
