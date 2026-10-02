@@ -2607,8 +2607,8 @@ function FamilyWait({
               companionId={request.student!.id}
               companionName={request.student!.firstName}
               check={complianceCheck}
-              dismissible={false}
-              onClose={() => {}}
+              dismissible
+              onClose={() => { store.discardRequest(request.id); onEditRequest(request); }}
               onContinue={() => setContractOk(true)}
               onSwitchCompanion={(companionId) => {
                 store.declineRequest(request.id, request.student!.id);
