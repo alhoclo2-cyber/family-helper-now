@@ -1,5 +1,6 @@
 import { CopyButton } from "@/components/CopyButton";
 import { departmentLabel, formatBirthDate } from "@/components/BirthFields";
+import { missingCompanionItems } from "@/lib/companionDossier";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -423,6 +424,8 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
     onError: (e: Error) => setErr(e.message),
   });
 
+  const missing = missingCompanionItems(app);
+  const NotSet = () => <span className="font-bold text-destructive">Non renseigné</span>;
   return (
     <div className="flex flex-col gap-4">
       <button onClick={onBack} className="text-sm font-bold text-primary text-left">
@@ -446,8 +449,22 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
         <p>📧 {app.email}</p>
         <p>📞 {app.phone}</p>
         <p>📍 {app.address || app.city}</p>
-        <p>
+        <p className="flex items-center gap-2 flex-wrap">
           🆔 NIR : <span className="font-mono font-bold">{app.nir || "Non renseigné"}</span>
+          <CopyButton value={app.nir ?? ""} />
+        </p>
+        <p className="flex items-center gap-2 flex-wrap">
+          🎂 Date de naissance : {app.birth_date ? <b>{formatBirthDate(app.birth_date)}</b> : <NotSet />}
+          <CopyButton value={formatBirthDate(app.birth_date)} />
+        </p>
+        <p className="flex items-center gap-2 flex-wrap">
+          📍 Lieu de naissance : {app.birth_place?.trim() ? <b>{app.birth_place}</b> : <NotSet />}
+          <CopyButton value={app.birth_place?.trim() ?? ""} />
+        </p>
+        <p className="flex items-center gap-2 flex-wrap">
+          🗺️ Département de naissance :{" "}
+          {app.birth_department ? <b>{departmentLabel(app.birth_department)}</b> : <NotSet />}
+          <CopyButton value={app.birth_department ? departmentLabel(app.birth_department) : ""} />
         </p>
         <p>
           🏠 Logement :{" "}
@@ -505,9 +522,14 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
 
       {err && <p className="text-sm text-destructive text-center">{err}</p>}
 
+      {app.status !== "approved" && missing.length > 0 && (
+        <p className="text-sm font-bold text-destructive">
+          Candidature incomplète, validation impossible. Manquant : {missing.join(", ")}.
+        </p>
+      )}
       {app.status !== "approved" && (
         <button
-          disabled={mut.isPending}
+          disabled={mut.isPending || missing.length > 0}
           onClick={() => mut.mutate({ status: "approved" })}
           className="btn-huge bg-success text-success-foreground disabled:opacity-50"
         >
