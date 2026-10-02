@@ -3728,7 +3728,7 @@ function StudentEnroll({
         <img
           src={bandeauCompagnonAsset.url}
           alt="Solélia Accompagnement — Des missions qui s'adaptent à votre vie"
-          className="w-full h-auto object-contain"
+          className="w-full h-auto object-contain -mx-6"
         />
         <div className="bg-card border-2 border-border rounded-2xl p-5">
           <p className="font-bold mb-3">Devenir Compagnon</p>
@@ -3737,7 +3737,6 @@ function StudentEnroll({
             <li>✓ Pièce d'identité valide</li>
             <li>✓ Carte Vitale (copie ou photo du recto)</li>
             <li>✓ Justificatif de domicile (ou dossier d'hébergement)</li>
-            <li>✓ Justificatif de situation (carte étudiante, contrat de travail, attestation France Travail, notification de retraite…)</li>
             <li>✓ Extrait de casier judiciaire (bulletin n°3 de moins de 3 mois)</li>
             <li>✓ Numéro de Sécurité sociale (NIR)</li>
             <li>✓ RIB pour les paiements</li>
