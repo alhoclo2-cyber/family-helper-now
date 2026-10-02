@@ -2650,7 +2650,7 @@ function FamilyWait({
                 </p>
               </div>
               <button onClick={() => setShowPay(true)} className="btn-huge bg-primary text-primary-foreground w-full">
-                {deferred ? "💳 Enregistrer ma carte et confirmer" : `💳 Finaliser — ${formatPrice(SERVICE_FEE)} €`}
+                {deferred ? "💳 Récapitulatif et enregistrer ma carte" : `💳 Finaliser — ${formatPrice(SERVICE_FEE)} €`}
               </button>
               <p className="text-xs text-muted-foreground">
                 {deferred
@@ -3592,6 +3592,7 @@ function StudentEnroll({
 }) {
   const [step, setStep] = useState<"intro" | "auth" | "form">("intro");
   const [cguOk, setCguOk] = useState(false);
+  const [limitsOk, setLimitsOk] = useState(false);
   const [nirFocus, setNirFocus] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
@@ -3919,7 +3920,8 @@ function StudentEnroll({
       isBirthComplete(birth) &&
       hasSelfie &&
       allDocs &&
-      cguOk,
+      cguOk &&
+      limitsOk,
   );
 
   // Bordure rouge + message sous les éléments manquants après un clic sur « Envoyer »
@@ -4150,11 +4152,23 @@ function StudentEnroll({
         <Missing ok={cguOk} text="Acceptation des CGU obligatoire" />
       </div>
 
+      <ServiceLimitsNotice className={bad(limitsOk) ? "border-destructive bg-destructive/5" : ""}>
+        <label className="mt-3 flex items-start gap-2 text-sm font-bold cursor-pointer">
+          <input
+            type="checkbox"
+            checked={limitsOk}
+            onChange={(e) => setLimitsOk(e.target.checked)}
+            className="mt-0.5 h-5 w-5 shrink-0 accent-primary"
+          />
+          Je certifie avoir pris connaissance des services non autorisés.
+        </label>
+        <Missing ok={limitsOk} text="Cette confirmation est obligatoire pour envoyer votre candidature." />
+      </ServiceLimitsNotice>
+
       {err && <p className="text-sm text-destructive text-center font-semibold">{err}</p>}
       <button type="submit" disabled={busy} className="btn-huge bg-primary text-primary-foreground disabled:opacity-50 mt-2">
         {busy ? "Envoi en cours…" : "Envoyer ma candidature"}
       </button>
-      <ServiceLimitsNotice />
       <p className="text-xs text-muted-foreground text-center">🔒 Vos documents sont stockés de façon privée et consultés uniquement par Solélia.</p>
     </form>
   );
@@ -4305,10 +4319,6 @@ function FamilyAccountScreen({ onBack }: { onBack: () => void }) {
     return (
       <div className="flex-1 flex flex-col px-5 py-6 gap-4">
         <button onClick={onBack} className="text-base text-muted-foreground text-left">← Retour</button>
-        <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-3 text-sm">
-          💳 <b>Modèle mandataire</b> — {formatPrice(SERVICE_FEE)} € de frais de service par mission. Votre
-          attestation fiscale officielle est délivrée par l'URSSAF.
-        </div>
         <AuthCard
           title="Mon espace Solélia"
           subtitle="Particuliers"

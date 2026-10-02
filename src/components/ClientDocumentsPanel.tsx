@@ -18,14 +18,14 @@ type DocRow = {
 const MAX_SIZE = 5 * 1024 * 1024;
 
 const DOCS: { type: DocType; label: string; hint: string }[] = [
+  { type: "identity_front", label: "Pièce d'identité — recto", hint: "Nécessaire à la déclaration URSSAF." },
+  { type: "identity_back", label: "Pièce d'identité — verso", hint: "Nécessaire à la déclaration URSSAF." },
+  { type: "identity_passport", label: "Passeport (page photo)", hint: "Nécessaire à la déclaration URSSAF." },
   {
     type: "rib",
     label: "RIB",
     hint: "Nécessaire à l'activation de l'API URSSAF/CESU+ pour le prélèvement automatique du reste à charge.",
   },
-  { type: "identity_front", label: "Pièce d'identité — recto", hint: "Nécessaire à la déclaration URSSAF." },
-  { type: "identity_back", label: "Pièce d'identité — verso", hint: "Nécessaire à la déclaration URSSAF." },
-  { type: "identity_passport", label: "Passeport (page photo)", hint: "Nécessaire à la déclaration URSSAF." },
   {
     type: "proof_of_address",
     label: "Justificatif de domicile",
