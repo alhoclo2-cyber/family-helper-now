@@ -111,6 +111,11 @@ function ArchivesPage() {
         {step === 1 && (
           <div className="flex flex-col gap-4 text-base">
             <p>Entrez l'adresse e-mail de votre ancien compte. Nous vous enverrons un code.</p>
+            <p className="text-sm text-muted-foreground">
+              Vos archives sont consultables en ligne pendant 12 mois après la suppression de votre compte. Passé ce
+              délai, vous pouvez en demander une copie en écrivant à{" "}
+              <a href="mailto:solelia.accompagnement@gmail.com" className="font-semibold text-primary underline">solelia.accompagnement@gmail.com</a>.
+            </p>
             <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-12 text-base" placeholder="votre@adresse.fr" />
             <Button className="w-full h-12 text-base" onClick={send} disabled={!email.trim()}>Recevoir mon code</Button>
           </div>
@@ -119,6 +124,11 @@ function ArchivesPage() {
         {step === 2 && (
           <div className="flex flex-col gap-4 text-base">
             {info && <p className="rounded-2xl border border-border bg-card p-4">{info}</p>}
+            <p className="text-sm text-muted-foreground">
+              Vos archives sont consultables en ligne pendant 12 mois après la suppression de votre compte. Passé ce
+              délai, vous pouvez en demander une copie en écrivant à{" "}
+              <a href="mailto:solelia.accompagnement@gmail.com" className="font-semibold text-primary underline">solelia.accompagnement@gmail.com</a>.
+            </p>
             <label className="flex flex-col gap-2 font-semibold">
               Code à 6 chiffres
               <Input
