@@ -3751,7 +3751,9 @@ function StudentEnroll({
         <img
           src={bandeauCompagnonAsset.url}
           alt="Solélia Accompagnement — Des missions qui s'adaptent à votre vie"
-          className="w-full h-auto object-contain -mx-6"
+          style={{ width: "calc(100% + 3rem)", maxWidth: "none", marginLeft: "-1.5rem", marginRight: "-1.5rem" }}
+          className="h-auto select-none"
+          draggable={false}
         />
         <div className="bg-card border-2 border-border rounded-2xl p-5">
           <p className="font-bold mb-3">Devenir Compagnon</p>
