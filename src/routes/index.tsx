@@ -39,7 +39,7 @@ import { useCompanionSettings } from "@/lib/companionSettings";
 import soleliaLogoAsset from "@/assets/solelia-logo.png.asset.json";
 import bandeauCompagnonAsset from "@/assets/bandeau_compagnon.png.asset.json";
 import accueilFamilleAsset from "@/assets/accueil-famille.png.asset.json";
-import unBesoinAsset from "@/assets/un-besoin-ordi-2.png.asset.json";
+import unBesoinAsset from "@/assets/un-besoin-ordi-3.png.asset.json";
 import { AccountStatusBanner } from "@/components/AccountStatusBanner";
 
 
