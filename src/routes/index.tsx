@@ -40,6 +40,7 @@ import soleliaLogoAsset from "@/assets/solelia-logo.png.asset.json";
 import bandeauCompagnonAsset from "@/assets/bandeau_compagnon.png.asset.json";
 import accueilFamilleAsset from "@/assets/accueil-famille.png.asset.json";
 import unBesoinAsset from "@/assets/un-besoin-ordi-2.png.asset.json";
+import { AccountStatusBanner } from "@/components/AccountStatusBanner";
 
 
 export const Route = createFileRoute("/")({
@@ -626,6 +627,7 @@ function FamilyFlow() {
             {session ? `👤 ${sessionFirstName || "Mon compte"}` : "👤 Mon compte"}
           </button>
         </div>
+        <AccountStatusBanner />
         <div className="flex flex-col items-center gap-1">
         <img
           src={accueilFamilleAsset.url}
@@ -3058,6 +3060,7 @@ function StudentFlow() {
   return (
     <div className="flex-1 flex flex-col px-5 py-6 gap-5">
       <div className="w-full flex items-center justify-between"><AccountMenu /></div>
+      <AccountStatusBanner />
       {demo && (
         <div className="flex items-center justify-between gap-3 rounded-2xl border-2 border-primary/40 bg-accent p-3">
           <p className="text-sm font-bold">👁️ Mode démo — espace Compagnon validé</p>
@@ -3675,6 +3678,7 @@ function StudentEnroll({
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
         <div className="w-full flex items-center justify-between"><AccountMenu /></div>
+        <AccountStatusBanner />
         <div className="text-6xl">📝</div>
         <h2 className="text-2xl font-black">Dossier à compléter</h2>
         <p className="text-base text-muted-foreground text-left">
@@ -3702,6 +3706,7 @@ function StudentEnroll({
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
         <div className="w-full flex items-center justify-between"><AccountMenu /></div>
+        <AccountStatusBanner />
         <div className="text-6xl">📨</div>
         <h2 className="text-2xl font-black">Dossier envoyé !</h2>
         <p className="text-base text-muted-foreground">
@@ -3742,6 +3747,7 @@ function StudentEnroll({
     return (
       <div className="flex-1 flex flex-col px-6 py-8 gap-5">
         <div className="w-full flex items-center justify-between"><AccountMenu /></div>
+        <AccountStatusBanner />
         <img
           src={bandeauCompagnonAsset.url}
           alt="Solélia Accompagnement — Des missions qui s'adaptent à votre vie"
@@ -4255,6 +4261,7 @@ function FinalizeDossierScreen({ items }: { items: { key: string; label: string;
   return (
     <div className="flex-1 flex flex-col px-5 py-6 gap-4">
       <div className="w-full flex items-center justify-between"><AccountMenu /></div>
+      <AccountStatusBanner />
       <div className="text-center">
         <h2 className="text-2xl font-black">Finalisez votre dossier</h2>
         <p className="text-sm text-muted-foreground mt-1">
