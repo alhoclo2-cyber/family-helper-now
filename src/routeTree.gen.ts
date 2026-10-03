@@ -12,8 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ProRouteImport } from './routes/pro'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ArchivesRouteImport } from './routes/archives'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CompteSuppressionRouteImport } from './routes/compte.suppression'
+import { Route as ComptePauseRouteImport } from './routes/compte.pause'
 import { Route as AuthenticatedMandataireRouteImport } from './routes/_authenticated/mandataire'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -31,6 +34,11 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ArchivesRoute = ArchivesRouteImport.update({
+  id: '/archives',
+  path: '/archives',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
@@ -38,6 +46,16 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompteSuppressionRoute = CompteSuppressionRouteImport.update({
+  id: '/compte/suppression',
+  path: '/compte/suppression',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComptePauseRoute = ComptePauseRouteImport.update({
+  id: '/compte/pause',
+  path: '/compte/pause',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedMandataireRoute = AuthenticatedMandataireRouteImport.update({
@@ -48,48 +66,79 @@ const AuthenticatedMandataireRoute = AuthenticatedMandataireRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/archives': typeof ArchivesRoute
   '/auth': typeof AuthRoute
   '/pro': typeof ProRoute
   '/reset-password': typeof ResetPasswordRoute
   '/mandataire': typeof AuthenticatedMandataireRoute
+  '/compte/pause': typeof ComptePauseRoute
+  '/compte/suppression': typeof CompteSuppressionRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/archives': typeof ArchivesRoute
   '/auth': typeof AuthRoute
   '/pro': typeof ProRoute
   '/reset-password': typeof ResetPasswordRoute
   '/mandataire': typeof AuthenticatedMandataireRoute
+  '/compte/pause': typeof ComptePauseRoute
+  '/compte/suppression': typeof CompteSuppressionRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/archives': typeof ArchivesRoute
   '/auth': typeof AuthRoute
   '/pro': typeof ProRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/mandataire': typeof AuthenticatedMandataireRoute
+  '/compte/pause': typeof ComptePauseRoute
+  '/compte/suppression': typeof CompteSuppressionRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/pro' | '/reset-password' | '/mandataire'
+  fullPaths:
+    | '/'
+    | '/archives'
+    | '/auth'
+    | '/pro'
+    | '/reset-password'
+    | '/mandataire'
+    | '/compte/pause'
+    | '/compte/suppression'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/pro' | '/reset-password' | '/mandataire'
+  to:
+    | '/'
+    | '/archives'
+    | '/auth'
+    | '/pro'
+    | '/reset-password'
+    | '/mandataire'
+    | '/compte/pause'
+    | '/compte/suppression'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/archives'
     | '/auth'
     | '/pro'
     | '/reset-password'
     | '/_authenticated/mandataire'
+    | '/compte/pause'
+    | '/compte/suppression'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  ArchivesRoute: typeof ArchivesRoute
   AuthRoute: typeof AuthRoute
   ProRoute: typeof ProRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ComptePauseRoute: typeof ComptePauseRoute
+  CompteSuppressionRoute: typeof CompteSuppressionRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -115,6 +164,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/archives': {
+      id: '/archives'
+      path: '/archives'
+      fullPath: '/archives'
+      preLoaderRoute: typeof ArchivesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
@@ -127,6 +183,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compte/suppression': {
+      id: '/compte/suppression'
+      path: '/compte/suppression'
+      fullPath: '/compte/suppression'
+      preLoaderRoute: typeof CompteSuppressionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compte/pause': {
+      id: '/compte/pause'
+      path: '/compte/pause'
+      fullPath: '/compte/pause'
+      preLoaderRoute: typeof ComptePauseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/mandataire': {
@@ -153,9 +223,12 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  ArchivesRoute: ArchivesRoute,
   AuthRoute: AuthRoute,
   ProRoute: ProRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ComptePauseRoute: ComptePauseRoute,
+  CompteSuppressionRoute: CompteSuppressionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
