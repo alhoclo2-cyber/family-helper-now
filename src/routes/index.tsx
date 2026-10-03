@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { AccountMenu } from "@/components/AccountMenu";
 import { useServerFn } from "@tanstack/react-start";
 import { requestLateRefund, getRefundState } from "@/lib/refunds.functions";
 import { ShieldCheck } from "lucide-react";
@@ -62,11 +63,20 @@ function App() {
   const navigate = useNavigate();
   const { session } = useSession();
   const access = useAccess(session?.user.id);
+  const myApp = useMyApplication(session?.user.id);
+  const autoTabDone = useRef(false);
 
   // Le Mandataire est redirigé vers son tableau de bord dédié
   useEffect(() => {
     if (access.data?.isMandataire && access.data.strongAuth) navigate({ to: "/mandataire" });
   }, [access.data, navigate]);
+
+  // Compte Compagnon : ouverture automatique de l'onglet Compagnon (une fois par chargement)
+  useEffect(() => {
+    if (autoTabDone.current || !session || !access.isSuccess || !myApp.isSuccess) return;
+    autoTabDone.current = true;
+    if (!access.data.isMandataire && myApp.data) setMode("student");
+  }, [session, access.isSuccess, access.data, myApp.isSuccess, myApp.data]);
 
   return (
     <div className="min-h-screen bg-background flex justify-center">
@@ -607,12 +617,15 @@ function FamilyFlow() {
   if (step === "home")
     return (
       <div className="flex-1 flex flex-col justify-center items-center px-6 py-8 gap-5">
-        <button
-          onClick={() => setStep("account")}
-          className="self-end text-sm font-semibold text-primary underline"
-        >
-          {session ? `👤 ${sessionFirstName || "Mon compte"}` : "👤 Mon compte"}
-        </button>
+        <div className="w-full flex items-center justify-between">
+          <AccountMenu />
+          <button
+            onClick={() => setStep("account")}
+            className="text-sm font-semibold text-primary underline"
+          >
+            {session ? `👤 ${sessionFirstName || "Mon compte"}` : "👤 Mon compte"}
+          </button>
+        </div>
         <div className="flex flex-col items-center gap-1">
         <img
           src={accueilFamilleAsset.url}
@@ -3044,6 +3057,7 @@ function StudentFlow() {
 
   return (
     <div className="flex-1 flex flex-col px-5 py-6 gap-5">
+      <div className="w-full flex items-center justify-between"><AccountMenu /></div>
       {demo && (
         <div className="flex items-center justify-between gap-3 rounded-2xl border-2 border-primary/40 bg-accent p-3">
           <p className="text-sm font-bold">👁️ Mode démo — espace Compagnon validé</p>
@@ -3660,6 +3674,7 @@ function StudentEnroll({
   if ((app?.status === "changes_requested" || app?.status === "rejected") && step === "intro") {
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
+        <div className="w-full flex items-center justify-between"><AccountMenu /></div>
         <div className="text-6xl">📝</div>
         <h2 className="text-2xl font-black">Dossier à compléter</h2>
         <p className="text-base text-muted-foreground text-left">
@@ -3686,6 +3701,7 @@ function StudentEnroll({
   if (app?.status === "pending" && step === "intro") {
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
+        <div className="w-full flex items-center justify-between"><AccountMenu /></div>
         <div className="text-6xl">📨</div>
         <h2 className="text-2xl font-black">Dossier envoyé !</h2>
         <p className="text-base text-muted-foreground">
@@ -3725,6 +3741,7 @@ function StudentEnroll({
   if (step === "intro") {
     return (
       <div className="flex-1 flex flex-col px-6 py-8 gap-5">
+        <div className="w-full flex items-center justify-between"><AccountMenu /></div>
         <img
           src={bandeauCompagnonAsset.url}
           alt="Solélia Accompagnement — Des missions qui s'adaptent à votre vie"
@@ -4237,6 +4254,7 @@ function AttestationFiscaleBlock({
 function FinalizeDossierScreen({ items }: { items: { key: string; label: string; ok: boolean; note?: string }[] }) {
   return (
     <div className="flex-1 flex flex-col px-5 py-6 gap-4">
+      <div className="w-full flex items-center justify-between"><AccountMenu /></div>
       <div className="text-center">
         <h2 className="text-2xl font-black">Finalisez votre dossier</h2>
         <p className="text-sm text-muted-foreground mt-1">
