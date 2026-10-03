@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/auth";
+import { useAccountState } from "@/lib/accountState";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +16,9 @@ const itemCls = "py-3 text-base cursor-pointer";
 export function AccountMenu() {
   const { session } = useSession();
   const qc = useQueryClient();
+  const { state } = useAccountState(session?.user.id);
+  const paused = state.status === "paused";
+  const pending = state.status === "deletion_pending";
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -26,11 +30,14 @@ export function AccountMenu() {
         {session ? (
           <>
             <DropdownMenuItem asChild className={itemCls}>
-              <Link to="/compte/pause">Mettre en pause mon compte</Link>
+              <Link to="/compte/pause">{paused ? "Réactiver mon compte" : "Mettre en pause mon compte"}</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild className={`${itemCls} text-destructive focus:text-destructive`}>
-              <Link to="/compte/suppression">Supprimer mon compte</Link>
+            <DropdownMenuItem
+              asChild
+              className={pending ? itemCls : `${itemCls} text-destructive focus:text-destructive`}
+            >
+              <Link to="/compte/suppression">{pending ? "Annuler la suppression" : "Supprimer mon compte"}</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
