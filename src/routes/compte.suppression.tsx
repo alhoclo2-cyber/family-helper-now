@@ -12,6 +12,7 @@ import { AccountPageShell, BlockerBox } from "@/components/AccountPageShell";
 import { AccountSimulationPanel } from "@/components/AccountSimulationPanel";
 import { formatDateFr, useAccountState } from "@/lib/accountState";
 import { useAccountBlockers, useAccountRole } from "@/lib/accountBlockers";
+import { sendSimulatedEmail } from "@/lib/simulatedEmails";
 
 export const Route = createFileRoute("/compte/suppression")({
   head: () => ({
@@ -91,8 +92,9 @@ function DeleteContent({ session }: { session: Session }) {
                 <AlertDialogAction
                   onClick={() => {
                     account.requestDeletion();
+                    sendSimulatedEmail("deletion_confirmation", session.user.email, { date: Date.now() + 14 * 24 * 60 * 60 * 1000 });
                     setTyped("");
-                    toast.success("Votre demande est enregistrée. Un e-mail de confirmation vous a été envoyé (simulation).");
+                    toast.success("Votre demande est enregistrée. Un e-mail de confirmation vous a été envoyé (simulation, visible dans E-mails de démonstration).");
                   }}
                 >
                   Confirmer la suppression

@@ -104,6 +104,11 @@ export function useAccountState(userId: string | undefined) {
       update((s) => ({ ...s, status: "active", deletionRequestedAt: undefined, deletionEffectiveAt: undefined })),
     resetAll: () => update(() => defaultAccountState()),
     setSim: (key: SimKey, value: boolean) => update((s) => ({ ...s, sim: { ...s.sim, [key]: value } })),
+    setDeletionInDays: (days: number) => {
+      const at = Date.now() + days * DAY;
+      update((s) => ({ ...s, deletionEffectiveAt: at }));
+      return at;
+    },
     advanceDays: async () => {
       if (!userId || read(userId).status !== "deletion_pending") return;
       deletionSignOutInProgress = true;
