@@ -22,7 +22,10 @@ export function AccountMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button type="button" className="text-sm font-semibold text-primary underline">
+        <button
+          type="button"
+          className="inline-flex items-center gap-1.5 rounded-xl border-2 border-foreground bg-background px-3.5 py-2 text-sm font-bold text-foreground shadow-sm transition-colors hover:bg-foreground hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/40"
+        >
           ☰ Menu
         </button>
       </DropdownMenuTrigger>
