@@ -41,6 +41,8 @@ import bandeauCompagnonAsset from "@/assets/bandeau_compagnon.png.asset.json";
 import accueilFamilleAsset from "@/assets/accueil-famille.png.asset.json";
 import unBesoinAsset from "@/assets/un-besoin-ordi-3.png.asset.json";
 import { AccountStatusBanner } from "@/components/AccountStatusBanner";
+import { requestDurationMin } from "@/lib/missionClosure";
+import { MissionClosureBlock } from "@/components/MissionClosureBlock";
 
 
 export const Route = createFileRoute("/")({
@@ -1888,8 +1890,6 @@ function isCompanionAvailableFor(
   });
 }
 
-const requestDurationMin = (r: { durationHours?: number }) =>
-  r.durationHours ? r.durationHours * 60 : DEFAULT_DURATION_MIN;
 
 const FAMILY_CANCEL_REASONS = [
   "Je n'ai plus besoin de cette prestation",
@@ -2711,10 +2711,7 @@ function FamilyWait({
                   ✏️ Modifier les informations de ma demande
                 </button>
               )}
-              <ThumbUpButton
-                given={!!request.thumbsGiven}
-                onGive={() => store.giveThumb(request.id)}
-              />
+              <MissionClosureBlock request={request} role="family" />
             </>
           )}
           {!!request.scheduledAt && <ScheduleManageBlock request={request} paid={paid} />}
@@ -3471,6 +3468,7 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
           >
             🗺️ Itinéraire
           </a>
+          <MissionClosureBlock request={request} role="companion" />
           {!!request.scheduledAt && <CompanionCancelBlock request={request} />}
         </>
       )}
