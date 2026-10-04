@@ -68,7 +68,7 @@ export function MissionClosureBlock({ request, role }: { request: Request; role:
         ? `Raison indiquée : « ${request.problemReport.reason} »`
         : null
       : c === "auto_validated"
-        ? missionMessage(request, "auto", role)
+        ? missionMessage(request, "mission_auto_validated", role)
         : mine || closed
           ? null
           : last
