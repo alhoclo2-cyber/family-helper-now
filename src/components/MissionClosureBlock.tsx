@@ -55,6 +55,7 @@ export function MissionClosureBlock({ request, role }: { request: Request; role:
   const label = role === "family" ? "✅ Mission terminée" : "✅ Mission effectuée";
   const start = getMissionStart(request);
   const canReport =
+    !mine &&
     (!c || c === "pending") &&
     start != null &&
     end != null &&
@@ -66,9 +67,13 @@ export function MissionClosureBlock({ request, role }: { request: Request; role:
       ? request.problemReport && request.problemReport.by !== role
         ? `Raison indiquée : « ${request.problemReport.reason} »`
         : null
-      : last
-        ? missionMessage(request, reminderKind(last), role)
-        : null;
+      : c === "auto_validated"
+        ? missionMessage(request, "auto", role)
+        : mine || closed
+          ? null
+          : last
+            ? missionMessage(request, reminderKind(last), role)
+            : null;
   const submitProblem = () => {
     if (reason.trim().length < 10) {
       setReasonError(true);
