@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useStore } from "@/lib/store";
+import { getMissionEnd, isCompletionClosed } from "@/lib/missionClosure";
 import type { AccountState, SimKey } from "@/lib/accountState";
 
 export type Blocker = { key: SimKey; label: string };
@@ -53,8 +54,16 @@ export function useAccountBlockers(
   const rows = q.data ?? [];
   if (rows.some((r) => r.mission_at && new Date(r.mission_at).getTime() > now)) found.add("mission");
   if (role === "family") {
-    if (requests.some((r) => r.seniorName === "Vous" && (r.status === "searching" || r.status === "accepted")))
+    const mine = requests.filter((r) => r.seniorName === "Vous");
+    if (mine.some((r) => r.status === "searching" || (r.status === "accepted" && !isCompletionClosed(r))))
       found.add("mission");
+    if (
+      mine.some((r) => {
+        const end = getMissionEnd(r);
+        return r.status === "accepted" && r.completion === "pending" && end != null && end <= now;
+      })
+    )
+      found.add("hours");
     if (rows.some((r) => r.refund_status === "demande" || r.refund_status === "echec")) found.add("refund");
     const cancelled = new Set(requests.filter((r) => r.status === "cancelled").map((r) => r.id));
     if (
