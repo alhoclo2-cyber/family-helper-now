@@ -5,6 +5,7 @@ import {
   AUTO_VALIDATION_DELAY_MS,
   formatMissionRange,
   getMissionEnd,
+  getMissionStart,
   requestDurationMin,
 } from "@/lib/missionClosure";
 
@@ -44,7 +45,14 @@ function MissionCard({ r, now, children }: { r: Request; now: number; children?:
   if (r.completion === "validated") state = "Validée par les deux parties";
   else if (r.completion === "auto_validated") state = "Validée automatiquement";
   else if (r.completion === "problem") state = "Signalée comme non effectuée";
-  else state = "En attente de validation";
+  else if (r.familyValidatedAt || r.companionValidatedAt) state = "En attente de validation";
+  else {
+    const start = getMissionStart(r);
+    const end = getMissionEnd(r);
+    if (start == null || now < start) state = "Mission à venir";
+    else if (end != null && now <= end) state = "Mission en cours";
+    else state = "En attente de validation";
+  }
 
   return (
     <div className="rounded-2xl border-2 border-border bg-card p-4 flex flex-col gap-1 text-sm">
@@ -170,7 +178,11 @@ export function MissionsTab() {
               </MissionCard>
             )}
           />
-          <Section title="En attente" items={pending} render={(r) => <MissionCard key={r.id} r={r} now={now} />} />
+          <Section
+            title="À venir et en attente"
+            items={pending}
+            render={(r) => <MissionCard key={r.id} r={r} now={now} />}
+          />
           <Section
             title="Déclarées"
             items={declared}
