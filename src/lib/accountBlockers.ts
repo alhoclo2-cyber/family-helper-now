@@ -60,7 +60,7 @@ export function useAccountBlockers(
     if (
       mine.some((r) => {
         const end = getMissionEnd(r);
-        return r.status === "accepted" && r.completion === "pending" && end != null && end <= now;
+        return r.status === "accepted" && (!r.completion || r.completion === "pending") && end != null && end <= now;
       })
     )
       found.add("hours");

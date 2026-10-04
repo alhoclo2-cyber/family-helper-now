@@ -13,8 +13,16 @@ import { ThumbUpButton } from "@/components/CompanionBadges";
 import { store, type Request } from "@/lib/store";
 import {
   CLOSURE_OPEN_BEFORE_END_MS,
+  AUTO_VALIDATION_DELAY_MS,
+  SOLELIA_EMAIL,
   getMissionEnd,
+  getMissionStart,
+  latestReminder,
+  missionMessage,
+  reminderKind,
+  reportMissionProblem,
   requestDurationMin,
+  runClosureCheck,
   shiftMissionEnd,
   useMissionClosure,
 } from "@/lib/missionClosure";
@@ -28,6 +36,9 @@ export function MissionClosureBlock({ request, role }: { request: Request; role:
   useMissionClosure(request);
   const [now, setNow] = useState(() => Date.now());
   const [open, setOpen] = useState(false);
+  const [problemOpen, setProblemOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [reasonError, setReasonError] = useState(false);
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 15000);
     return () => clearInterval(t);
@@ -42,10 +53,40 @@ export function MissionClosureBlock({ request, role }: { request: Request; role:
   const c = request.completion;
   const closed = c === "validated" || c === "auto_validated";
   const label = role === "family" ? "✅ Mission terminée" : "✅ Mission effectuée";
+  const start = getMissionStart(request);
+  const canReport =
+    (!c || c === "pending") &&
+    start != null &&
+    end != null &&
+    now >= start &&
+    now <= end + AUTO_VALIDATION_DELAY_MS;
+  const last = latestReminder(request);
+  const soleliaMessage =
+    c === "problem"
+      ? request.problemReport && request.problemReport.by !== role
+        ? `Raison indiquée : « ${request.problemReport.reason} »`
+        : null
+      : last
+        ? missionMessage(request, reminderKind(last), role)
+        : null;
+  const submitProblem = () => {
+    if (reason.trim().length < 10) {
+      setReasonError(true);
+      return;
+    }
+    reportMissionProblem(request, role, reason.trim());
+    setProblemOpen(false);
+  };
 
   return (
     <div className="w-full flex flex-col gap-3">
       <p className="text-sm text-muted-foreground text-center">Durée réservée : {hours} (non modifiable)</p>
+      {soleliaMessage && (
+        <div className="rounded-2xl border-2 border-primary bg-accent p-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-primary">Message de Solélia Accompagnement</p>
+          <p className="text-sm mt-1">{soleliaMessage}</p>
+        </div>
+      )}
       {c === "problem" ? (
         <div className="rounded-2xl border-2 border-destructive p-4 text-sm font-semibold text-destructive">
           Mission signalée comme non effectuée : elle ne sera pas déclarée par Solélia Accompagnement.
@@ -66,6 +107,15 @@ export function MissionClosureBlock({ request, role }: { request: Request; role:
           {label}
         </button>
       ) : null}
+      {canReport && (
+        <button
+          type="button"
+          onClick={() => setProblemOpen(true)}
+          className="py-3 rounded-2xl border-2 border-destructive text-destructive font-bold text-sm w-full"
+        >
+          Mission non effectuée
+        </button>
+      )}
       {role === "family" && (mine || closed) && c !== "problem" && (
         <ThumbUpButton given={!!request.thumbsGiven} onGive={() => store.giveThumb(request.id)} />
       )}
@@ -91,6 +141,44 @@ export function MissionClosureBlock({ request, role }: { request: Request; role:
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={problemOpen} onOpenChange={setProblemOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Signaler un problème</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ce message sera visible par Solélia Accompagnement et par l'autre partie.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <label className="text-sm font-semibold">
+            Raison (obligatoire, 10 caractères minimum)
+            <textarea
+              value={reason}
+              onChange={(e) => {
+                setReason(e.target.value);
+                if (e.target.value.trim().length >= 10) setReasonError(false);
+              }}
+              rows={4}
+              className={`mt-1 w-full rounded-xl border-2 p-3 text-base font-normal bg-background ${reasonError ? "border-destructive" : "border-border"}`}
+            />
+          </label>
+          {reasonError && <p className="text-sm text-destructive">Merci d'indiquer une raison d'au moins 10 caractères.</p>}
+          <p className="text-sm text-muted-foreground">
+            Une question ?{" "}
+            <a href={`mailto:${SOLELIA_EMAIL}`} className="font-semibold text-primary underline">{SOLELIA_EMAIL}</a>
+          </p>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <button
+              type="button"
+              onClick={submitProblem}
+              className="h-10 rounded-md bg-destructive px-4 text-sm font-semibold text-destructive-foreground"
+            >
+              Envoyer le signalement
+            </button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="rounded-2xl border-2 border-dashed border-border p-3">
         <p className="text-xs font-bold mb-2">🧪 Avancer le temps de la mission (test)</p>
         <div className="grid grid-cols-2 gap-2">
@@ -105,7 +193,8 @@ export function MissionClosureBlock({ request, role }: { request: Request; role:
               type="button"
               onClick={() => {
                 shiftMissionEnd(request, ms as number);
-                if ((ms as number) > 48 * 3600_000) setTimeout(() => store.autoValidate(request.id), 0);
+                runClosureCheck(request.id);
+                setNow(Date.now());
               }}
               className="rounded-xl border-2 border-border py-2 text-xs font-semibold"
             >
