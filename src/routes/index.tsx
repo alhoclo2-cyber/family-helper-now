@@ -21,7 +21,6 @@ import {
   ExperienceBadgeChip,
   ExperienceBadgeScale,
   ThumbsCount,
-  ThumbUpButton,
 } from "@/components/CompanionBadges";
 import { CompanionProfilePanel } from "@/components/CompanionProfilePanel";
 import { YesNoChoice } from "@/components/TaxCesuFields";
