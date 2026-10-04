@@ -3752,6 +3752,15 @@ function StudentEnroll({
           className="h-auto select-none"
           draggable={false}
         />
+        <div className="text-center">
+          <h2 className="text-xl font-black leading-snug text-foreground">
+            Vous avez du temps libre ? Une personne a besoin de vous.
+          </h2>
+          <p className="mt-2 text-base leading-relaxed text-muted-foreground">
+            Choisissez les missions qui vous conviennent, près de chez vous.{" "}
+            <span className="font-semibold text-foreground">Rémunération visible avant d'accepter.</span>
+          </p>
+        </div>
         <div className="bg-card border-2 border-border rounded-2xl p-5">
           <p className="font-bold mb-3">Devenir Compagnon</p>
           <ul className="space-y-2 text-sm">
