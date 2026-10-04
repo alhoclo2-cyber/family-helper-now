@@ -119,6 +119,8 @@ export type Request = {
   hoursToDeclare?: number; // heures réservées à déclarer (jamais modifiables)
   problemReport?: { by: "family" | "companion"; reason: string; createdAt: number };
   remindersSent?: { preEnd?: number; end?: number; h24?: number; auto?: number };
+  declaredAt?: number; // date de déclaration par Solélia Accompagnement
+  soleliaNote?: string; // note interne Mandataire
 };
 
 function finalizeCompletion(r: Request, completion: "validated" | "auto_validated"): Request {
@@ -358,6 +360,20 @@ export const store = {
       requests: state.requests.map((r) =>
         r.id === id ? { ...r, remindersSent: { ...r.remindersSent, [key]: Date.now() } } : r,
       ),
+    };
+    emit();
+  },
+  markDeclared: (id: string) => {
+    state = {
+      ...state,
+      requests: state.requests.map((r) => (r.id === id ? { ...r, declaredAt: Date.now() } : r)),
+    };
+    emit();
+  },
+  setSoleliaNote: (id: string, note: string) => {
+    state = {
+      ...state,
+      requests: state.requests.map((r) => (r.id === id ? { ...r, soleliaNote: note } : r)),
     };
     emit();
   },

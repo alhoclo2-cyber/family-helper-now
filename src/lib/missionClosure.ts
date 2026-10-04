@@ -50,6 +50,21 @@ export function formatMissionDate(r: Request): string {
 
 export const missionHours = (r: Request) => requestDurationMin(r) / 60;
 
+const fmtHour = (d: Date) => {
+  const m = d.getMinutes();
+  return `${d.getHours()} h${m ? ` ${String(m).padStart(2, "0")}` : ""}`;
+};
+
+/** « mardi 6 octobre, 14 h – 16 h ». */
+export function formatMissionRange(r: Request): string {
+  const start = getMissionStart(r);
+  const end = getMissionEnd(r);
+  if (start == null || end == null) return "Date non définie";
+  const s = new Date(start);
+  const day = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long" }).format(s);
+  return `${day}, ${fmtHour(s)} – ${fmtHour(new Date(end))}`;
+}
+
 /** Adresse simulée de chaque partie (démo : pas d'e-mail réel). */
 export function partyAddress(r: Request, p: Party) {
   return p === "family"
