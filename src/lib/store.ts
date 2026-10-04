@@ -112,7 +112,24 @@ export type Request = {
   cancelReason?: string; // motif final retenu pour l'annulation par la famille
   companionCancelNotice?: { companionName: string; reason: string } | null; // dernier motif d'un compagnon qui s'est désisté
   student?: Companion;
+  acceptedAt?: number; // heure d'acceptation par le compagnon
+  completion?: "pending" | "validated" | "auto_validated" | "problem";
+  familyValidatedAt?: number;
+  companionValidatedAt?: number;
+  hoursToDeclare?: number; // heures réservées à déclarer (jamais modifiables)
+  problemReport?: { by: "family" | "companion"; reason: string; createdAt: number };
+  remindersSent?: { preEnd?: number; end?: number; h24?: number; auto?: number };
 };
+
+function finalizeCompletion(r: Request, completion: "validated" | "auto_validated"): Request {
+  if (r.student) {
+    const c = COMPANIONS.find((x) => x.id === r.student!.id);
+    if (c) c.missions += 1;
+  }
+  return { ...r, completion, hoursToDeclare: r.durationHours ?? 1 };
+}
+const isClosed = (r: Request) =>
+  r.completion === "validated" || r.completion === "auto_validated" || r.completion === "problem";
 
 
 const seedStudents = COMPANIONS;
@@ -186,7 +203,7 @@ export const store = {
     state = {
       ...state,
       requests: state.requests.map((r) =>
-        r.id === id ? { ...r, status: "accepted" as const, student: companion } : r,
+        r.id === id ? { ...r, status: "accepted" as const, student: companion, acceptedAt: Date.now() } : r,
       ),
     };
     emit();
@@ -199,7 +216,7 @@ export const store = {
     state = {
       ...state,
       requests: state.requests.map((r) =>
-        r.id === id ? { ...r, status: "accepted" as const, student: companion } : r,
+        r.id === id ? { ...r, status: "accepted" as const, student: companion, acceptedAt: Date.now() } : r,
       ),
     };
     emit();
@@ -289,6 +306,57 @@ export const store = {
       ...state,
       requests: state.requests.map((r) =>
         r.id === id ? { ...r, status: "searching" as const, student: undefined } : r,
+      ),
+    };
+    emit();
+  },
+  validateByFamily: (id: string) => {
+    state = {
+      ...state,
+      requests: state.requests.map((r) => {
+        if (r.id !== id || isClosed(r) || r.familyValidatedAt) return r;
+        const next: Request = { ...r, familyValidatedAt: Date.now(), completion: "pending" };
+        return next.companionValidatedAt ? finalizeCompletion(next, "validated") : next;
+      }),
+    };
+    emit();
+  },
+  validateByCompanion: (id: string) => {
+    state = {
+      ...state,
+      requests: state.requests.map((r) => {
+        if (r.id !== id || isClosed(r) || r.companionValidatedAt) return r;
+        const next: Request = { ...r, companionValidatedAt: Date.now(), completion: "pending" };
+        return next.familyValidatedAt ? finalizeCompletion(next, "validated") : next;
+      }),
+    };
+    emit();
+  },
+  reportProblem: (id: string, by: "family" | "companion", reason: string) => {
+    state = {
+      ...state,
+      requests: state.requests.map((r) =>
+        r.id === id && !isClosed(r)
+          ? { ...r, completion: "problem" as const, hoursToDeclare: 0, problemReport: { by, reason, createdAt: Date.now() } }
+          : r,
+      ),
+    };
+    emit();
+  },
+  autoValidate: (id: string) => {
+    state = {
+      ...state,
+      requests: state.requests.map((r) =>
+        r.id === id && !isClosed(r) && r.status === "accepted" ? finalizeCompletion(r, "auto_validated") : r,
+      ),
+    };
+    emit();
+  },
+  markReminderSent: (id: string, key: "preEnd" | "end" | "h24" | "auto") => {
+    state = {
+      ...state,
+      requests: state.requests.map((r) =>
+        r.id === id ? { ...r, remindersSent: { ...r.remindersSent, [key]: Date.now() } } : r,
       ),
     };
     emit();
