@@ -61,7 +61,7 @@ type Params = {
 const OPEN = { linkLabel: "Ouvrir mon espace", linkTo: "/" };
 const fmtHours = (h?: number) => (h == null ? "" : String(h).replace(".", ","));
 
-export function build(kind: EmailKind, p: Params) {
+export function build(kind: EmailKind, p: Params): { subject: string; body: string; linkLabel?: string; linkTo?: string } {
   const d = formatDateFr(p.date);
   const h = fmtHours(p.hours);
   const md = p.missionDate ?? "";
