@@ -1,4 +1,5 @@
 import { CopyButton } from "@/components/CopyButton";
+import { MissionsTab, useMissionsToDeclareCount } from "@/components/MandataireMissionsTab";
 import { departmentLabel, formatBirthDate } from "@/components/BirthFields";
 import { missingCompanionItems } from "@/lib/companionDossier";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -178,7 +179,8 @@ function Pager({
 }
 
 function Dashboard() {
-  const [tab, setTab] = useState<"companions" | "clients" | "payments">("companions");
+  const [tab, setTab] = useState<"companions" | "clients" | "payments" | "missions">("companions");
+  const missionsTodo = useMissionsToDeclareCount();
   const list = useServerFn(listApplications);
   const apps = useQuery({ queryKey: ["applications"], queryFn: () => list() });
   const listClients = useServerFn(listClientRegistrations);
@@ -192,12 +194,13 @@ function Dashboard() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {(
           [
             ["companions", "Candidatures Compagnon", companionTodo],
             ["clients", "Inscriptions Particulier", clientTodo],
             ["payments", "Frais de service", 0],
+            ["missions", "Missions (démo)", missionsTodo],
           ] as const
         ).map(([key, label, badge]) => (
           <button
@@ -218,6 +221,8 @@ function Dashboard() {
         <CompanionsTab apps={apps} />
       ) : tab === "clients" ? (
         <ClientsTab clients={clients} />
+      ) : tab === "missions" ? (
+        <MissionsTab />
       ) : (
         <PaymentsTab />
       )}
