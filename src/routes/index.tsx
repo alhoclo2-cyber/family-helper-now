@@ -34,7 +34,7 @@ import { ReservationSummaryPanel } from "@/components/ReservationSummaryPanel";
 import { AudienceMedallion } from "@/components/AudienceIllustrations";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, X } from "lucide-react";
-import { useCompanionSettings } from "@/lib/companionSettings";
+import { useCompanionSettings, ALL_NEEDS } from "@/lib/companionSettings";
 import soleliaLogoAsset from "@/assets/solelia-logo.png.asset.json";
 import bandeauCompagnonAsset from "@/assets/bandeau_compagnon-2.png.asset.json";
 import accueilFamilleAsset from "@/assets/accueil-famille.png.asset.json";
@@ -3007,24 +3007,27 @@ function StudentFlow() {
     if (v) window.localStorage?.setItem(DEMO_KEY, "1");
     else window.localStorage?.removeItem(DEMO_KEY);
   };
-  const [online, setOnline] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [view, setView] = useState<"home" | "missions">("home");
   const allSearching = useStore((s) => s.requests.filter((r) => r.status === "searching"));
   const active = useStore((s) => (openId ? s.requests.find((r) => r.id === openId) : undefined));
   const settings = useCompanionSettings();
+  const myFirstName = myApp.data?.first_name?.trim() || "Vous";
+  // Compagnon connecté (démo : profil fictif portant le prénom de sa candidature)
+  const me: Companion = { ...COMPANIONS[0], id: "me", firstName: myFirstName };
 
-  // Distance simulée stable par demande (démo)
-  const distanceOf = (id: string) =>
-    Math.round((([...id].reduce((a, c) => a + c.charCodeAt(0), 0) % 90) / 10 + 0.5) * 10) / 10;
-
-  const requests = allSearching.filter((r) => {
-    if (distanceOf(r.id) > settings.radiusKm) return false;
+  const available = allSearching.filter((r) => {
+    if (r.demo && !demo) return false;
+    if (r.declinedBy?.includes(me.id)) return false;
+    if (companionDistance(r) > settings.radiusKm) return false;
     if ((r.durationHours ?? 1) < settings.minDurationH) return false;
-    if (!settings.tasks.includes(r.need)) return false;
+    const needOk =
+      settings.tasks.includes(r.need) ||
+      (!ALL_COMPANION_NEEDS.includes(r.need) && settings.tasks.includes("Présence et Compagnie"));
+    if (!needOk) return false;
     if (!settings.acceptPets && r.need === "Sortir ou nourrir animal de compagnie") return false;
     return true;
   });
-  const hiddenCount = allSearching.length - requests.length;
 
   // Une candidature incomplète est toujours affichée « Dossier à compléter »
   const missing = myApp.data ? missingCompanionItems(myApp.data) : [];
@@ -3053,9 +3056,22 @@ function StudentFlow() {
 
   if (active) return <StudentDetail request={active} onBack={() => setOpenId(null)} />;
 
+  if (view === "missions")
+    return (
+      <CompanionMissions
+        missions={available}
+        me={me}
+        testMode={demo}
+        onBack={() => setView("home")}
+        onAccepted={(id) => setOpenId(id)}
+      />
+    );
+
   return (
     <div className="flex-1 flex flex-col px-5 py-6 gap-5">
-      <div className="w-full flex items-center justify-between"><AccountMenu /></div>
+      <div className="w-full flex items-center justify-between">
+        <AccountMenu missions={{ count: available.length, onOpen: () => setView("missions") }} />
+      </div>
       <AccountStatusBanner />
       {demo && (
         <div className="flex items-center justify-between gap-3 rounded-2xl border-2 border-primary/40 bg-accent p-3">
@@ -3072,12 +3088,14 @@ function StudentFlow() {
         <CompanionWelcomeBanner firstName={myApp.data.first_name} />
       )}
       <button
-        onClick={() => setOnline((v) => !v)}
-        className={`btn-huge ${online ? "bg-success text-success-foreground" : "bg-muted text-foreground"}`}
+        onClick={() => setView("missions")}
+        className="btn-huge relative border-[3px] border-mission-violet bg-mission-coral text-mission-coral-foreground"
       >
         <span className="flex items-center justify-center gap-3">
-          <span className={`h-3 w-3 rounded-full ${online ? "bg-white animate-pulse" : "bg-muted-foreground"}`} />
-          {online ? "En ligne — disponible" : "Hors ligne"}
+          Missions proposées
+          <span className="min-w-10 rounded-full bg-mission-violet px-3 py-1 text-xl font-black text-background">
+            {available.length}
+          </span>
         </span>
       </button>
 
@@ -3087,81 +3105,235 @@ function StudentFlow() {
 
       <CompanionAvailabilityPanel companionId={COMPANIONS[0].id} />
 
-      {online ? (
-        <>
-          <h2 className="text-xl font-bold mt-2">Demandes actives ({requests.length})</h2>
-          {hiddenCount > 0 && (
-            <p className="text-xs text-muted-foreground -mt-3">
-              {hiddenCount} demande(s) masquée(s) : hors de votre rayon de {settings.radiusKm} km ou hors de vos
-              critères d'acceptation.
-            </p>
-          )}
-          <div className="flex flex-col gap-3">
-            {requests.length === 0 && (
-              <p className="text-muted-foreground text-center py-10">Aucune demande pour le moment.</p>
-            )}
-
-            {requests.map((r) => {
-              const scheduled = !!r.scheduledAt;
-              return (
-                <button
-                  key={r.id}
-                  onClick={() => setOpenId(r.id)}
-                  className="text-left bg-card rounded-2xl p-5 border-2 border-border hover:border-primary transition-all"
-                >
-                  <div className="flex justify-between items-start gap-3">
-                    <div className="min-w-0">
-                      <p className="text-lg font-bold">{r.need.includes("/") ? r.need.replace("/", " / ") : r.need}</p>
-                      <p className="text-base text-muted-foreground mt-1">📍 {maskAddress(r.address)}</p>
-                      <p className="text-sm text-muted-foreground">🧭 ≈ {distanceOf(r.id)} km de chez vous</p>
-
-                      {r.durationHours != null && (
-                        <p className="text-sm mt-1 font-semibold">⏱️ Durée : {r.durationHours}h</p>
-                      )}
-                      {r.childAge && <p className="text-sm mt-1 font-semibold">🎂 Enfant : {r.childAge} ans</p>}
-                      {r.childAges && r.childAges.length > 0 && (
-                        <p className="text-sm mt-1 font-semibold">
-                          🎂 Enfants : {new Intl.ListFormat("fr", { style: "long", type: "conjunction" }).format(r.childAges)} ans
-                        </p>
-                      )}
-                      {r.childLevel && (
-                        <p className="text-sm mt-1 font-semibold">
-                          🎒 Niveau : {r.childLevel}{r.childClass ? ` — ${r.childClass}` : ""}
-                        </p>
-                      )}
-                      {r.extraInfo && <p className="text-sm mt-1 text-muted-foreground">📝 {r.extraInfo}</p>}
-                      {r.missionInfo && <p className="text-sm mt-1 text-muted-foreground">🗒️ {r.missionInfo}</p>}
-
-                      {r.childrenCount && <p className="text-sm mt-1 font-semibold">🧸 {r.childrenCount}</p>}
-                      {r.otherDetail && (
-                        <p className="text-sm mt-1 font-semibold">✏️ {r.otherDetail}</p>
-                      )}
-                      {r.escortDestination && (
-                        <p className="text-sm mt-1 font-semibold">🚸 {r.escortDestination}{r.escortDetail ? ` — ${r.escortDetail}` : ""}</p>
-                      )}
-                      {r.need === "Retrait ou dépôt d'un colis" && (
-                        <p className="text-sm mt-1 font-semibold">📦 {r.parcelWeight} · {r.parcelSize}</p>
-                      )}
-                      {scheduled && (
-                        <p className="text-sm mt-2 font-semibold">🗓️ {formatSchedule(r.scheduledAt!)}</p>
-                      )}
-                    </div>
-                    <span className={`text-xs font-bold px-2 py-1 rounded-full shrink-0 ${scheduled ? "bg-accent text-foreground" : "bg-primary/10 text-primary"}`}>
-                      {scheduled ? "RDV" : "URGENT · 1er répondant"}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </>
-      ) : (
-        <p className="text-center text-muted-foreground py-10">
-          Passez en ligne pour voir les demandes d'urgence près de vous.
-        </p>
-      )}
-
       <CguPanel />
+    </div>
+  );
+}
+
+const ALL_COMPANION_NEEDS: NeedType[] = ALL_NEEDS;
+
+// Distance simulée stable par demande (démo) ; les missions de test portent leur distance réelle.
+function companionDistance(r: Request) {
+  if (r.distanceKm != null) return r.distanceKm;
+  return Math.round((([...r.id].reduce((a, c) => a + c.charCodeAt(0), 0) % 90) / 10 + 0.5) * 10) / 10;
+}
+
+function missionLabel(n: NeedType) {
+  if (n === "Courses urgentes") return "Courses";
+  return n.includes("/") ? n.replace("/", " / ") : n;
+}
+
+function dayKey(ts: number) {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function dayHeading(ts: number) {
+  const now = new Date();
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime();
+  if (dayKey(ts) === dayKey(Date.now())) return "Aujourd'hui";
+  if (dayKey(ts) === dayKey(tomorrow)) return "Demain";
+  const s = new Date(ts).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function buildDemoMissions(): Request[] {
+  const now = Date.now();
+  const at = (days: number, h: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    d.setHours(h, 0, 0, 0);
+    return d.getTime();
+  };
+  const base = { phone: "06 00 00 00 00", seniorName: "Particulier (démo)", status: "searching" as const, demo: true };
+  return [
+    { ...base, id: "demo-a", flow: "sos", need: "Présence et Compagnie", address: "3 rue Sérurier, 02000 Laon", city: "Laon", createdAt: now - 5 * 60_000, scheduledAt: null, durationHours: 2, salaryNetHourly: 12, distanceKm: 1.2, missionInfo: "Discussion et jeux de société avec ma mère." },
+    { ...base, id: "demo-b", flow: "sos", need: "Courses urgentes", address: "12 rue Châtelaine, 02000 Laon", city: "Laon", createdAt: now - 20 * 60_000, scheduledAt: null, durationHours: 1, distanceKm: 2.1, missionInfo: "Quelques courses à la supérette du quartier." },
+    { ...base, id: "demo-c", flow: "scheduled", need: "Courses urgentes", address: "20 avenue Carnot, 02000 Laon", city: "Laon", createdAt: now, scheduledAt: at(2, 14), durationHours: 1, distanceKm: 0.8, missionInfo: "Aide aux courses au supermarché." },
+    { ...base, id: "demo-d", flow: "scheduled", need: "Garde d'enfants", address: "5 place du Général Leclerc, 02000 Laon", city: "Laon", createdAt: now, scheduledAt: at(3, 9), durationHours: 3, childAge: "6", salaryNetHourly: 12.5, distanceKm: 2.6 },
+    { ...base, id: "demo-e", flow: "scheduled", need: "Présence et Compagnie", address: "8 rue du Bourg, 02000 Laon", city: "Laon", createdAt: now, scheduledAt: at(5, 10), durationHours: 2, distanceKm: 1.9, missionInfo: "Accompagnement pour une promenade." },
+    { ...base, id: "demo-f", flow: "scheduled", need: "Présence et Compagnie", address: "2 place de l'Hôtel de Ville, 02500 Hirson", city: "Hirson", createdAt: now, scheduledAt: at(4, 15), durationHours: 2, distanceKm: 40, missionInfo: "Mission éloignée (test du filtre de rayon)." },
+  ];
+}
+
+const TAKEN_MSG = "Cette mission vient d'être acceptée par un autre compagnon.";
+const TEST_MSG = "Mode test : aucune donnée réelle n'a été envoyée.";
+
+function CompanionMissions({
+  missions,
+  me,
+  testMode,
+  onBack,
+  onAccepted,
+}: {
+  missions: Request[];
+  me: Companion;
+  testMode: boolean;
+  onBack: () => void;
+  onAccepted: (id: string) => void;
+}) {
+  const [tab, setTab] = useState<"today" | "rdv">("today");
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  // Missions déjà prises par un autre compagnon mais encore affichées (test du premier qui répond)
+  const [ghosts, setGhosts] = useState<Request[]>([]);
+
+  const all = [...ghosts.filter((g) => !missions.some((m) => m.id === g.id)), ...missions];
+  const today = all.filter((r) => r.flow !== "scheduled" && !r.scheduledAt).sort((a, b) => b.createdAt - a.createdAt);
+  const rdv = all.filter((r) => r.flow === "scheduled" || !!r.scheduledAt).sort((a, b) => (a.scheduledAt ?? 0) - (b.scheduledAt ?? 0));
+
+  const accept = (r: Request) => {
+    const ok = store.acceptRequest(r.id, 0, me);
+    setGhosts((g) => g.filter((x) => x.id !== r.id));
+    setDetailId(null);
+    if (!ok) return setNotice(TAKEN_MSG);
+    if (r.demo) setNotice(TEST_MSG);
+    onAccepted(r.id);
+  };
+  const decline = (r: Request) => {
+    store.declineRequest(r.id, me.id);
+    setGhosts((g) => g.filter((x) => x.id !== r.id));
+    setDetailId(null);
+    setNotice(r.demo ? `Mission refusée. ${TEST_MSG}` : "Mission refusée. Elle n'apparaîtra plus dans votre liste.");
+  };
+  const simulateTaken = () => {
+    const target = all.find((r) => r.demo && !ghosts.some((g) => g.id === r.id));
+    if (!target) return setNotice("Générez d'abord des missions de test.");
+    store.acceptRequest(target.id, 1);
+    setGhosts((g) => [...g, target]);
+    setNotice(`Mission « ${missionLabel(target.need)} » prise par un autre compagnon : cliquez sur Accepter pour voir le message.`);
+  };
+
+  const detail = detailId ? all.find((r) => r.id === detailId) : undefined;
+  if (detail)
+    return (
+      <div className="flex-1 flex flex-col px-5 py-6 gap-5 text-base">
+        <button onClick={() => setDetailId(null)} className="self-start rounded-xl border-2 border-border bg-card px-4 py-2 font-bold">
+          ← Retour
+        </button>
+        <MissionInfo r={detail} full />
+        <MissionActions onAccept={() => accept(detail)} onDecline={() => decline(detail)} />
+      </div>
+    );
+
+  const list = tab === "today" ? today : rdv;
+  const tabCls = (on: boolean) =>
+    `flex-1 rounded-2xl border-2 py-3 text-base font-bold transition-colors ${on ? "border-mission-violet bg-mission-violet text-background" : "border-border bg-card text-foreground"}`;
+
+  return (
+    <div className="flex-1 flex flex-col px-5 py-6 gap-4 text-base">
+      <button onClick={onBack} className="self-start rounded-xl border-2 border-border bg-card px-4 py-2 font-bold">
+        ← Retour
+      </button>
+      <h2 className="text-2xl font-black">Missions proposées</h2>
+      <div className="flex gap-2">
+        <button className={tabCls(tab === "today")} onClick={() => setTab("today")}>Aujourd'hui ({today.length})</button>
+        <button className={tabCls(tab === "rdv")} onClick={() => setTab("rdv")}>Sur rendez-vous ({rdv.length})</button>
+      </div>
+      {notice && (
+        <div className="rounded-2xl border-2 border-mission-violet/40 bg-accent p-4 font-semibold flex justify-between gap-3">
+          <span>{notice}</span>
+          <button onClick={() => setNotice(null)} aria-label="Fermer" className="shrink-0 font-black">✕</button>
+        </div>
+      )}
+      {list.length === 0 && <p className="py-10 text-center text-muted-foreground">Aucune mission pour le moment.</p>}
+      {tab === "today"
+        ? list.map((r) => (
+            <MissionCard key={r.id} r={r} onOpen={() => setDetailId(r.id)} onAccept={() => accept(r)} onDecline={() => decline(r)} />
+          ))
+        : list.map((r, i) => {
+            const showHead = i === 0 || dayKey(list[i - 1].scheduledAt ?? 0) !== dayKey(r.scheduledAt ?? 0);
+            return (
+              <div key={r.id} className="flex flex-col gap-2">
+                {showHead && <h3 className="mt-2 text-lg font-black">{dayHeading(r.scheduledAt ?? Date.now())}</h3>}
+                <MissionCard r={r} onOpen={() => setDetailId(r.id)} onAccept={() => accept(r)} onDecline={() => decline(r)} />
+              </div>
+            );
+          })}
+
+      {testMode && (
+        <div className="mt-4 flex flex-col gap-3 rounded-2xl border-2 border-dashed border-border bg-card p-4">
+          <p className="text-lg font-bold">🧪 Mode test</p>
+          <p className="text-muted-foreground">Missions fictives, visibles uniquement dans cet aperçu. Domicile simulé : Laon.</p>
+          <button onClick={() => { store.addDemoRequests(buildDemoMissions()); setGhosts([]); setNotice("6 missions de test générées."); }} className="rounded-2xl border-2 border-foreground bg-background py-4 font-bold">
+            Générer des missions de test
+          </button>
+          <button onClick={() => { store.removeDemoRequests(); setGhosts([]); setNotice("Missions de test supprimées."); }} className="rounded-2xl border-2 border-foreground bg-background py-4 font-bold">
+            Supprimer les missions de test
+          </button>
+          <button onClick={simulateTaken} className="rounded-2xl border-2 border-foreground bg-background py-4 font-bold">
+            Simuler une mission prise par un autre compagnon
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MissionInfo({ r, full }: { r: Request; full?: boolean }) {
+  const hours = r.durationHours ?? 1;
+  const rate = r.salaryNetHourly ?? DEFAULT_HOURLY_RATE;
+  return (
+    <div className="flex flex-col gap-1 text-base">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xl font-black">{missionLabel(r.need)}</p>
+        {r.demo && <span className="shrink-0 rounded-full bg-mission-violet px-2 py-0.5 text-sm font-black text-background">DÉMO</span>}
+      </div>
+      <p className="font-semibold">🗓️ {r.scheduledAt ? formatSchedule(r.scheduledAt) : "Aujourd'hui, dès que possible"}</p>
+      <p>📍 {r.address}</p>
+      <p className="text-muted-foreground">🧭 {companionDistance(r)} km de chez vous</p>
+      <p>⏱️ {hours} h · {formatPrice(rate)} € net/h</p>
+      <p className="text-lg font-black">💶 Total net : {formatPrice(rate * hours)} €</p>
+      {full && (
+        <div className="mt-2 flex flex-col gap-1">
+          {r.childAge && <p>🎂 Enfant : {r.childAge} ans</p>}
+          {r.childAges && r.childAges.length > 0 && <p>🎂 Enfants : {r.childAges.join(", ")} ans</p>}
+          {r.childrenCount && <p>🧸 {r.childrenCount}</p>}
+          {r.childLevel && <p>🎒 Niveau : {r.childLevel}{r.childClass ? ` — ${r.childClass}` : ""}</p>}
+          {r.escortDestination && <p>🚸 {r.escortDestination}{r.escortDetail ? ` — ${r.escortDetail}` : ""}</p>}
+          {r.need === "Retrait ou dépôt d'un colis" && <p>📦 {r.parcelWeight} · {r.parcelSize}</p>}
+          {r.missionInfo && <p className="rounded-xl bg-accent p-3">🗒️ {r.missionInfo}</p>}
+          {r.extraInfo && <p className="rounded-xl bg-accent p-3">📝 {r.extraInfo}</p>}
+          {r.otherDetail && <p>✏️ {r.otherDetail}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MissionActions({ onAccept, onDecline }: { onAccept: () => void; onDecline: () => void }) {
+  const [confirm, setConfirm] = useState<"accept" | "decline" | null>(null);
+  if (confirm)
+    return (
+      <div className="flex flex-col gap-2 rounded-2xl border-2 border-border bg-accent p-3">
+        <p className="text-center font-bold">{confirm === "accept" ? "Confirmer l'acceptation ?" : "Confirmer le refus ?"}</p>
+        <div className="grid grid-cols-2 gap-2">
+          <button onClick={() => setConfirm(null)} className="min-h-14 rounded-2xl border-2 border-foreground bg-background font-bold">Annuler</button>
+          <button
+            onClick={() => (confirm === "accept" ? onAccept() : onDecline())}
+            className={`min-h-14 rounded-2xl font-bold ${confirm === "accept" ? "bg-success text-success-foreground" : "border-2 border-foreground bg-background"}`}
+          >
+            Confirmer
+          </button>
+        </div>
+      </div>
+    );
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <button onClick={() => setConfirm("accept")} className="min-h-14 rounded-2xl bg-success text-lg font-bold text-success-foreground">✅ Accepter</button>
+      <button onClick={() => setConfirm("decline")} className="min-h-14 rounded-2xl border-2 border-foreground bg-background text-lg font-bold">Refuser</button>
+    </div>
+  );
+}
+
+function MissionCard({ r, onOpen, onAccept, onDecline }: { r: Request; onOpen: () => void; onAccept: () => void; onDecline: () => void }) {
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl border-2 border-border bg-card p-4">
+      <button type="button" onClick={onOpen} className="text-left" aria-label="Voir le détail de la mission">
+        <MissionInfo r={r} />
+        <p className="mt-1 font-semibold text-primary underline">Voir le détail</p>
+      </button>
+      <MissionActions onAccept={onAccept} onDecline={onDecline} />
     </div>
   );
 }
@@ -3398,7 +3570,7 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
           </div>
         ) : (
           <div className="mt-3 inline-block bg-primary/10 text-primary text-xs font-bold px-2 py-1 rounded-full">
-            🆘 URGENCE — au plus vite
+            ☀️ Mission aujourd'hui, dès que possible
           </div>
         )}
       </div>
@@ -3407,7 +3579,7 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
         <div className="rounded-2xl border-2 border-warning bg-warning/10 p-5 text-center">
           <p className="text-lg font-black">⚡ Mission déjà attribuée</p>
           <p className="text-sm text-muted-foreground mt-1">
-            Un autre compagnon a répondu en premier. La demande disparaît de votre liste.
+            Cette mission vient d'être acceptée par un autre compagnon.
           </p>
           <button onClick={onBack} className="btn-huge bg-primary text-primary-foreground w-full mt-4">
             Retour aux demandes
@@ -3421,8 +3593,8 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
           </div>
           {!request.scheduledAt && (
             <div className="rounded-2xl border-2 border-primary/40 bg-primary/5 p-4 text-sm">
-              🆘 <b>Urgence — premier répondant.</b> Le premier compagnon qui accepte verrouille la mission ; elle
-              disparaît alors chez les autres.
+              ☀️ <b>Mission aujourd'hui.</b> Le premier compagnon qui accepte obtient la mission ; elle disparaît
+              alors chez les autres.
             </div>
           )}
           <div className="bg-card rounded-2xl p-4 border-2 border-border">
