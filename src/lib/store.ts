@@ -121,6 +121,8 @@ export type Request = {
   remindersSent?: { preEnd?: number; end?: number; h24?: number; auto?: number };
   declaredAt?: number; // date de déclaration par Solélia Accompagnement
   soleliaNote?: string; // note interne Mandataire
+  demo?: boolean; // mission fictive du Mode test Compagnon (jamais visible côté particulier)
+  distanceKm?: number; // distance depuis le domicile du compagnon (missions de test)
 };
 
 function finalizeCompletion(r: Request, completion: "validated" | "auto_validated"): Request {
@@ -198,10 +200,10 @@ export const store = {
     emit();
   },
   // Premier répondant : verrouille la mission. Renvoie false si déjà attribuée.
-  acceptRequest: (id: string, studentIdx = 0) => {
+  acceptRequest: (id: string, studentIdx = 0, as?: Companion) => {
     const req = state.requests.find((r) => r.id === id);
     if (!req || req.status !== "searching") return false;
-    const companion = seedStudents[studentIdx % seedStudents.length];
+    const companion = as ?? seedStudents[studentIdx % seedStudents.length];
     state = {
       ...state,
       requests: state.requests.map((r) =>
@@ -244,6 +246,15 @@ export const store = {
       ...state,
       requests: [...reqs, ...state.requests.filter((r) => !r.id.startsWith("sim-"))],
     };
+    emit();
+  },
+  // Mode test Compagnon : missions fictives (id préfixé "demo-").
+  addDemoRequests: (reqs: Request[]) => {
+    state = { ...state, requests: [...reqs, ...state.requests.filter((r) => !r.demo)] };
+    emit();
+  },
+  removeDemoRequests: () => {
+    state = { ...state, requests: state.requests.filter((r) => !r.demo) };
     emit();
   },
   acknowledgeRequest: (id: string) => {
