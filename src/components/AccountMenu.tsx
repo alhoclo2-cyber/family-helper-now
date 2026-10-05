@@ -13,7 +13,7 @@ import {
 
 const itemCls = "py-3 text-base cursor-pointer";
 
-export function AccountMenu() {
+export function AccountMenu({ missions }: { missions?: { count: number; onOpen: () => void } } = {}) {
   const { session } = useSession();
   const qc = useQueryClient();
   const { state } = useAccountState(session?.user.id);
@@ -30,6 +30,19 @@ export function AccountMenu() {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64 max-w-[calc(100vw-2rem)] sm:max-w-[440px]">
+        {missions && (
+          <>
+            <DropdownMenuItem className={`${itemCls} font-bold`} onSelect={missions.onOpen}>
+              <span className="flex w-full items-center justify-between gap-2">
+                Missions proposées
+                <span className="min-w-7 rounded-full bg-mission-violet px-2 py-0.5 text-center text-sm font-black text-background">
+                  {missions.count}
+                </span>
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
         {session ? (
           <>
             <DropdownMenuItem asChild className={itemCls}>

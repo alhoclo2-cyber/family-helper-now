@@ -39,6 +39,9 @@
   --color-audience-sage: var(--audience-sage);
   --color-audience-ring: var(--audience-ring);
   --color-audience-surface: var(--audience-surface);
+  --color-mission-coral: var(--mission-coral);
+  --color-mission-coral-foreground: var(--mission-coral-foreground);
+  --color-mission-violet: var(--mission-violet);
 }
 
 :root {
@@ -71,6 +74,9 @@
   --audience-sage: oklch(0.79 0.055 144);
   --audience-ring: oklch(0.88 0.055 45);
   --audience-surface: oklch(0.985 0.011 56);
+  --mission-coral: oklch(0.78 0.13 35);
+  --mission-coral-foreground: oklch(0.2 0.07 300);
+  --mission-violet: oklch(0.45 0.2 300);
 }
 
 @layer base {
