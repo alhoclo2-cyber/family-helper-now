@@ -3508,7 +3508,7 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
       <button onClick={onBack} className="text-base text-muted-foreground text-left">← Retour</button>
       <div className="bg-card rounded-3xl p-6 border-2 border-border">
         <p className="text-sm text-muted-foreground uppercase tracking-wide font-bold">Besoin</p>
-        <p className="text-2xl font-bold mt-1">{request.need.includes("/") ? request.need.replace("/", " / ") : request.need}</p>
+        <p className="text-2xl font-bold mt-1">{missionLabel(request.need)}</p>
         {request.durationHours != null && (
           <p className="text-base font-semibold mt-2">⏱️ Durée demandée : {request.durationHours}h</p>
         )}
