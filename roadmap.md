@@ -1,4 +1,5 @@
 - [x] Créer un détail de réservation partagé, repliable, avec états en attente.
+- [x] Corriger le bandeau démo accepté, mémoriser l'onglet missions, isoler les exemples, adapter Courses et le message de génération, remplacer la photo du compagnon démo connecté par son initiale ; vérifier.
 - [x] L'afficher avant l'accusé de réception, sur l'écran de carte bancaire et après confirmation ; conserver le salaire réellement choisi.
 - [x] Vérifier l'affichage et l'absence d'ajout à l'étape intermédiaire.
 - [x] Adapter le tarif, l'adresse en trois champs et les confirmations obligatoires du formulaire Famille ; vérifier le parcours.

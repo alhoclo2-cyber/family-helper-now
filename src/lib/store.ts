@@ -146,6 +146,7 @@ let state: {
   requests: [
     {
       id: "seed-1",
+      demo: true,
       need: "Pharmacie",
       address: "12 rue des Lilas, 75014 Paris",
       city: "Paris 14e",
@@ -156,6 +157,7 @@ let state: {
     },
     {
       id: "seed-2",
+      demo: true,
       need: "Présence et Compagnie",
       address: "3 avenue Foch, 69006 Lyon",
       city: "Lyon 6e",
