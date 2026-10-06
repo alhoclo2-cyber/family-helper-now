@@ -2585,11 +2585,17 @@ function FamilyWait({
             {isSos ? "✅ Mission verrouillée par un compagnon !" : "✅ Rendez-vous confirmé !"}
           </p>
           <div className="w-full bg-card rounded-3xl p-6 border-2 border-border shadow-sm">
-            <img
-              src={request.student!.photo}
-              alt={request.student!.firstName}
-              className="h-40 w-40 rounded-full mx-auto object-cover ring-4 ring-primary/30"
-            />
+            {request.student?.id === "me" ? (
+              <div aria-label={request.student.firstName} className="h-40 w-40 rounded-full mx-auto grid place-items-center bg-accent text-primary text-5xl font-bold ring-4 ring-primary/30">
+                {request.student.firstName.trim().charAt(0).toLocaleUpperCase("fr-FR")}
+              </div>
+            ) : (
+              <img
+                src={request.student?.photo}
+                alt={request.student?.firstName}
+                className="h-40 w-40 rounded-full mx-auto object-cover ring-4 ring-primary/30"
+              />
+            )}
             <p className="text-2xl font-bold mt-4">{request.student!.firstName}</p>
             <div className="mt-2 flex items-center justify-center gap-2 flex-wrap">
               <ExperienceBadgeChip missions={request.student!.missions} />
@@ -3009,12 +3015,13 @@ function StudentFlow() {
   };
   const [openId, setOpenId] = useState<string | null>(null);
   const [view, setView] = useState<"home" | "missions">("home");
+  const [missionsTab, setMissionsTab] = useState<"today" | "rdv">("today");
   const allSearching = useStore((s) => s.requests.filter((r) => r.status === "searching"));
   const active = useStore((s) => (openId ? s.requests.find((r) => r.id === openId) : undefined));
   const settings = useCompanionSettings();
   const myFirstName = myApp.data?.first_name?.trim() || "Vous";
   // Compagnon connecté (démo : profil fictif portant le prénom de sa candidature)
-  const me: Companion = { ...COMPANIONS[0], id: "me", firstName: myFirstName };
+  const me: Companion = { ...COMPANIONS[0], id: "me", firstName: myFirstName, photo: "" };
 
   const available = allSearching.filter((r) => {
     if (r.demo && !demo) return false;
@@ -3062,6 +3069,8 @@ function StudentFlow() {
         missions={available}
         me={me}
         testMode={demo}
+        tab={missionsTab}
+        setTab={setMissionsTab}
         onBack={() => setView("home")}
         onAccepted={(id) => setOpenId(id)}
       />
@@ -3163,16 +3172,19 @@ function CompanionMissions({
   missions,
   me,
   testMode,
+  tab,
+  setTab,
   onBack,
   onAccepted,
 }: {
   missions: Request[];
   me: Companion;
   testMode: boolean;
+  tab: "today" | "rdv";
+  setTab: (tab: "today" | "rdv") => void;
   onBack: () => void;
   onAccepted: (id: string) => void;
 }) {
-  const [tab, setTab] = useState<"today" | "rdv">("today");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   // Missions déjà prises par un autre compagnon mais encore affichées (test du premier qui répond)
@@ -3255,7 +3267,7 @@ function CompanionMissions({
         <div className="mt-4 flex flex-col gap-3 rounded-2xl border-2 border-dashed border-border bg-card p-4">
           <p className="text-lg font-bold">🧪 Mode test</p>
           <p className="text-muted-foreground">Missions fictives, visibles uniquement dans cet aperçu. Domicile simulé : Laon.</p>
-          <button onClick={() => { store.addDemoRequests(buildDemoMissions()); setGhosts([]); setNotice("6 missions de test générées."); }} className="rounded-2xl border-2 border-foreground bg-background py-4 font-bold">
+          <button onClick={() => { store.addDemoRequests(buildDemoMissions()); setGhosts([]); setNotice("6 missions de test générées. Celles situées hors de votre rayon restent masquées."); }} className="rounded-2xl border-2 border-foreground bg-background py-4 font-bold">
             Générer des missions de test
           </button>
           <button onClick={() => { store.removeDemoRequests(); setGhosts([]); setNotice("Missions de test supprimées."); }} className="rounded-2xl border-2 border-foreground bg-background py-4 font-bold">
@@ -3505,6 +3517,11 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
 
   return (
     <div className="flex-1 flex flex-col px-5 py-6 gap-5">
+      {accepted && request.demo && (
+        <div className="rounded-2xl border-2 border-primary/40 bg-accent p-4 text-base font-bold">
+          {TEST_MSG}
+        </div>
+      )}
       <button onClick={onBack} className="text-base text-muted-foreground text-left">← Retour</button>
       <div className="bg-card rounded-3xl p-6 border-2 border-border">
         <p className="text-sm text-muted-foreground uppercase tracking-wide font-bold">Besoin</p>

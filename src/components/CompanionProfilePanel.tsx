@@ -108,7 +108,7 @@ export function CompanionProfilePanel() {
                     onChange={() => toggleTask(t)}
                     className="mt-0.5 h-5 w-5 shrink-0"
                   />
-                  <span className="font-semibold">{t}</span>
+                  <span className="font-semibold">{t === "Courses urgentes" ? "Courses" : t}</span>
                 </label>
               ))}
             </div>

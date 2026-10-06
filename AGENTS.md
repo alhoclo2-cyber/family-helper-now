@@ -11,3 +11,4 @@
 
 - Keep the client booking recap in a single reusable ReservationSummaryPanel fed by the current Request; persist the selected hourly salary when payment confirms so the final recap reflects the actual choice.
 - Keep the five home-only audience illustrations together in AudienceIllustrations with semantic palette tokens, so their visual language stays consistent and each medallion can later accept a photo.
+- Keep the proposed-missions tab state in StudentFlow above mission detail/list switching so returning from a mission preserves the selection.
