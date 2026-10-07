@@ -40,7 +40,7 @@ import bandeauCompagnonAsset from "@/assets/bandeau_compagnon-2.png.asset.json";
 import accueilFamilleAsset from "@/assets/accueil-famille.png.asset.json";
 import unBesoinAsset from "@/assets/un-besoin-ordi-3.png.asset.json";
 import { AccountStatusBanner } from "@/components/AccountStatusBanner";
-import { requestDurationMin } from "@/lib/missionClosure";
+import { requestDurationMin, getMissionStart, formatMissionRange } from "@/lib/missionClosure";
 import { MissionClosureBlock } from "@/components/MissionClosureBlock";
 
 
@@ -3025,8 +3025,11 @@ function StudentFlow() {
   };
   const [openId, setOpenId] = useState<string | null>(null);
   const [view, setView] = useState<"home" | "missions">("home");
-  const [missionsTab, setMissionsTab] = useState<"today" | "rdv">("today");
+  const [missionsTab, setMissionsTab] = useState<"today" | "rdv" | "accepted">("today");
   const allSearching = useStore((s) => s.requests.filter((r) => r.status === "searching"));
+  const mine = useStore((s) =>
+    s.requests.filter((r) => r.student?.id === "me" && (r.status === "accepted" || r.status === "cancelled")),
+  );
   const active = useStore((s) => (openId ? s.requests.find((r) => r.id === openId) : undefined));
   const settings = useCompanionSettings();
   const myFirstName = myApp.data?.first_name?.trim() || "Vous";
@@ -3077,6 +3080,8 @@ function StudentFlow() {
     return (
       <CompanionMissions
         missions={available}
+        accepted={mine.filter((r) => !r.demo || demo || testOn)}
+        onOpenAccepted={(id) => setOpenId(id)}
         me={me}
         testMode
         onTestToggle={saveTestOn}
@@ -3176,6 +3181,53 @@ function buildDemoMissions(): Request[] {
   ];
 }
 
+function buildDemoAccepted(me: Companion): Request[] {
+  const now = Date.now();
+  const at = (days: number, h: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    d.setHours(h, 0, 0, 0);
+    return d.getTime();
+  };
+  const base = { demo: true, student: me, salaryNetHourly: 12, createdAt: now };
+  return [
+    { ...base, id: "demo-acc-a", flow: "sos", need: "Présence et Compagnie", status: "accepted", acceptedAt: now - 10 * 60_000, scheduledAt: null, durationHours: 2, seniorName: "Mme Lefèvre", phone: "06 00 00 00 01", address: "14 rue Saint-Martin, 02000 Laon", city: "Laon" },
+    { ...base, id: "demo-acc-b", flow: "scheduled", need: "Courses urgentes", status: "accepted", acceptedAt: now, scheduledAt: at(2, 14), durationHours: 1, seniorName: "M. Bernard", phone: "06 00 00 00 02", address: "7 rue d'Isle, 02100 Saint-Quentin", city: "Saint-Quentin", missionInfo: "Aide aux courses." },
+    { ...base, id: "demo-acc-c", flow: "scheduled", need: "Présence et Compagnie", status: "accepted", acceptedAt: at(-3, 12), scheduledAt: at(-1, 10), durationHours: 2, completion: "validated", familyValidatedAt: at(-1, 12), companionValidatedAt: at(-1, 12), hoursToDeclare: 2, seniorName: "Mme Garnier", phone: "06 00 00 00 03", address: "22 rue du Château, 02200 Soissons", city: "Soissons", missionInfo: "Accompagnement promenade." },
+    { ...base, id: "demo-acc-d", flow: "scheduled", need: "Garde d'enfants", status: "cancelled", cancelledBy: "family", acceptedAt: now, scheduledAt: at(4, 9), durationHours: 3, seniorName: "Particulier démo", phone: "06 00 00 00 04", address: "3 rue de la République, 02400 Château-Thierry", city: "Château-Thierry" },
+  ] as Request[];
+}
+
+function AcceptedCard({ r, onOpen }: { r: Request; onOpen: () => void }) {
+  const hours = r.durationHours ?? 1;
+  const rate = r.salaryNetHourly ?? DEFAULT_HOURLY_RATE;
+  const cancelled = r.status === "cancelled";
+  const btn = "flex min-h-14 items-center justify-center rounded-2xl border-2 px-2 text-center text-base font-bold";
+  return (
+    <div className="flex flex-col gap-2 rounded-2xl border-2 border-border bg-card p-4 text-base">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-lg font-black">{missionLabel(r.need)}</p>
+        {r.demo && <span className="rounded-full bg-mission-violet px-2 py-0.5 text-sm font-black text-background">DÉMO</span>}
+      </div>
+      {cancelled && (
+        <p className="rounded-xl bg-destructive/10 p-2 font-bold text-destructive">Annulée par la famille — ne vous déplacez pas</p>
+      )}
+      <p>📅 {formatMissionRange(r)}</p>
+      <p>📍 {r.address}</p>
+      <p>👤 {r.seniorName === "Vous" ? "Famille" : r.seniorName}</p>
+      <p>📞 {r.phone}</p>
+      <p>⏱️ {hours} h · Total net : <b>{formatPrice(rate * hours)} €</b></p>
+      {!cancelled && (
+        <div className="grid grid-cols-3 gap-2 pt-1">
+          <a href={`tel:${r.phone.replace(/\s/g, "")}`} className={`${btn} border-success bg-success text-background`}>📞 Appeler</a>
+          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r.address)}`} target="_blank" rel="noreferrer" className={`${btn} border-border bg-background`}>🗺️ Itinéraire</a>
+          <button onClick={onOpen} className={`${btn} border-mission-violet bg-background`}>Voir le détail</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const TAKEN_MSG = "Cette mission vient d'être acceptée par un autre compagnon.";
 const TEST_MSG = "Mode test : aucune donnée réelle n'a été envoyée.";
 
@@ -3188,13 +3240,17 @@ function CompanionMissions({
   onBack,
   onAccepted,
   onTestToggle,
+  accepted,
+  onOpenAccepted,
 }: {
   onTestToggle?: (v: boolean) => void;
+  accepted: Request[];
+  onOpenAccepted: (id: string) => void;
   missions: Request[];
   me: Companion;
   testMode: boolean;
-  tab: "today" | "rdv";
-  setTab: (tab: "today" | "rdv") => void;
+  tab: "today" | "rdv" | "accepted";
+  setTab: (tab: "today" | "rdv" | "accepted") => void;
   onBack: () => void;
   onAccepted: (id: string) => void;
 }) {
@@ -3241,9 +3297,15 @@ function CompanionMissions({
       </div>
     );
 
-  const list = tab === "today" ? today : rdv;
+  const done = (r: Request) => r.completion === "validated" || r.completion === "auto_validated";
+  const accCancelled = accepted.filter((r) => r.status === "cancelled");
+  const accDone = accepted.filter((r) => r.status === "accepted" && done(r));
+  const accUpcoming = accepted
+    .filter((r) => r.status === "accepted" && !done(r))
+    .sort((a, b) => (getMissionStart(a) ?? 0) - (getMissionStart(b) ?? 0));
+  const list = tab === "today" ? today : tab === "rdv" ? rdv : [];
   const tabCls = (on: boolean) =>
-    `flex-1 rounded-2xl border-2 py-3 text-base font-bold transition-colors ${on ? "border-mission-violet bg-mission-violet text-background" : "border-border bg-card text-foreground"}`;
+    `rounded-2xl border-2 px-1 py-3 text-base leading-tight font-bold transition-colors ${on ? "border-mission-violet bg-mission-violet text-background" : "border-border bg-card text-foreground"}`;
 
   return (
     <div className="flex-1 flex flex-col px-5 py-6 gap-4 text-base">
@@ -3251,9 +3313,10 @@ function CompanionMissions({
         ← Retour
       </button>
       <h2 className="text-2xl font-black">Missions proposées</h2>
-      <div className="flex gap-2">
+      <div className="grid grid-cols-3 gap-2">
         <button className={tabCls(tab === "today")} onClick={() => setTab("today")}>Aujourd'hui ({today.length})</button>
         <button className={tabCls(tab === "rdv")} onClick={() => setTab("rdv")}>Sur rendez-vous ({rdv.length})</button>
+        <button className={tabCls(tab === "accepted")} onClick={() => setTab("accepted")}>Acceptées ({accUpcoming.length})</button>
       </div>
       {notice && (
         <div className="rounded-2xl border-2 border-mission-violet/40 bg-accent p-4 font-semibold flex justify-between gap-3">
@@ -3261,8 +3324,22 @@ function CompanionMissions({
           <button onClick={() => setNotice(null)} aria-label="Fermer" className="shrink-0 font-black">✕</button>
         </div>
       )}
-      {list.length === 0 && <p className="py-10 text-center text-muted-foreground">Aucune mission pour le moment.</p>}
-      {tab === "today"
+      {tab === "accepted" && (
+        accepted.length === 0 ? (
+          <p className="py-10 text-center text-muted-foreground">Aucune mission acceptée pour le moment.</p>
+        ) : (
+          ([["À venir", accUpcoming], ["Terminées", accDone], ["Annulées par la famille", accCancelled]] as const).map(([title, items]) =>
+            items.length > 0 && (
+              <div key={title} className="flex flex-col gap-2">
+                <h3 className="mt-2 text-lg font-black">{title}</h3>
+                {items.map((r) => <AcceptedCard key={r.id} r={r} onOpen={() => onOpenAccepted(r.id)} />)}
+              </div>
+            ),
+          )
+        )
+      )}
+      {tab !== "accepted" && list.length === 0 && <p className="py-10 text-center text-muted-foreground">Aucune mission pour le moment.</p>}
+      {tab === "accepted" ? null : tab === "today"
         ? list.map((r) => (
             <MissionCard key={r.id} r={r} onOpen={() => setDetailId(r.id)} onAccept={() => accept(r)} onDecline={() => decline(r)} />
           ))
@@ -3280,7 +3357,7 @@ function CompanionMissions({
         <div className="mt-4 flex flex-col gap-3 rounded-2xl border-2 border-dashed border-border bg-card p-4">
           <p className="text-lg font-bold">🧪 Mode test</p>
           <p className="text-muted-foreground">Missions fictives, visibles uniquement sur cet appareil. Domicile simulé : Laon.</p>
-          <button onClick={() => { store.addDemoRequests(buildDemoMissions()); onTestToggle?.(true); setGhosts([]); setNotice("6 missions de test générées. Celles situées hors de votre rayon restent masquées."); }} className="rounded-2xl border-2 border-foreground bg-background py-4 font-bold">
+          <button onClick={() => { store.addDemoRequests([...buildDemoMissions(), ...buildDemoAccepted(me)]); onTestToggle?.(true); setGhosts([]); setNotice("10 missions de test générées : 6 à accepter, 4 déjà acceptées (voir l'onglet Acceptées)."); }} className="rounded-2xl border-2 border-foreground bg-background py-4 font-bold">
             Générer des missions de test
           </button>
           <button onClick={() => { store.removeDemoRequests(); onTestToggle?.(false); setGhosts([]); setNotice("Missions de test supprimées."); }} className="rounded-2xl border-2 border-foreground bg-background py-4 font-bold">
