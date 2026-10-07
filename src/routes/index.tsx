@@ -3013,6 +3013,16 @@ function StudentFlow() {
     if (v) window.localStorage?.setItem(DEMO_KEY, "1");
     else window.localStorage?.removeItem(DEMO_KEY);
   };
+  // Mode test local (missions DÉMO stockées seulement dans ce navigateur)
+  const [testOn, setTestOn] = useState(false);
+  useEffect(() => {
+    setTestOn(window.localStorage?.getItem("solelia-companion-test") === "1");
+  }, []);
+  const saveTestOn = (v: boolean) => {
+    setTestOn(v);
+    if (v) window.localStorage?.setItem("solelia-companion-test", "1");
+    else window.localStorage?.removeItem("solelia-companion-test");
+  };
   const [openId, setOpenId] = useState<string | null>(null);
   const [view, setView] = useState<"home" | "missions">("home");
   const [missionsTab, setMissionsTab] = useState<"today" | "rdv">("today");
@@ -3024,7 +3034,7 @@ function StudentFlow() {
   const me: Companion = { ...COMPANIONS[0], id: "me", firstName: myFirstName, photo: "" };
 
   const available = allSearching.filter((r) => {
-    if (r.demo && !demo) return false;
+    if (r.demo && !demo && !testOn) return false;
     if (r.declinedBy?.includes(me.id)) return false;
     if (companionDistance(r) > settings.radiusKm) return false;
     if ((r.durationHours ?? 1) < settings.minDurationH) return false;
@@ -3068,7 +3078,8 @@ function StudentFlow() {
       <CompanionMissions
         missions={available}
         me={me}
-        testMode={demo}
+        testMode
+        onTestToggle={saveTestOn}
         tab={missionsTab}
         setTab={setMissionsTab}
         onBack={() => setView("home")}
@@ -3176,7 +3187,9 @@ function CompanionMissions({
   setTab,
   onBack,
   onAccepted,
+  onTestToggle,
 }: {
+  onTestToggle?: (v: boolean) => void;
   missions: Request[];
   me: Companion;
   testMode: boolean;
@@ -3266,11 +3279,11 @@ function CompanionMissions({
       {testMode && (
         <div className="mt-4 flex flex-col gap-3 rounded-2xl border-2 border-dashed border-border bg-card p-4">
           <p className="text-lg font-bold">🧪 Mode test</p>
-          <p className="text-muted-foreground">Missions fictives, visibles uniquement dans cet aperçu. Domicile simulé : Laon.</p>
-          <button onClick={() => { store.addDemoRequests(buildDemoMissions()); setGhosts([]); setNotice("6 missions de test générées. Celles situées hors de votre rayon restent masquées."); }} className="rounded-2xl border-2 border-foreground bg-background py-4 font-bold">
+          <p className="text-muted-foreground">Missions fictives, visibles uniquement sur cet appareil. Domicile simulé : Laon.</p>
+          <button onClick={() => { store.addDemoRequests(buildDemoMissions()); onTestToggle?.(true); setGhosts([]); setNotice("6 missions de test générées. Celles situées hors de votre rayon restent masquées."); }} className="rounded-2xl border-2 border-foreground bg-background py-4 font-bold">
             Générer des missions de test
           </button>
-          <button onClick={() => { store.removeDemoRequests(); setGhosts([]); setNotice("Missions de test supprimées."); }} className="rounded-2xl border-2 border-foreground bg-background py-4 font-bold">
+          <button onClick={() => { store.removeDemoRequests(); onTestToggle?.(false); setGhosts([]); setNotice("Missions de test supprimées."); }} className="rounded-2xl border-2 border-foreground bg-background py-4 font-bold">
             Supprimer les missions de test
           </button>
           <button onClick={simulateTaken} className="rounded-2xl border-2 border-foreground bg-background py-4 font-bold">
