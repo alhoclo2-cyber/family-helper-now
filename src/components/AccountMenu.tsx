@@ -13,7 +13,9 @@ import {
 
 const itemCls = "py-3 text-base cursor-pointer";
 
-export function AccountMenu({ missions }: { missions?: { count: number; onOpen: () => void } } = {}) {
+type MenuEntry = { count: number; onOpen: () => void };
+
+export function AccountMenu({ missions, accepted }: { missions?: MenuEntry; accepted?: MenuEntry } = {}) {
   const { session } = useSession();
   const qc = useQueryClient();
   const { state } = useAccountState(session?.user.id);
@@ -40,6 +42,16 @@ export function AccountMenu({ missions }: { missions?: { count: number; onOpen: 
                 </span>
               </span>
             </DropdownMenuItem>
+            {accepted && (
+              <DropdownMenuItem className={`${itemCls} font-bold`} onSelect={accepted.onOpen}>
+                <span className="flex w-full items-center justify-between gap-2">
+                  Missions acceptées
+                  <span className="min-w-7 rounded-full bg-mission-violet px-2 py-0.5 text-center text-sm font-black text-background">
+                    {accepted.count}
+                  </span>
+                </span>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
           </>
         )}
