@@ -42,6 +42,9 @@
   --color-mission-coral: var(--mission-coral);
   --color-mission-coral-foreground: var(--mission-coral-foreground);
   --color-mission-violet: var(--mission-violet);
+  --color-mission-green: var(--mission-green);
+  --color-mission-green-foreground: var(--mission-green-foreground);
+  --color-mission-orange: var(--mission-orange);
 }
 
 :root {
@@ -77,6 +80,9 @@
   --mission-coral: oklch(0.78 0.13 35);
   --mission-coral-foreground: oklch(0.2 0.07 300);
   --mission-violet: oklch(0.45 0.2 300);
+  --mission-green: oklch(0.55 0.15 150);
+  --mission-green-foreground: oklch(1 0 0);
+  --mission-orange: oklch(0.72 0.17 55);
 }
 
 @layer base {

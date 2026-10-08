@@ -3024,8 +3024,8 @@ function StudentFlow() {
     else window.localStorage?.removeItem("solelia-companion-test");
   };
   const [openId, setOpenId] = useState<string | null>(null);
-  const [view, setView] = useState<"home" | "missions">("home");
-  const [missionsTab, setMissionsTab] = useState<"today" | "rdv" | "accepted">("today");
+  const [view, setView] = useState<"home" | "missions" | "accepted">("home");
+  const [missionsTab, setMissionsTab] = useState<"today" | "rdv">("today");
   const allSearching = useStore((s) => s.requests.filter((r) => r.status === "searching"));
   const mine = useStore((s) =>
     s.requests.filter((r) => r.student?.id === "me" && (r.status === "accepted" || r.status === "cancelled")),
@@ -3076,12 +3076,30 @@ function StudentFlow() {
 
   if (active) return <StudentDetail request={active} onBack={() => setOpenId(null)} />;
 
+  const acceptedList = mine.filter((r) => !r.demo || demo || testOn);
+  const upcomingCount = splitAccepted(acceptedList).upcoming.length;
+  const menu = (
+    <AccountMenu
+      missions={{ count: available.length, onOpen: () => setView("missions") }}
+      accepted={{ count: upcomingCount, onOpen: () => setView("accepted") }}
+    />
+  );
+
+  if (view === "accepted")
+    return (
+      <CompanionAcceptedMissions
+        accepted={acceptedList}
+        onOpen={(id) => setOpenId(id)}
+        onBack={() => setView("home")}
+        menu={menu}
+      />
+    );
+
   if (view === "missions")
     return (
       <CompanionMissions
         missions={available}
-        accepted={mine.filter((r) => !r.demo || demo || testOn)}
-        onOpenAccepted={(id) => setOpenId(id)}
+        menu={menu}
         me={me}
         testMode
         onTestToggle={saveTestOn}
@@ -3095,7 +3113,7 @@ function StudentFlow() {
   return (
     <div className="flex-1 flex flex-col px-5 py-6 gap-5">
       <div className="w-full flex items-center justify-between">
-        <AccountMenu missions={{ count: available.length, onOpen: () => setView("missions") }} />
+        {menu}
       </div>
       <AccountStatusBanner />
       {demo && (
@@ -3120,6 +3138,17 @@ function StudentFlow() {
           Missions proposées
           <span className="min-w-10 rounded-full bg-mission-violet px-3 py-1 text-xl font-black text-background">
             {available.length}
+          </span>
+        </span>
+      </button>
+      <button
+        onClick={() => setView("accepted")}
+        className="btn-huge relative border-[3px] border-mission-orange bg-mission-green text-mission-green-foreground"
+      >
+        <span className="flex items-center justify-center gap-3">
+          Missions acceptées
+          <span className="min-w-10 rounded-full bg-background px-3 py-1 text-xl font-black text-mission-green">
+            {upcomingCount}
           </span>
         </span>
       </button>
@@ -3231,6 +3260,54 @@ function AcceptedCard({ r, onOpen }: { r: Request; onOpen: () => void }) {
 const TAKEN_MSG = "Cette mission vient d'être acceptée par un autre compagnon.";
 const TEST_MSG = "Mode test : aucune donnée réelle n'a été envoyée.";
 
+function splitAccepted(accepted: Request[]) {
+  const done = (r: Request) => r.completion === "validated" || r.completion === "auto_validated";
+  return {
+    cancelled: accepted.filter((r) => r.status === "cancelled"),
+    done: accepted.filter((r) => r.status === "accepted" && done(r)),
+    upcoming: accepted
+      .filter((r) => r.status === "accepted" && !done(r))
+      .sort((a, b) => (getMissionStart(a) ?? 0) - (getMissionStart(b) ?? 0)),
+  };
+}
+
+function CompanionAcceptedMissions({
+  accepted,
+  onOpen,
+  onBack,
+  menu,
+}: {
+  accepted: Request[];
+  onOpen: (id: string) => void;
+  onBack: () => void;
+  menu: React.ReactNode;
+}) {
+  const { upcoming, done, cancelled } = splitAccepted(accepted);
+  return (
+    <div className="flex-1 flex flex-col px-5 py-6 gap-4 text-base">
+      <div className="w-full flex items-center justify-between gap-3">
+        {menu}
+        <button onClick={onBack} className="rounded-xl border-2 border-border bg-card px-4 py-2 font-bold">
+          ← Retour
+        </button>
+      </div>
+      <h2 className="text-2xl font-black">Missions acceptées</h2>
+      {accepted.length === 0 ? (
+        <p className="py-10 text-center text-muted-foreground">Aucune mission acceptée pour le moment.</p>
+      ) : (
+        ([["À venir", upcoming], ["Terminées", done], ["Annulées par la famille", cancelled]] as const).map(([title, items]) =>
+          items.length > 0 && (
+            <div key={title} className="flex flex-col gap-2">
+              <h3 className="mt-2 text-lg font-black">{title}</h3>
+              {items.map((r) => <AcceptedCard key={r.id} r={r} onOpen={() => onOpen(r.id)} />)}
+            </div>
+          ),
+        )
+      )}
+    </div>
+  );
+}
+
 function CompanionMissions({
   missions,
   me,
@@ -3240,17 +3317,15 @@ function CompanionMissions({
   onBack,
   onAccepted,
   onTestToggle,
-  accepted,
-  onOpenAccepted,
+  menu,
 }: {
   onTestToggle?: (v: boolean) => void;
-  accepted: Request[];
-  onOpenAccepted: (id: string) => void;
+  menu: React.ReactNode;
   missions: Request[];
   me: Companion;
   testMode: boolean;
-  tab: "today" | "rdv" | "accepted";
-  setTab: (tab: "today" | "rdv" | "accepted") => void;
+  tab: "today" | "rdv";
+  setTab: (tab: "today" | "rdv") => void;
   onBack: () => void;
   onAccepted: (id: string) => void;
 }) {
@@ -3297,26 +3372,22 @@ function CompanionMissions({
       </div>
     );
 
-  const done = (r: Request) => r.completion === "validated" || r.completion === "auto_validated";
-  const accCancelled = accepted.filter((r) => r.status === "cancelled");
-  const accDone = accepted.filter((r) => r.status === "accepted" && done(r));
-  const accUpcoming = accepted
-    .filter((r) => r.status === "accepted" && !done(r))
-    .sort((a, b) => (getMissionStart(a) ?? 0) - (getMissionStart(b) ?? 0));
-  const list = tab === "today" ? today : tab === "rdv" ? rdv : [];
+  const list = tab === "today" ? today : rdv;
   const tabCls = (on: boolean) =>
     `rounded-2xl border-2 px-1 py-3 text-base leading-tight font-bold transition-colors ${on ? "border-mission-violet bg-mission-violet text-background" : "border-border bg-card text-foreground"}`;
 
   return (
     <div className="flex-1 flex flex-col px-5 py-6 gap-4 text-base">
-      <button onClick={onBack} className="self-start rounded-xl border-2 border-border bg-card px-4 py-2 font-bold">
-        ← Retour
-      </button>
+      <div className="w-full flex items-center justify-between gap-3">
+        {menu}
+        <button onClick={onBack} className="rounded-xl border-2 border-border bg-card px-4 py-2 font-bold">
+          ← Retour
+        </button>
+      </div>
       <h2 className="text-2xl font-black">Missions proposées</h2>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <button className={tabCls(tab === "today")} onClick={() => setTab("today")}>Aujourd'hui ({today.length})</button>
         <button className={tabCls(tab === "rdv")} onClick={() => setTab("rdv")}>Sur rendez-vous ({rdv.length})</button>
-        <button className={tabCls(tab === "accepted")} onClick={() => setTab("accepted")}>Acceptées ({accUpcoming.length})</button>
       </div>
       {notice && (
         <div className="rounded-2xl border-2 border-mission-violet/40 bg-accent p-4 font-semibold flex justify-between gap-3">
@@ -3324,22 +3395,8 @@ function CompanionMissions({
           <button onClick={() => setNotice(null)} aria-label="Fermer" className="shrink-0 font-black">✕</button>
         </div>
       )}
-      {tab === "accepted" && (
-        accepted.length === 0 ? (
-          <p className="py-10 text-center text-muted-foreground">Aucune mission acceptée pour le moment.</p>
-        ) : (
-          ([["À venir", accUpcoming], ["Terminées", accDone], ["Annulées par la famille", accCancelled]] as const).map(([title, items]) =>
-            items.length > 0 && (
-              <div key={title} className="flex flex-col gap-2">
-                <h3 className="mt-2 text-lg font-black">{title}</h3>
-                {items.map((r) => <AcceptedCard key={r.id} r={r} onOpen={() => onOpenAccepted(r.id)} />)}
-              </div>
-            ),
-          )
-        )
-      )}
-      {tab !== "accepted" && list.length === 0 && <p className="py-10 text-center text-muted-foreground">Aucune mission pour le moment.</p>}
-      {tab === "accepted" ? null : tab === "today"
+      {list.length === 0 && <p className="py-10 text-center text-muted-foreground">Aucune mission pour le moment.</p>}
+      {tab === "today"
         ? list.map((r) => (
             <MissionCard key={r.id} r={r} onOpen={() => setDetailId(r.id)} onAccept={() => accept(r)} onDecline={() => decline(r)} />
           ))
