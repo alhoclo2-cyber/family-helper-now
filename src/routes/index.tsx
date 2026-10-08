@@ -656,7 +656,7 @@ function FamilyFlow() {
             className="h-auto min-h-20 w-full justify-between whitespace-normal rounded-2xl border-2 border-mission-violet bg-audience-surface px-4 py-3 text-left shadow-sm hover:bg-audience-peach"
           >
             <span className="flex flex-col items-start gap-1">
-              <span className="text-base font-bold text-foreground">Pour vous ou pour vos proches ?</span>
+              <span className="text-base font-bold text-foreground">Pour vous ou pour vos proches{"\u00A0"}?</span>
               <span className="text-sm font-normal text-muted-foreground">Découvrez nos accompagnements</span>
             </span>
             <ChevronDown aria-hidden="true" className={`shrink-0 text-primary transition-transform duration-300 motion-reduce:transition-none ${audiencesOpen ? "rotate-180" : ""}`} />
