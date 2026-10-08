@@ -3260,7 +3260,7 @@ function AcceptedCard({ r, onOpen }: { r: Request; onOpen: () => void }) {
 const TAKEN_MSG = "Cette mission vient d'être acceptée par un autre compagnon.";
 const TEST_MSG = "Mode test : aucune donnée réelle n'a été envoyée.";
 
-export function splitAccepted(accepted: Request[]) {
+function splitAccepted(accepted: Request[]) {
   const done = (r: Request) => r.completion === "validated" || r.completion === "auto_validated";
   return {
     cancelled: accepted.filter((r) => r.status === "cancelled"),
