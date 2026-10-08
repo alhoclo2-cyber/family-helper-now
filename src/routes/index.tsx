@@ -653,7 +653,7 @@ function FamilyFlow() {
             aria-expanded={audiencesOpen}
             aria-controls="audiences-content"
             onClick={() => setAudiencesOpen((open) => !open)}
-            className="h-auto min-h-20 w-full justify-between whitespace-normal rounded-2xl border border-audience-ring bg-audience-surface px-4 py-3 text-left shadow-sm hover:bg-audience-peach"
+            className="h-auto min-h-20 w-full justify-between whitespace-normal rounded-2xl border-2 border-mission-violet bg-audience-surface px-4 py-3 text-left shadow-sm hover:bg-audience-peach"
           >
             <span className="flex flex-col items-start gap-1">
               <span className="text-base font-bold text-foreground">Pour vous ou pour vos proches ?</span>
@@ -679,7 +679,7 @@ function FamilyFlow() {
                 <div className="flex flex-col gap-2.5">
                   {([
                     { audience: "seniors", title: "Seniors autonomes", description: "Rompre l'isolement, partager une promenade, des discussions et les petits moments du quotidien dans la bonne humeur." },
-                    { audience: "children", title: "Vos enfants (dès 3 ans)", description: "Une présence douce et attentionnée après l'école pour souffler et vous relayer en tant que parents." },
+                    { audience: "children", title: "Enfants (dès 3 ans)", description: "Une présence douce et attentionnée après l'école pour souffler et vous relayer en tant que parents." },
                     { audience: "maternity", title: "Grossesse & maternité", description: "Un coup de main bienveillant pour la maison et le quotidien quand le corps a besoin de repos." },
                     { audience: "recovery", title: "Retour d'hospitalisation & convalescence", description: "Une compagnie rassurante à la maison pour reprendre son rythme pas à pas, en toute sérénité." },
                     { audience: "injury", title: "Blessures & invalidité temporaire", description: "Un relais humain et attentionné, chaleureux et réactif, pour faciliter chaque journée et faire face aux imprévus le temps de la récupération." },
@@ -730,11 +730,11 @@ function FamilyFlow() {
         </button>
         <button
           onClick={() => { setRequestMode("scheduled"); setSimulateNoAnswer(false); setStep("form"); }}
-          className="btn-huge bg-accent text-foreground border-2 border-primary min-h-[140px] w-full flex flex-col items-center justify-center gap-2"
+          className="btn-huge border-[3px] border-mission-violet bg-mission-coral text-mission-coral-foreground min-h-[140px] w-full flex flex-col items-center justify-center gap-2"
         >
           <span className="text-4xl">📅</span>
           <span>Prendre un rendez-vous</span>
-          <span className="text-sm font-normal text-muted-foreground">
+          <span className="text-sm font-normal text-mission-coral-foreground">
             Date et heure précises — compagnon au choix ou recherche automatique
           </span>
         </button>
