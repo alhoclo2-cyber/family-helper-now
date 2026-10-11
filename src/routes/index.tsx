@@ -1312,6 +1312,34 @@ function FamilyForm({
             </div>
           )}
           {isMultiChild && (
+            <div>
+              <label className="block text-lg font-bold mb-2">Nombre d'enfants</label>
+              <div className="grid grid-cols-3 gap-2">
+                {["1 enfant", "2 enfants", "3 enfants"].map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => {
+                      setChildrenCount(c);
+                      syncAges(
+                        c === "1 enfant"
+                          ? 1
+                          : c === "2 enfants"
+                            ? 2
+                            : 3,
+                      );
+                    }}
+                    className={`py-3 px-2 rounded-2xl border-2 text-sm font-bold transition-all ${
+                      childrenCount === c ? "border-primary bg-accent" : "border-border bg-card"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {isMultiChild && (
             <div className="flex flex-col gap-4">
               {Array.from({ length: childCountNum }, (_, i) => (
                 <div key={i}>
@@ -1372,35 +1400,6 @@ function FamilyForm({
                     onClick={() => setChildClass(c)}
                     className={`py-3 px-2 rounded-2xl border-2 text-sm font-bold transition-all ${
                       childClass === c ? "border-primary bg-accent" : "border-border bg-card"
-                    }`}
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {isMultiChild && (
-            <div>
-              <label className="block text-lg font-bold mb-2">Nombre d'enfants</label>
-              <div className="grid grid-cols-3 gap-2">
-                {["1 enfant", "2 enfants", "3 enfants"].map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => {
-                      setChildrenCount(c);
-                      syncAges(
-                        c === "1 enfant"
-                          ? 1
-                          : c === "2 enfants"
-                            ? 2
-                            : 3,
-                      );
-                    }}
-                    className={`py-3 px-2 rounded-2xl border-2 text-sm font-bold transition-all ${
-                      childrenCount === c ? "border-primary bg-accent" : "border-border bg-card"
                     }`}
                   >
                     {c}
