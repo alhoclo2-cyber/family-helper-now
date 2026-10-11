@@ -539,9 +539,8 @@ function MandatairePanel() {
           </li>
           <li>
             <b className="text-foreground">Vous êtes particulier employeur</b> : le salaire net conseillé est de{" "}
-            {formatPrice(DEFAULT_HOURLY_RATE)} €/h (congés payés inclus), modifiable. Pour une mission concernant
-            plusieurs enfants, une majoration d'environ +1 €/h par enfant supplémentaire est habituellement suggérée —
-            recommandation indicative, vous restez libre de fixer le salaire.
+            {formatPrice(DEFAULT_HOURLY_RATE)} €/h (10 % congés payés inclus), modifiable — recommandation indicative,
+            vous restez libre de fixer le salaire.
           </li>
           <li>
             <b className="text-foreground">Contrat de travail</b> : obligatoire dès 3h/semaine avec le même compagnon,
@@ -572,7 +571,7 @@ function FamilyFlow() {
   const [step, setStep] = useState<"home" | "form" | "wait" | "account">("home");
   const [audiencesOpen, setAudiencesOpen] = useState(false);
   const [requestMode, setRequestMode] = useState<"asap" | "scheduled">("asap");
-  const [nightClosed, setNightClosed] = useState(false);
+  const [nightClosed, setNightClosed] = useState<false | "evening" | "night">(false);
   const [simulateNoAnswer, setSimulateNoAnswer] = useState(false);
   const [editRequest, setEditRequest] = useState<Request | null>(null);
   const currentId = useStore((s) => s.currentRequestId);
@@ -699,10 +698,17 @@ function FamilyFlow() {
         </section>
         {nightClosed && (
           <div className="w-full bg-destructive/10 border-2 border-destructive/40 rounded-2xl p-4 text-center">
+            {nightClosed === "evening" ? (
+              <p className="text-sm font-semibold text-destructive">
+                Pour un besoin rapide, la recherche d'un compagnon doit être lancée avant 20h30, afin de lui laisser le
+                temps de répondre et de vous rejoindre.
+              </p>
+            ) : (
             <p className="text-sm font-semibold text-destructive">
               Solélia ne propose pas de mission entre 22h30 et 7h00. Revenez sur la plateforme dans cette plage horaire
               pour réserver un compagnon.
             </p>
+            )}
             <p className="text-xs text-muted-foreground mt-2">
               En cas d'urgence vitale, composez le 15 (SAMU).
             </p>
@@ -715,7 +721,9 @@ function FamilyFlow() {
           onClick={() => {
             const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
             if (nowMin < MISSION_START_LIMIT_MIN || nowMin >= MISSION_BUTTON_CUTOFF_MIN) {
-              setNightClosed(true);
+              setNightClosed(
+                nowMin >= MISSION_BUTTON_CUTOFF_MIN && nowMin < MISSION_END_LIMIT_MIN ? "evening" : "night",
+              );
               return;
             }
             setRequestMode("asap"); setSimulateNoAnswer(false); setStep("form");
@@ -876,6 +884,7 @@ function FamilyForm({
   const [missionInfo, setMissionInfo] = useState<string>(initial?.missionInfo ?? "");
   const [salaireNetHoraire, setSalaireNetHoraire] = useState<number>(initial?.salaryNetHourly ?? DEFAULT_HOURLY_RATE);
   const [salaireText, setSalaireText] = useState<string>(() => formatPrice(initial?.salaryNetHourly ?? DEFAULT_HOURLY_RATE));
+  const [salaryTouched, setSalaryTouched] = useState<boolean>(initial?.salaryNetHourly != null);
   const [acknowledgedLimits, setAcknowledgedLimits] = useState<Record<string, boolean>>({});
   
   const [cguOk, setCguOk] = useState(false);
@@ -945,6 +954,32 @@ function FamilyForm({
       : childrenCount === "2 enfants"
         ? 2
         : 3;
+  const extraChildren = isMultiChild ? childCountNum - 1 : 0;
+  const recommendedRate = DEFAULT_HOURLY_RATE + extraChildren;
+  useEffect(() => {
+    if (salaryTouched) return;
+    setSalaireNetHoraire(recommendedRate);
+    setSalaireText(formatPrice(recommendedRate));
+  }, [recommendedRate, salaryTouched]);
+  // Pré-remplissage adresse/téléphone depuis le compte (modifiable pour cette réservation uniquement).
+  const { session: formSession } = useSession();
+  useEffect(() => {
+    if (initial || !formSession) return;
+    supabase
+      .from("profiles")
+      .select("address_line,postal_code,city,phone")
+      .eq("id", formSession.user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        setAddressParts((prev) =>
+          prev.street || prev.postalCode || prev.city
+            ? prev
+            : { street: data.address_line ?? "", postalCode: data.postal_code ?? "", city: data.city ?? "" },
+        );
+        setPhone((prev) => prev || (data.phone ?? ""));
+      });
+  }, [formSession?.user.id, initial]);
   // Synchronise le tableau des âges avec le nombre d'enfants (tronque ou complète).
   const syncAges = (n: number) =>
     setChildAges((prev) => {
@@ -1505,14 +1540,7 @@ function FamilyForm({
         <ServiceFeeHint className="mt-2" />
       </div>
       <div className="bg-card rounded-2xl p-5 border-2 border-border">
-        <label htmlFor="salaire-net" className="block text-lg font-bold">Tarif horaire net proposé (€)</label>
-        <p className="text-xs text-muted-foreground mt-1">Recommandé par Solélia (10% congés payés inclus)</p>
-        <p className="text-xs text-muted-foreground mt-1">vous pouvez modifier le salaire horaire net/h en respectant le salaire minimum de la convention collective des particuliers employeurs (IDCC 3239), applicable au CESU.</p>
-        {isChildNeed && !isHomework && (
-          <div className="mt-3 rounded-2xl bg-primary/10 border-2 border-primary/30 p-3 text-sm font-bold text-foreground">
-            👶 Solélia recommande d'ajouter 1 €/h par enfant supplémentaire
-          </div>
-        )}
+        <label htmlFor="salaire-net" className="block text-lg font-bold">Salaire horaire net (€)</label>
         <div className="flex items-center gap-2 mt-3">
           <input
             id="salaire-net"
@@ -1522,6 +1550,7 @@ function FamilyForm({
             onChange={(e) => {
               const raw = e.target.value.replace(/[^0-9.,]/g, "");
               setSalaireText(raw);
+              setSalaryTouched(true);
               const n = Number(raw.replace(",", "."));
               setSalaireNetHoraire(Number.isFinite(n) ? n : 0);
             }}
@@ -1530,6 +1559,17 @@ function FamilyForm({
           />
           <span className="shrink-0 text-lg font-bold">€/h</span>
         </div>
+        <p className="text-sm text-foreground mt-2">
+          <span className="font-bold">Solélia Accompagnement recommande {formatPrice(recommendedRate)} €/h net</span>{" "}
+          (10 % congés payés inclus),{" "}
+          {extraChildren > 0 && (
+            <>
+              dont <span className="font-semibold">1 € supplémentaire par enfant</span>,{" "}
+            </>
+          )}
+          mais vous pouvez modifier le montant.
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">vous pouvez modifier le salaire horaire net/h en respectant le salaire minimum de la convention collective des particuliers employeurs (IDCC 3239), applicable au CESU.</p>
         <p className="text-sm font-semibold mt-2">Soit un salaire de {formatPrice(durationHours * salaireNetHoraire)} € net à verser au salarié</p>
         <div className="mt-4 space-y-1">
           <p className="text-base font-semibold">
@@ -2799,14 +2839,6 @@ function PaymentScreen({
             Estimation indicative. Le montant définitif est calculé et prélevé par l'URSSAF.
           </p>
         </div>
-        {(need === "Garde d'enfants" || need === "Enfants de plus de 3 ans") &&
-          (childAges?.length ?? 0) > 1 && (
-            <p className="text-xs text-muted-foreground mt-2">
-              👶 Pour {childAges!.length} enfants, il est habituel de majorer le salaire d'environ 1 €/h par
-              enfant supplémentaire (soit environ {formatPrice(salaireNum + (childAges!.length - 1))} €/h avec
-              votre montant actuel). Ce montant reste indicatif et modifiable.
-            </p>
-          )}
         <p className="text-xs text-muted-foreground mt-2">
           ⚖️ En tant que particulier employeur, vous ne pouvez pas rémunérer en dessous du SMIC horaire net (congés
           payés inclus).{" "}
