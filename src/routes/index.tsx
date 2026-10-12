@@ -2621,7 +2621,7 @@ function FamilyWait({
       ) : (
         <>
           <p className="text-lg font-bold text-success">
-            {!paid ? "✅ Ce compagnon a accepté la mission" : isSos ? "✅ Mission verrouillée par un compagnon !" : "✅ Rendez-vous confirmé !"}
+            {!paid ? (request.acknowledged ? "✅ Vous avez accepté ce compagnon" : "✅ Ce compagnon a accepté la mission") : isSos ? "✅ Mission verrouillée par un compagnon !" : "✅ Rendez-vous confirmé !"}
           </p>
           <div className="w-full bg-card rounded-3xl p-6 border-2 border-border shadow-sm">
             {request.student?.id === "me" ? (
