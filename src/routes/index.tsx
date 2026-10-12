@@ -2621,7 +2621,7 @@ function FamilyWait({
       ) : (
         <>
           <p className="text-lg font-bold text-success">
-            {isSos ? "✅ Mission verrouillée par un compagnon !" : "✅ Rendez-vous confirmé !"}
+            {!paid ? "✅ Ce compagnon a accepté la mission" : isSos ? "✅ Mission verrouillée par un compagnon !" : "✅ Rendez-vous confirmé !"}
           </p>
           <div className="w-full bg-card rounded-3xl p-6 border-2 border-border shadow-sm">
             {request.student?.id === "me" ? (
@@ -2641,9 +2641,16 @@ function FamilyWait({
               <ThumbsCount thumbs={request.student!.thumbs} />
             </div>
             <p className="text-sm text-muted-foreground mt-2">
-              {request.student!.missions} missions réalisées ·{" "}
-              {isSos ? "Arrivée estimée : 10 min" : "Rendez-vous confirmé"}
+              {request.student!.missions} missions réalisées
+              {isSos ? " · Arrivée estimée : 10 min" : paid ? " · Rendez-vous confirmé" : ""}
             </p>
+            {!paid && (
+              <p className="text-sm font-semibold mt-2">
+                {request.student!.missedCount > 0
+                  ? `⚠️ ${request.student!.missedCount} rendez-vous non honoré${request.student!.missedCount > 1 ? "s" : ""}`
+                  : "✅ Aucun rendez-vous non honoré"}
+              </p>
+            )}
             <div className="mt-4 bg-warning/15 border-2 border-warning rounded-2xl p-3 text-left">
               <p className="text-sm font-bold">🔒 Vérifiez l'identité</p>
               <p className="text-sm text-muted-foreground mt-1">
@@ -2663,12 +2670,12 @@ function FamilyWait({
             />
           )}
 
-          <CompanionProfileHeader
+          {paid && <CompanionProfileHeader
             firstName={request.student!.firstName}
             missions={request.student!.missions}
             thumbs={request.student!.thumbs}
             missedCount={request.student!.missedCount}
-          />
+          />}
 
           {complianceCheck ? (
             <CesuRecurrenceModal
@@ -2758,7 +2765,7 @@ function FamilyWait({
               <MissionClosureBlock request={request} role="family" />
             </>
           )}
-          {!!request.scheduledAt && <ScheduleManageBlock request={request} paid={paid} />}
+          {!!request.scheduledAt && paid && <ScheduleManageBlock request={request} paid={paid} />}
           {!paid && (
             <button
               type="button"

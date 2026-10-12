@@ -38,7 +38,7 @@ export function ReservationSummaryPanel({ request, hourlyRate, serviceFee }: Pro
 
   return (
     <Accordion type="single" collapsible className="w-full text-left">
-      <AccordionItem value="reservation" className="rounded-md border border-border bg-card px-4">
+      <AccordionItem value="reservation" className="rounded-md border-2 border-reservation-border bg-reservation text-reservation-foreground px-4">
         <AccordionTrigger className="min-h-12 text-base font-bold text-foreground no-underline hover:no-underline">
           Voir le détail de ma réservation
         </AccordionTrigger>

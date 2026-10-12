@@ -45,6 +45,9 @@
   --color-mission-green: var(--mission-green);
   --color-mission-green-foreground: var(--mission-green-foreground);
   --color-mission-orange: var(--mission-orange);
+  --color-reservation: var(--reservation);
+  --color-reservation-border: var(--reservation-border);
+  --color-reservation-foreground: var(--reservation-foreground);
 }
 
 :root {
@@ -83,6 +86,9 @@
   --mission-green: oklch(0.55 0.15 150);
   --mission-green-foreground: oklch(1 0 0);
   --mission-orange: oklch(0.72 0.17 55);
+  --reservation: #EDE7F6;
+  --reservation-border: #C9B8E8;
+  --reservation-foreground: oklch(0.18 0.02 260);
 }
 
 @layer base {
