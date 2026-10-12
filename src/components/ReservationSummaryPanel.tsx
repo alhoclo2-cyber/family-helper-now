@@ -14,7 +14,7 @@ function Detail({ label, value }: { label: string; value?: string | null }) {
     <div className="py-3 border-b border-border last:border-b-0 min-w-0">
       <dt className="text-xs font-semibold text-muted-foreground">{label}</dt>
       <dd className={`mt-1 text-sm font-semibold break-words ${value ? "text-foreground" : "text-muted-foreground"}`}>
-        {value || "En attente"}
+        {value || "Non renseigné"}
       </dd>
     </div>
   );
