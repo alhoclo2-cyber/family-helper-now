@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AccountMenu } from "@/components/AccountMenu";
 import { useServerFn } from "@tanstack/react-start";
 import { requestLateRefund, getRefundState } from "@/lib/refunds.functions";
@@ -567,7 +567,16 @@ const MISSION_END_LIMIT_MIN = 22 * 60 + 30; // 22h30
 const MISSION_BUTTON_CUTOFF_MIN = 20 * 60 + 30;
 
 function FamilyFlow() {
-  const [step, setStep] = useState<"home" | "form" | "wait" | "account">("home");
+  const [step, setStep] = useState<"home" | "form" | "wait" | "account" | "reserved">("home");
+  const allRequests = useStore((s) => s.requests);
+  const reserved = useMemo(
+    () =>
+      allRequests
+        .filter(isReservedFamilyMission)
+        .sort((a, b) => (a.scheduledAt ?? -Infinity) - (b.scheduledAt ?? -Infinity)),
+    [allRequests],
+  );
+  const reservedEntry = { count: reserved.length, onOpen: () => setStep("reserved") };
   const [audiencesOpen, setAudiencesOpen] = useState(false);
   const [requestMode, setRequestMode] = useState<"asap" | "scheduled">("asap");
   const [nightClosed, setNightClosed] = useState<false | "evening" | "night">(false);
@@ -614,11 +623,20 @@ function FamilyFlow() {
 
   if (step === "account") return <FamilyAccountScreen onBack={() => setStep("home")} />;
 
+  if (step === "reserved")
+    return (
+      <FamilyReservedMissions
+        missions={reserved}
+        onBack={() => setStep("home")}
+        menu={<AccountMenu reserved={reservedEntry} />}
+      />
+    );
+
   if (step === "home")
     return (
       <div className="flex-1 flex flex-col justify-center items-center px-6 py-8 gap-5">
         <div className="w-full flex items-center justify-between">
-          <AccountMenu />
+          <AccountMenu reserved={reservedEntry} />
           <button
             onClick={() => setStep("account")}
             className="text-sm font-semibold text-primary underline"
@@ -2248,6 +2266,90 @@ function responseTimeoutMs(request: Request) {
     : SCHEDULED_LATER_TIMEOUT_MS;
 }
 
+function CompanionContactButtons({ request }: { request: Request }) {
+  return (
+    <div className="grid grid-cols-2 gap-2 w-full">
+      <a
+        href={`tel:${request.phone}`}
+        className="py-4 rounded-2xl bg-success text-success-foreground font-bold text-center"
+      >
+        📞 Appeler le compagnon
+      </a>
+      <a
+        href={`sms:${request.phone}`}
+        className="py-4 rounded-2xl border-2 border-success text-success font-bold text-center"
+      >
+        💬 Envoyer un SMS
+      </a>
+    </div>
+  );
+}
+
+function isReservedFamilyMission(r: Request) {
+  return (
+    !r.demo &&
+    !r.id.startsWith("sim-") &&
+    r.status === "accepted" &&
+    !!r.paid &&
+    r.completion !== "validated" &&
+    r.completion !== "auto_validated" &&
+    r.completion !== "problem"
+  );
+}
+
+function ReservedMissionCard({ request, defaultOpen }: { request: Request; defaultOpen: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const when = request.scheduledAt
+    ? new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }).format(new Date(request.scheduledAt))
+    : "Dès que possible";
+  return (
+    <div className="w-full rounded-2xl border-2 border-border bg-card">
+      <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)} className="w-full flex items-center gap-3 p-4 text-left">
+        {request.student?.photo ? (
+          <img src={request.student.photo} alt={request.student.firstName} className="h-12 w-12 shrink-0 rounded-full object-cover" />
+        ) : (
+          <div className="h-12 w-12 shrink-0 rounded-full grid place-items-center bg-accent text-primary font-bold">
+            {(request.student?.firstName ?? "?").charAt(0).toLocaleUpperCase("fr-FR")}
+          </div>
+        )}
+        <span className="min-w-0 flex-1">
+          <span className="block font-bold">{request.student?.firstName}</span>
+          <span className="block text-sm">{request.need}</span>
+          <span className="block text-sm text-muted-foreground">{when}</span>
+        </span>
+        <ChevronDown aria-hidden="true" className={`shrink-0 text-primary transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="flex flex-col gap-3 px-4 pb-4">
+          <ReservationSummaryPanel request={request} serviceFee={SERVICE_FEE} hourlyRate={request.salaryNetHourly} />
+          <CompanionContactButtons request={request} />
+          {!!request.scheduledAt && <ScheduleManageBlock request={request} paid />}
+          <MissionClosureBlock request={request} role="family" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FamilyReservedMissions({ missions, onBack, menu }: { missions: Request[]; onBack: () => void; menu: React.ReactNode }) {
+  return (
+    <div className="flex-1 flex flex-col px-5 py-6 gap-4 text-base">
+      <div className="w-full flex items-center justify-between gap-3">
+        {menu}
+        <button onClick={onBack} className="rounded-xl border-2 border-border bg-card px-4 py-2 font-bold">
+          ← Retour
+        </button>
+      </div>
+      <h2 className="text-2xl font-black">📅 Mes missions réservées</h2>
+      {missions.length === 0 ? (
+        <p className="py-10 text-center text-muted-foreground">Vous n'avez aucune mission réservée pour le moment.</p>
+      ) : (
+        missions.map((r) => <ReservedMissionCard key={r.id} request={r} defaultOpen={missions.length === 1} />)
+      )}
+    </div>
+  );
+}
+
 function FamilyWait({
   request,
   simulateNoAnswer,
@@ -2727,20 +2829,7 @@ function FamilyWait({
                   </p>
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-2 w-full">
-                <a
-                  href={`tel:${request.phone}`}
-                  className="py-4 rounded-2xl bg-success text-success-foreground font-bold text-center"
-                >
-                  📞 Appeler le compagnon
-                </a>
-                <a
-                  href={`sms:${request.phone}`}
-                  className="py-4 rounded-2xl border-2 border-success text-success font-bold text-center"
-                >
-                  💬 Envoyer un SMS
-                </a>
-              </div>
+              <CompanionContactButtons request={request} />
               {isSos && (
                 <button
                   type="button"

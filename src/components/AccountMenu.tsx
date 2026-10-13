@@ -15,7 +15,7 @@ const itemCls = "py-3 text-base cursor-pointer";
 
 type MenuEntry = { count: number; onOpen: () => void };
 
-export function AccountMenu({ missions, accepted }: { missions?: MenuEntry; accepted?: MenuEntry } = {}) {
+export function AccountMenu({ missions, accepted, reserved }: { missions?: MenuEntry; accepted?: MenuEntry; reserved?: MenuEntry } = {}) {
   const { session } = useSession();
   const qc = useQueryClient();
   const { state } = useAccountState(session?.user.id);
@@ -57,14 +57,24 @@ export function AccountMenu({ missions, accepted }: { missions?: MenuEntry; acce
         )}
         {session ? (
           <>
+            {reserved && (
+              <>
+                <DropdownMenuItem className={`${itemCls} font-bold`} onSelect={reserved.onOpen}>
+                  <span className="flex w-full items-center justify-between gap-2">
+                    📅 Mes missions réservées
+                    <span className="min-w-7 rounded-full bg-mission-violet px-2 py-0.5 text-center text-sm font-black text-background">
+                      {reserved.count}
+                    </span>
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
             <DropdownMenuItem asChild className={itemCls}>
               <Link to="/compte/pause">{paused ? "Réactiver mon compte" : "Mettre en pause mon compte"}</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              asChild
-              className={pending ? itemCls : `${itemCls} text-destructive focus:text-destructive`}
-            >
+            <DropdownMenuItem asChild className={`${itemCls} text-foreground focus:text-foreground`}>
               <Link to="/compte/suppression">{pending ? "Annuler la suppression" : "Supprimer mon compte"}</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
