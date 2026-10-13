@@ -2702,9 +2702,6 @@ function FamilyWait({
                 <p className="text-sm font-bold text-success">
                   💚 Frais de service Solélia : {formatPrice(SERVICE_FEE)} € — seul montant réglé sur la plateforme
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Le salaire de votre compagnon est fixé à l'étape suivante.
-                </p>
               </div>
               <button onClick={() => setShowPay(true)} className="btn-huge bg-primary text-primary-foreground w-full">
                 {deferred ? "💳 Récapitulatif et enregistrer ma carte" : `💳 Finaliser — ${formatPrice(SERVICE_FEE)} €`}
