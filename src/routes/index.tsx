@@ -17,7 +17,6 @@ import { CesuRecurrenceModal } from "@/components/CesuRecurrence";
 import { startOfWeek, subWeeks } from "date-fns";
 import { checkContractRequirement, type ContractCheckResult } from "@/lib/contractCompliance";
 import {
-  CompanionProfileHeader,
   ExperienceBadgeChip,
   ExperienceBadgeScale,
   ThumbsCount,
