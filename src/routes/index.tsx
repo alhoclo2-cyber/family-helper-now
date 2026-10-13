@@ -2644,13 +2644,11 @@ function FamilyWait({
               {request.student!.missions} missions réalisées
               {isSos ? " · Arrivée estimée : 10 min" : paid ? " · Rendez-vous confirmé" : ""}
             </p>
-            {!paid && (
-              <p className="text-sm font-semibold mt-2">
-                {request.student!.missedCount > 0
-                  ? `⚠️ ${request.student!.missedCount} rendez-vous non honoré${request.student!.missedCount > 1 ? "s" : ""}`
-                  : "✅ Aucun rendez-vous non honoré"}
-              </p>
-            )}
+            <p className="text-sm font-semibold mt-2">
+              {request.student!.missedCount > 0
+                ? `⚠️ ${request.student!.missedCount} rendez-vous non honoré${request.student!.missedCount > 1 ? "s" : ""}`
+                : "✅ Aucun rendez-vous non honoré"}
+            </p>
             <div className="mt-4 bg-warning/15 border-2 border-warning rounded-2xl p-3 text-left">
               <p className="text-sm font-bold">🔒 Vérifiez l'identité</p>
               <p className="text-sm text-muted-foreground mt-1">
@@ -2670,12 +2668,6 @@ function FamilyWait({
             />
           )}
 
-          {paid && <CompanionProfileHeader
-            firstName={request.student!.firstName}
-            missions={request.student!.missions}
-            thumbs={request.student!.thumbs}
-            missedCount={request.student!.missedCount}
-          />}
 
           {complianceCheck ? (
             <CesuRecurrenceModal
