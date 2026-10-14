@@ -184,6 +184,7 @@ export const store = {
     const city = data.address.split(",").pop()?.trim() || "Ville inconnue";
     const req: Request = {
       ...data,
+      durationHours: Math.max(1, Number.isFinite(data.durationHours) ? (data.durationHours as number) : 1),
       id,
       createdAt: Date.now(),
       status: "searching",

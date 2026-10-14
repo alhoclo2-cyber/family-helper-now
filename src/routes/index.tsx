@@ -877,7 +877,13 @@ function FamilyForm({
       : maxDurationFor(when);
   const nightBlocked =
     referenceStartMin < MISSION_START_LIMIT_MIN ||
-    referenceStartMin + durationHours * 60 > MISSION_END_LIMIT_MIN;
+    referenceStartMin + Math.max(1, durationHours) * 60 > MISSION_END_LIMIT_MIN;
+  const [submitError, setSubmitError] = useState<null | "form" | "when" | "night">(null);
+  const submitErrorRef = useRef<HTMLParagraphElement>(null);
+  const showSubmitError = (k: "form" | "when" | "night") => {
+    setSubmitError(k);
+    setTimeout(() => submitErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+  };
 
   const [autoSearch, setAutoSearch] = useState<boolean | null>(
     initial?.autoSearch !== undefined ? initial.autoSearch : null,
@@ -1150,9 +1156,11 @@ function FamilyForm({
     e.preventDefault();
     if (!formValid) {
       setShowErrors(true);
+      showSubmitError("form");
       return;
     }
     setShowErrors(false);
+    setSubmitError(null);
     if (!addressCheck.success || !phone.trim() || !okAcknowledgement) return;
     if (need === "Présence et Compagnie" && commissions.length > 0 && !commissionCertified) return;
     if (isOutdoor && !continuity) return;
@@ -1168,17 +1176,24 @@ function FamilyForm({
     // Un rendez-vous doit être pris au moins 24 h à l'avance.
     if (mode === "scheduled" && new Date(when).getTime() - Date.now() < 24 * 60 * 60 * 1000) {
       setWhenError(true);
+      showSubmitError("when");
       return;
     }
     setWhenError(false);
 
-    // Aucune mission de nuit : la mission doit se terminer au plus tard à 22h30.
-    if (mode === "scheduled" && nightBlocked) return;
-
-    // Filet de sécurité en mode asap : recalcul au moment du clic, l'affichage peut être obsolète.
-    if (mode === "asap") {
-      const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
-      if (nowMin < MISSION_START_LIMIT_MIN || nowMin + durationHours * 60 > MISSION_END_LIMIT_MIN) return;
+    // Aucune mission de nuit : durée minimale 1 h, créneau entre 7h00 et 22h30.
+    {
+      const startMin = mode === "asap"
+        ? new Date().getHours() * 60 + new Date().getMinutes()
+        : missionStartMin;
+      if (
+        !(durationHours >= 1) ||
+        startMin < MISSION_START_LIMIT_MIN ||
+        startMin + Math.max(1, durationHours) * 60 > MISSION_END_LIMIT_MIN
+      ) {
+        showSubmitError("night");
+        return;
+      }
     }
 
     if (mode === "scheduled" && autoSearch === false && pickedCompanion) {
@@ -1659,7 +1674,10 @@ function FamilyForm({
             onChange={(e) => {
               setWhen(e.target.value);
               setWhenError(false);
-              setDurationHours((d) => Math.min(d, maxDurationFor(e.target.value)));
+              setDurationHours((d) => {
+                const base = !Number.isFinite(d) || d < 1 ? 1 : d;
+                return Math.max(1, Math.min(base, maxDurationFor(e.target.value)));
+              });
             }}
             className={`block w-full min-w-0 min-h-[60px] appearance-none px-5 py-4 rounded-2xl border-2 bg-card text-lg outline-none ${
               whenError ? "border-destructive" : "border-border focus:border-primary"
@@ -1879,17 +1897,21 @@ function FamilyForm({
         </div>
       )}
       <div className="flex-1" />
+      {submitError && (
+        <p ref={submitErrorRef} role="alert" className="my-2 scroll-mt-24 text-sm font-semibold text-destructive text-center">
+          {submitError === "form"
+            ? "Un champ est incomplet ou une case n'est pas cochée : vérifiez les éléments signalés en rouge."
+            : submitError === "when"
+              ? "Le créneau choisi n'est pas possible : un rendez-vous se réserve au moins 24 h à l'avance."
+              : "Le créneau choisi n'est pas possible : nos missions se déroulent entre 7h00 et 22h30."}
+        </p>
+      )}
       <button
         type="submit"
         className="btn-huge bg-primary text-primary-foreground disabled:opacity-50"
       >
         {mode === "asap" ? "Lancer la recherche" : "Valider la réservation"}
       </button>
-      {showErrors && !formValid && (
-        <p className="text-sm font-semibold text-destructive text-center -mt-3">
-          Votre demande ne peut pas être validée. Veuillez compléter les éléments indiqués en rouge.
-        </p>
-      )}
       {complianceCheck && (
         <CesuRecurrenceModal
           companionId={pickedCompanion}

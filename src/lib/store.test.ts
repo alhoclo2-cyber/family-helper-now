@@ -12,3 +12,7 @@ describe("Isolation des demandes d'exemple", () => {
     });
   }
 });
+test("createRequest n'enregistre jamais une durée inférieure à 1 h", () => {
+  const id = store.createRequest({ need: "Pharmacie", address: "1 rue A, Paris", phone: "0600000000", durationHours: 0 });
+  assert.equal(store.getState().requests.find((r) => r.id === id)?.durationHours, 1);
+});
