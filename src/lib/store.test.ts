@@ -12,3 +12,9 @@ describe("Isolation des demandes d'exemple", () => {
     });
   }
 });
+import { store as _s } from "./store";
+import { test as _t, expect as _e } from "vitest";
+_t("createRequest never stores a duration below 1 h", () => {
+  const id = _s.createRequest({ need: "Pharmacie", address: "1 rue A, Paris", phone: "0600000000", durationHours: 0 });
+  _e(_s.getState().requests.find((r) => r.id === id)?.durationHours).toBe(1);
+});
