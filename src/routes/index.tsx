@@ -1211,7 +1211,7 @@ function FamilyForm({
     <form onSubmit={submit} className="flex-1 flex flex-col px-5 py-6 gap-6">
       <button type="button" onClick={onBack} className="text-base text-muted-foreground text-left">← Retour</button>
       <div className={`rounded-2xl p-3 text-sm font-semibold text-center ${mode === "asap" ? "bg-primary/10 text-primary" : "bg-accent text-foreground"}`}>
-        {mode === "asap" ? "🆘 Urgence — maintenant" : "📅 Prendre un rendez-vous"}
+        {mode === "asap" ? "Besoin rapidement" : "📅 Prendre un rendez-vous"}
       </div>
       {mode === "asap" && nightBlocked && (
         <p className="text-xs font-semibold text-destructive">
@@ -2565,7 +2565,7 @@ function FamilyWait({
                 <div className="absolute inset-10 rounded-full bg-primary grid place-items-center text-3xl">📡</div>
               </div>
               <div>
-                <p className="text-2xl font-bold">Alerte urgente envoyée</p>
+                <p className="text-2xl font-bold">Votre demande a été envoyée</p>
                 <p className="text-base text-muted-foreground mt-2">
                   {nearbyCount} compagnon(s) disponible(s) dans leur rayon d'intervention ont reçu une notification.
                   Le premier qui accepte verrouille la mission.
@@ -2705,9 +2705,9 @@ function FamilyWait({
 
           {isSos ? (
             <div className="w-full rounded-2xl border-2 border-border bg-card p-3 text-left">
-              <p className="text-sm font-bold">🆘 Demande d'urgence</p>
+              <p className="text-sm font-bold">Besoin rapidement</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Une demande SOS ne peut être ni modifiée ni annulée pendant la recherche. Pour un besoin planifiable,
+                Une demande « Besoin rapidement » ne peut être ni modifiée ni annulée pendant la recherche. Pour un besoin planifiable,
                 utilisez « Prendre un rendez-vous ».
               </p>
               <a
