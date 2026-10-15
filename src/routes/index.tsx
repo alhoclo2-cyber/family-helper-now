@@ -2871,15 +2871,6 @@ function FamilyWait({
                 </div>
               )}
               <CompanionContactButtons request={request} />
-              {isSos && (
-                <button
-                  type="button"
-                  onClick={() => onEditRequest()}
-                  className="py-4 rounded-2xl border-2 border-primary text-primary font-bold text-sm w-full"
-                >
-                  ✏️ Modifier les informations de ma demande
-                </button>
-              )}
               <MissionClosureBlock request={request} role="family" />
             </>
           )}
