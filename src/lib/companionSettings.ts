@@ -18,7 +18,7 @@ export const ALL_NEEDS: NeedType[] = [
   "Petit bricolage",
   "Aide administrative",
   "Aide informatique & smartphone",
-  "Invalidité temporaire",
+  "Accompagnement d'un adulte",
   "Enfants de plus de 3 ans",
   "Garde d'enfants",
   "Aide aux devoirs",

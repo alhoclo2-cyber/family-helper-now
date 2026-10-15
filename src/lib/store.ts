@@ -12,7 +12,7 @@ export type NeedType =
   | "Petit bricolage"
   | "Aide administrative"
   | "Aide informatique & smartphone"
-  | "Invalidité temporaire"
+  | "Accompagnement d'un adulte"
   | "Enfants de plus de 3 ans"
   | "Sortir ou nourrir animal de compagnie"
   | "Arroser les plantes"
