@@ -3588,8 +3588,8 @@ function MissionInfo({ r, full }: { r: Request; full?: boolean }) {
       <p className="font-semibold">🗓️ {r.scheduledAt ? formatSchedule(r.scheduledAt) : "Aujourd'hui, dès que possible"}</p>
       <p>📍 {r.address}</p>
       <p className="text-muted-foreground">🧭 {companionDistance(r)} km de chez vous</p>
-      <p>⏱️ {hours} h · {formatPrice(rate)} € net/h</p>
-      <p className="text-lg font-black">💶 Total net : {formatPrice(rate * hours)} €</p>
+      <p>⏱️ {hours} h</p>
+      <p className="text-lg font-black">💶 Total net : {formatPrice(rate * hours)} € · {formatPrice(rate)} € net/h</p>
       {full && (
         <div className="mt-2 flex flex-col gap-1">
           {r.childAge && <p>🎂 Enfant : {r.childAge} ans</p>}
