@@ -3589,7 +3589,7 @@ function MissionInfo({ r, full }: { r: Request; full?: boolean }) {
       <p>📍 {r.address}</p>
       <p className="text-muted-foreground">🧭 {companionDistance(r)} km de chez vous</p>
       <p>⏱️ {hours} h</p>
-      <p className="text-lg font-black">💶 Total net : {formatPrice(rate * hours)} € · {formatPrice(rate)} € net/h</p>
+      <p><span className="text-lg font-black">💶 Total net : {formatPrice(rate * hours)} €</span><span className="text-base font-normal">, soit {formatPrice(rate)} € net/h</span></p>
       {full && (
         <div className="mt-2 flex flex-col gap-1">
           {r.childAge && <p>🎂 Enfant : {r.childAge} ans</p>}
