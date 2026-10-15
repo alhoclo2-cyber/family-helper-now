@@ -945,7 +945,7 @@ function FamilyForm({
       title: "Accompagnement extérieur",
       icon: "🚶",
       services: [
-        { v: "Invalidité temporaire", icon: "🤕" },
+        { v: "Accompagnement d'un adulte", icon: "🧑‍🤝‍🧑" },
         { v: "Enfants de plus de 3 ans", icon: "🚸" },
       ],
     },
