@@ -558,13 +558,18 @@ function MandatairePanel() {
 
 /* ---------------- FAMILY ---------------- */
 
-// Solélia ne propose pas de missions de nuit : fin de mission au plus tard à 22h30,
-// début au plus tôt à 7h00. Shared par FamilyFlow (blocage au clic) et FamilyForm.
-const MISSION_START_LIMIT_MIN = 7 * 60; // 7h00
-const MISSION_END_LIMIT_MIN = 22 * 60 + 30; // 22h30
-// 20h30 — tient compte du délai de réponse (jusqu'à 20 min) et d'arrivée (~10 min)
+// Solélia ne propose pas de missions de nuit : fin de mission au plus tard à 21h00,
+// début au plus tôt à 6h00. Shared par FamilyFlow (blocage au clic) et FamilyForm.
+const MISSION_START_LIMIT_MIN = 6 * 60; // 6h00
+const MISSION_END_LIMIT_MIN = 21 * 60; // 21h00 (fin à 21h00 pile autorisée)
+// Libellés générés depuis les constantes pour ne jamais diverger.
+const fmtLimit = (min: number) => `${Math.floor(min / 60)}h${String(min % 60).padStart(2, "0")}`;
+const MISSION_START_LABEL = fmtLimit(MISSION_START_LIMIT_MIN);
+const MISSION_END_LABEL = fmtLimit(MISSION_END_LIMIT_MIN);
+// 19h00 (2 h avant la limite de fin) — tient compte du délai de réponse (jusqu'à 20 min) et d'arrivée (~10 min)
 // du compagnon avant le début réel de la mission.
-const MISSION_BUTTON_CUTOFF_MIN = 20 * 60 + 30;
+const MISSION_BUTTON_CUTOFF_MIN = 19 * 60;
+const MISSION_BUTTON_CUTOFF_LABEL = fmtLimit(MISSION_BUTTON_CUTOFF_MIN);
 
 function FamilyFlow() {
   const [step, setStep] = useState<"home" | "form" | "wait" | "account" | "reserved">("home");
@@ -717,12 +722,12 @@ function FamilyFlow() {
           <div className="w-full bg-destructive/10 border-2 border-destructive/40 rounded-2xl p-4 text-center">
             {nightClosed === "evening" ? (
               <p className="text-sm font-semibold text-destructive">
-                Pour un besoin rapide, la recherche d'un compagnon doit être lancée avant 20h30, afin de lui laisser le
+                Pour un besoin rapide, la recherche d'un compagnon doit être lancée avant {MISSION_BUTTON_CUTOFF_LABEL}, afin de lui laisser le
                 temps de répondre et de vous rejoindre.
               </p>
             ) : (
             <p className="text-sm font-semibold text-destructive">
-              Solélia ne propose pas de mission entre 22h30 et 7h00. Revenez sur la plateforme dans cette plage horaire
+              Solélia ne propose pas de mission entre {MISSION_END_LABEL} et {MISSION_START_LABEL}. Revenez sur la plateforme dans cette plage horaire
               pour réserver un compagnon.
             </p>
             )}
@@ -857,8 +862,8 @@ function FamilyForm({
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   });
 
-  // Solélia ne propose pas de missions de nuit : fin de mission au plus tard à 22h30,
-  // début au plus tôt à 7h00. Les constantes sont partagées au niveau module.
+  // Solélia ne propose pas de missions de nuit : fin de mission au plus tard à 21h00,
+  // début au plus tôt à 6h00. Les constantes sont partagées au niveau module.
   const maxDurationFor = (w: string) => {
     if (!w) return 12;
     const d = new Date(w);
@@ -1181,7 +1186,7 @@ function FamilyForm({
     }
     setWhenError(false);
 
-    // Aucune mission de nuit : durée minimale 1 h, créneau entre 7h00 et 22h30.
+    // Aucune mission de nuit : durée minimale 1 h, créneau entre 6h00 et 21h00.
     {
       const startMin = mode === "asap"
         ? new Date().getHours() * 60 + new Date().getMinutes()
@@ -1215,7 +1220,7 @@ function FamilyForm({
       </div>
       {mode === "asap" && nightBlocked && (
         <p className="text-xs font-semibold text-destructive">
-          Solélia ne propose pas de mission au-delà de 22h30 ni avant 7h00. Pour un besoin urgent de nuit,
+          Solélia ne propose pas de mission au-delà de {MISSION_END_LABEL} ni avant {MISSION_START_LABEL}. Pour un besoin urgent de nuit,
           rapprochez-vous d'un service de soins infirmiers à domicile ou d'une structure spécialisée.
           En cas d'urgence vitale, composez le 15 (SAMU).
         </p>
@@ -1691,7 +1696,7 @@ function FamilyForm({
           )}
           {nightBlocked && (
             <p className="text-xs font-semibold text-destructive mt-2">
-              Solélia propose des missions jusqu'à 22h30 maximum. Pour un besoin de présence de nuit ou de surveillance
+              Solélia propose des missions jusqu'à {MISSION_END_LABEL} maximum. Pour un besoin de présence de nuit ou de surveillance
               pendant le sommeil, ce type de prestation ne relève pas de notre plateforme — rapprochez-vous d'un service
               de soins infirmiers à domicile ou d'une structure spécialisée.
             </p>
@@ -1903,7 +1908,7 @@ function FamilyForm({
             ? "Un champ est incomplet ou une case n'est pas cochée : vérifiez les éléments signalés en rouge."
             : submitError === "when"
               ? "Le créneau choisi n'est pas possible : un rendez-vous se réserve au moins 24 h à l'avance."
-              : "Le créneau choisi n'est pas possible : nos missions se déroulent entre 7h00 et 22h30."}
+              : `Le créneau choisi n'est pas possible : nos missions se déroulent entre ${MISSION_START_LABEL} et ${MISSION_END_LABEL}.`}
         </p>
       )}
       <button
@@ -1995,7 +2000,7 @@ function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolea
   const [reason, setReason] = useState("");
   const [otherDetail, setOtherDetail] = useState("");
   const [editing, setEditing] = useState(false);
-  const [reschedule, setReschedule] = useState<"idle" | "checking" | "refused" | "confirmed">("idle");
+  const [reschedule, setReschedule] = useState<"idle" | "checking" | "refused" | "hours" | "confirmed">("idle");
   const [newWhen, setNewWhen] = useState<string>(() =>
     request.scheduledAt ? toLocalInput(request.scheduledAt) : "",
   );
@@ -2033,6 +2038,11 @@ function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolea
               </p>
             </div>
           )}
+          {reschedule === "hours" && (
+            <p className="text-sm font-semibold text-destructive text-center">
+              Ce créneau n'est pas possible : nos missions se déroulent entre {MISSION_START_LABEL} et {MISSION_END_LABEL}.
+            </p>
+          )}
           {reschedule === "confirmed" && (
             <p className="text-sm font-bold text-success">
               ✅ Modification acceptée : un compagnon est disponible sur ce créneau.
@@ -2052,6 +2062,15 @@ function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolea
               onClick={() => {
                 const ts = new Date(newWhen).getTime();
                 if (Number.isNaN(ts)) return;
+                const d = new Date(ts);
+                const startMin = d.getHours() * 60 + d.getMinutes();
+                if (
+                  startMin < MISSION_START_LIMIT_MIN ||
+                  startMin + requestDurationMin(request) > MISSION_END_LIMIT_MIN
+                ) {
+                  setReschedule("hours");
+                  return;
+                }
                 setReschedule("checking");
                 setTimeout(() => {
                   if (slotAvailable(ts)) {
