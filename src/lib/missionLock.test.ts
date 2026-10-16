@@ -1,5 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { store } from "@/lib/store";
+import { describe, test as it } from "node:test";
+import assert from "node:assert/strict";
+const expect = (v: unknown) => ({ toBe: (e: unknown) => assert.equal(v, e), toHaveLength: (n: number) => assert.equal((v as unknown[]).length, n), toBeUndefined: () => assert.equal(v, undefined) });
+import { store } from "./store";
 
 const mk = (offsetMs: number) => {
   const id = store.createRequest({ need: "companionship", address: "1 rue, Laon", scheduledAt: Date.now() + offsetMs, durationHours: 2 } as never);
