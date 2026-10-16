@@ -9,6 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { IncidentReportBlock } from "@/components/IncidentReportBlock";
 import { ThumbUpButton } from "@/components/CompanionBadges";
 import { store, type Request } from "@/lib/store";
 import {
@@ -121,6 +122,7 @@ export function MissionClosureBlock({ request, role }: { request: Request; role:
           Mission non effectuée
         </button>
       )}
+      <IncidentReportBlock request={request} role={role} />
       {role === "family" && (mine || closed) && c !== "problem" && (
         <ThumbUpButton given={!!request.thumbsGiven} onGive={() => store.giveThumb(request.id)} />
       )}
