@@ -23,6 +23,12 @@ export function getMissionEnd(r: Request): number | null {
   return start == null ? null : start + requestDurationMin(r) * 60_000;
 }
 
+/** true dès que l'heure de début de la mission est atteinte. */
+export function isMissionStarted(r: Request): boolean {
+  const start = getMissionStart(r);
+  return start != null && Date.now() >= start;
+}
+
 export const isCompletionClosed = (r: Request) =>
   r.completion === "validated" || r.completion === "auto_validated" || r.completion === "problem";
 
@@ -151,6 +157,6 @@ export function shiftMissionEnd(r: Request, offsetMs: number) {
   const end = getMissionEnd(r);
   if (end == null) return;
   const delta = Date.now() - offsetMs - end;
-  if (r.scheduledAt) store.updateRequest(r.id, { scheduledAt: r.scheduledAt + delta });
-  else if (r.acceptedAt) store.updateRequest(r.id, { acceptedAt: r.acceptedAt + delta });
+  if (r.scheduledAt) store.shiftMissionTimeForTest(r.id, { scheduledAt: r.scheduledAt + delta });
+  else if (r.acceptedAt) store.shiftMissionTimeForTest(r.id, { acceptedAt: r.acceptedAt + delta });
 }

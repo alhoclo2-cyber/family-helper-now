@@ -1996,6 +1996,17 @@ function toLocalInput(ts: number) {
 
 // Bloc unique : modifier OU annuler un rendez-vous (fenêtre de 24 h).
 function ScheduleManageBlock({ request, paid }: { request: Request; paid: boolean }) {
+  if (isMissionStarted(request))
+    return (
+      <div className="rounded-2xl border-2 border-border bg-card p-4 text-sm text-left">
+        Cette mission a commencé : elle ne peut plus être modifiée ni annulée. En cas de problème, utilisez le bouton
+        « Signaler un incident » plus haut sur cette page.
+      </div>
+    );
+  if (request.status === "cancelled") return null;
+  return <ScheduleManageBlockInner request={request} paid={paid} />;
+}
+function ScheduleManageBlockInner({ request, paid }: { request: Request; paid: boolean }) {
   const [confirm, setConfirm] = useState(false);
   const [reason, setReason] = useState("");
   const [otherDetail, setOtherDetail] = useState("");
@@ -2466,7 +2477,7 @@ function FamilyWait({
             onClick={() => { store.discardRequest(request.id); onEditRequest(request); }}
             className="btn-huge bg-primary text-primary-foreground w-full"
           >
-            ✏️ Modifier mes critères
+            Faire une nouvelle demande
           </button>
         )}
         <button
@@ -2875,7 +2886,7 @@ function FamilyWait({
             </>
           )}
           {!!request.scheduledAt && paid && <ScheduleManageBlock request={request} paid={paid} />}
-          {!paid && (
+          {!paid && !isMissionStarted(request) && (
             <button
               type="button"
               onClick={() => onEditRequest()}
@@ -3656,6 +3667,16 @@ const COMPANION_CANCEL_REASONS = [
 
 
 function CompanionCancelBlock({ request }: { request: Request }) {
+  if (isMissionStarted(request))
+    return (
+      <div className="rounded-2xl border-2 border-border bg-card p-4 text-sm text-left">
+        Cette mission a commencé : vous ne pouvez plus vous désister. En cas de problème, utilisez le bouton
+        « Signaler un incident » plus haut sur cette page.
+      </div>
+    );
+  return <CompanionCancelBlockInner request={request} />;
+}
+function CompanionCancelBlockInner({ request }: { request: Request }) {
   const [confirm, setConfirm] = useState(false);
   const [done, setDone] = useState<"released" | "strike" | null>(null);
   const [reason, setReason] = useState("");

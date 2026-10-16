@@ -16,7 +16,9 @@ export type EmailKind =
   | "mission_auto_validated"
   | "mission_problem_other"
   | "mission_problem_confirmation"
-  | "mission_problem_solelia";
+  | "mission_problem_solelia"
+  | "mission_incident_solelia"
+  | "mission_incident_confirmation";
 
 export type SimulatedEmail = {
   id: string;
@@ -56,6 +58,8 @@ type Params = {
   missionDate?: string;
   role?: "family" | "companion";
   reason?: string;
+  detail?: string;
+  companionName?: string;
 };
 
 const OPEN = { linkLabel: "Ouvrir mon espace", linkTo: "/" };
@@ -109,6 +113,18 @@ export function build(kind: EmailKind, p: Params): { subject: string; body: stri
       return {
         subject: "Mission non effectuée signalée",
         body: `Mission du ${md}, signalée par ${p.role === "companion" ? "Compagnon" : "Famille"}. Raison : « ${p.reason ?? ""} ». Les heures ne sont pas déclarées.`,
+        ...OPEN,
+      };
+    case "mission_incident_solelia":
+      return {
+        subject: "Incident signalé pendant une mission",
+        body: `Signalement de : ${p.role === "companion" ? "Compagnon" : "Famille"}. Motif : « ${p.reason ?? ""} ».${p.detail ? ` Détail : « ${p.detail} ».` : ""} Mission du ${md}, compagnon : ${p.companionName ?? "non renseigné"}. Ce signalement est une trace : il ne clôture pas la mission.`,
+        ...OPEN,
+      };
+    case "mission_incident_confirmation":
+      return {
+        subject: "Votre signalement d'incident a bien été enregistré",
+        body: `Nous avons bien enregistré votre signalement pour la mission du ${md} (motif : « ${p.reason ?? ""} »). Solélia en garde une trace, mais ne tranche pas les litiges : la suite se décide directement entre le particulier et le compagnon.`,
         ...OPEN,
       };
     case "deletion_confirmation":

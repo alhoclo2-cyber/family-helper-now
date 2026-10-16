@@ -118,6 +118,7 @@ export type Request = {
   companionValidatedAt?: number;
   hoursToDeclare?: number; // heures réservées à déclarer (jamais modifiables)
   problemReport?: { by: "family" | "companion"; reason: string; createdAt: number };
+  incidents?: { by: "family" | "companion"; reason: string; detail?: string; createdAt: number }[]; // signalements d'incident (trace uniquement)
   remindersSent?: { preEnd?: number; end?: number; h24?: number; auto?: number };
   declaredAt?: number; // date de déclaration par Solélia Accompagnement
   soleliaNote?: string; // note interne Mandataire
@@ -173,6 +174,15 @@ let state: {
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
+/** Mission commencée : début = scheduledAt (RDV) ou acceptedAt + 30 min (Besoin rapidement). */
+export function missionStartedFor(r: Request, now = Date.now()): boolean {
+  const start = r.scheduledAt ?? (r.acceptedAt != null ? r.acceptedAt + 30 * 60_000 : null);
+  return start != null && now >= start;
+}
+const LOCKED_FIELDS = ["scheduledAt", "durationHours", "address", "need", "salaryNetHourly"] as const;
+const isLocked = (r: Request) => r.status === "cancelled" || missionStartedFor(r);
+const findReq = (id: string) => state.requests.find((r) => r.id === id);
+
 export const store = {
   getState: () => state,
   subscribe: (l: () => void) => {
@@ -196,6 +206,12 @@ export const store = {
     return id;
   },
   updateRequest: (id: string, patch: Partial<Omit<Request, "id" | "createdAt" | "status" | "student">>) => {
+    const cur = findReq(id);
+    if (cur && isLocked(cur)) {
+      const p = { ...patch } as Record<string, unknown>;
+      for (const k of LOCKED_FIELDS) delete p[k];
+      patch = p as typeof patch;
+    }
     state = {
       ...state,
       requests: state.requests.map((r) => (r.id === id ? { ...r, ...patch } : r)),
@@ -240,6 +256,8 @@ export const store = {
   },
   // Supprime silencieusement une demande (remplacée par une version modifiée).
   discardRequest: (id: string) => {
+    const cur = findReq(id);
+    if (cur && (missionStartedFor(cur) || (cur.status === "cancelled" && cur.paid))) return;
     state = { ...state, requests: state.requests.filter((r) => r.id !== id) };
     emit();
   },
@@ -284,6 +302,8 @@ export const store = {
 
   // La famille annule sa demande. Remboursement uniquement si > 24h avant le RDV.
   cancelRequest: (id: string, refunded: boolean, reason: string) => {
+    const cur = findReq(id);
+    if (cur && (cur.status === "cancelled" || missionStartedFor(cur))) return;
     state = {
       ...state,
       requests: state.requests.map((r) =>
@@ -296,6 +316,8 @@ export const store = {
   },
   // Le compagnon se désiste avec un motif transmis à la famille.
   releaseRequestWithReason: (id: string, companionName: string, reason: string) => {
+    const cur = findReq(id);
+    if (cur && missionStartedFor(cur)) return;
     state = {
       ...state,
       requests: state.requests.map((r) =>
@@ -318,11 +340,26 @@ export const store = {
   },
   // Le compagnon se désiste : la mission repart en recherche d'un autre compagnon.
   releaseRequest: (id: string) => {
+    const cur = findReq(id);
+    if (cur && missionStartedFor(cur)) return;
     state = {
       ...state,
       requests: state.requests.map((r) =>
         r.id === id ? { ...r, status: "searching" as const, student: undefined } : r,
       ),
+    };
+    emit();
+  },
+  // Panneau de test uniquement : décale l'horaire sans les gardes de verrouillage.
+  shiftMissionTimeForTest: (id: string, patch: Partial<Pick<Request, "scheduledAt" | "acceptedAt">>) => {
+    state = { ...state, requests: state.requests.map((r) => (r.id === id ? { ...r, ...patch } : r)) };
+    emit();
+  },
+  // Signalement d'incident : simple trace, ne clôture ni ne modifie la mission.
+  addIncident: (id: string, incident: { by: "family" | "companion"; reason: string; detail?: string; createdAt: number }) => {
+    state = {
+      ...state,
+      requests: state.requests.map((r) => (r.id === id ? { ...r, incidents: [...(r.incidents ?? []), incident] } : r)),
     };
     emit();
   },
