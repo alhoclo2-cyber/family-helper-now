@@ -3355,7 +3355,7 @@ function StudentFlow() {
   }
 
 
-  if (active) return <StudentDetail request={active} onBack={() => setOpenId(null)} blocked={pendingConfirmation} meId={me.id} />;
+  if (active) return <StudentDetail request={active} onBack={() => setOpenId(null)} blocked={pendingConfirmation} />;
 
   const acceptedList = mine.filter((r) => !r.demo || demo || testOn);
   const upcomingCount = splitAccepted(acceptedList).upcoming.length;
@@ -3978,7 +3978,7 @@ function CompanionCancelBlockInner({ request }: { request: Request }) {
 }
 
 
-function StudentDetail({ request, onBack, blocked, meId }: { request: Request; onBack: () => void; blocked?: boolean; meId?: string }) {
+function StudentDetail({ request, onBack, blocked }: { request: Request; onBack: () => void; blocked?: boolean }) {
   const accepted = request.status === "accepted";
   const [taken, setTaken] = useState(false);
   const input = useArrivalInput(request.durationHours ?? 1);
