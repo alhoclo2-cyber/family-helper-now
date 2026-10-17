@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from "react";
-import { checkArrival, formatArrivalTime, type Arrival } from "@/lib/arrival";
+import { arrivalTimeToday, checkArrival, formatArrivalTime, type Arrival } from "@/lib/arrival";
 
 export function useArrivalInput(durationHours: number) {
   const [time, setTime] = useState("");
@@ -10,10 +10,7 @@ export function useArrivalInput(durationHours: number) {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
-  const date = new Date(now);
-  const [hours, minutes] = time.split(":").map(Number);
-  date.setHours(hours, minutes, 0, 0);
-  const arrival: Arrival = { arrivalAt: date.getTime(), travelMinutes: Number(travel) };
+  const arrival: Arrival = { arrivalAt: arrivalTimeToday(time, now), travelMinutes: Number(travel) };
   const complete = time !== "" && travel !== "" && now > 0;
   const check = complete ? checkArrival({ ...arrival, durationHours, now }) : null;
   const valid = check?.ok === true;

@@ -12,6 +12,23 @@ const minutesInParis = (at: number) => {
 const parisDay = (at: number) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris" }).format(at);
 const limitTime = (min: number) => `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, "0")}`;
 
+// The time input represents today's French time, irrespective of the device's timezone.
+export function arrivalTimeToday(time: string, now: number): number {
+  if (!/^\d{2}:\d{2}$/.test(time)) return NaN;
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);
+  const part = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  const [hour, minute] = time.split(":").map(Number);
+  const target = Date.UTC(part("year"), part("month") - 1, part("day"), hour, minute);
+  let result = target;
+  for (let i = 0; i < 2; i++) {
+    const displayed = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).formatToParts(result);
+    const p = (type: string) => Number(displayed.find((value) => value.type === type)?.value);
+    const asUtc = Date.UTC(p("year"), p("month") - 1, p("day"), p("hour"), p("minute"), p("second"));
+    result += target - asUtc;
+  }
+  return result;
+}
+
 export function checkArrival({ arrivalAt, travelMinutes, durationHours, now }: Arrival & { durationHours: number; now: number }) {
   const departAt = arrivalAt - travelMinutes * MINUTE;
   const endAt = arrivalAt + durationHours * 60 * MINUTE;
