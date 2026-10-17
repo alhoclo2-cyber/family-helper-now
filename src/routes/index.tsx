@@ -3978,22 +3978,30 @@ function CompanionCancelBlockInner({ request }: { request: Request }) {
 }
 
 
-function StudentDetail({ request, onBack }: { request: Request; onBack: () => void }) {
+function StudentDetail({ request, onBack, blocked, meId }: { request: Request; onBack: () => void; blocked?: boolean; meId?: string }) {
   const accepted = request.status === "accepted";
   const [taken, setTaken] = useState(false);
   const input = useArrivalInput(request.durationHours ?? 1);
   const accept = () => {
+    if (blocked) return;
     if (!request.scheduledAt && !input.valid) return;
     const ok = store.acceptRequest(request.id, 0, undefined, request.scheduledAt ? undefined : input.arrival);
     if (!ok) setTaken(true);
   };
 
   if (request.status === "cancelled") {
+    const systemCancel = request.cancelledBy === "system";
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
         <div className="text-6xl">🔔</div>
-        <h2 className="text-2xl font-black">Rendez-vous annulé par la famille</h2>
-        <p className="text-base text-muted-foreground">Ne vous déplacez pas pour cette mission.</p>
+        <h2 className="text-2xl font-black">{systemCancel ? "Mission annulée" : "Rendez-vous annulé par la famille"}</h2>
+        <p className="text-base text-muted-foreground">
+          {systemCancel
+            ? request.cancelCode === "out_of_hours"
+              ? "Cette mission a été annulée : elle ne peut plus se terminer avant 21 h 00."
+              : "Cette mission a été annulée : le particulier n'a pas répondu à temps."
+            : "Ne vous déplacez pas pour cette mission."}
+        </p>
         {request.cancelReason && (
           <div className="w-full bg-card rounded-2xl p-4 border-2 border-border text-left">
             <p className="text-sm text-muted-foreground">Motif indiqué par la famille</p>
