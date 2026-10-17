@@ -4124,15 +4124,25 @@ function StudentDetail({ request, onBack, blocked, meId }: { request: Request; o
           </div>
           <div className="flex-1" />
           {!request.scheduledAt && <ArrivalFields input={input} />}
-          <Button disabled={!request.scheduledAt && !input.valid} onClick={accept} className="btn-huge bg-success text-success-foreground whitespace-normal">
+          <Button disabled={blocked || (!request.scheduledAt && !input.valid)} onClick={accept} className="btn-huge bg-success text-success-foreground whitespace-normal">
             ✅ Accepter la mission
           </Button>
+          {blocked && (
+            <p className="text-center text-sm font-semibold text-muted-foreground">
+              Vous avez une mission en attente de confirmation du particulier.
+            </p>
+          )}
         </>
       ) : (
 
         <>
           <div className="bg-card rounded-3xl p-6 border-2 border-success">
             <p className="text-sm text-success font-bold uppercase tracking-wide">Mission acceptée</p>
+            {!request.acknowledged && !request.scheduledAt && !request.demo && (
+              <p className="mt-2 rounded-xl bg-warning/10 border-2 border-warning p-3 text-sm font-bold">
+                ⏳ En attente de la réponse du particulier
+              </p>
+            )}
             <div className="mt-4">
               <p className="text-sm text-muted-foreground">Adresse</p>
               <p className="text-lg font-semibold">{request.address}</p>
