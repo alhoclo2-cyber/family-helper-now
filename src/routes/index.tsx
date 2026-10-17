@@ -3654,6 +3654,7 @@ function CompanionMissions({
   const rdv = all.filter((r) => r.flow === "scheduled" || !!r.scheduledAt).sort((a, b) => (a.scheduledAt ?? 0) - (b.scheduledAt ?? 0));
 
   const accept = (r: Request, arrival?: Arrival) => {
+    if (blocked) return setNotice("Vous avez une mission en attente de confirmation du particulier.");
     if (!r.scheduledAt && (!arrival || !checkArrival({ ...arrival, durationHours: r.durationHours ?? 1, now: Date.now() }).ok)) return;
     const ok = store.acceptRequest(r.id, 0, me, arrival);
     setGhosts((g) => g.filter((x) => x.id !== r.id));
@@ -3685,7 +3686,7 @@ function CompanionMissions({
           ← Retour
         </button>
         <MissionInfo r={detail} full />
-        <MissionActions key={detail.id} request={detail} onAccept={(arrival) => accept(detail, arrival)} onDecline={() => decline(detail)} />
+        <MissionActions key={detail.id} request={detail} blocked={blocked} onAccept={(arrival) => accept(detail, arrival)} onDecline={() => decline(detail)} />
       </div>
     );
 
@@ -3702,6 +3703,7 @@ function CompanionMissions({
         </button>
       </div>
       <h2 className="text-2xl font-black">Missions proposées</h2>
+      <RefusedNotices meId={me.id} />
       <div className="grid grid-cols-2 gap-2">
         <button className={tabCls(tab === "today")} onClick={() => setTab("today")}>Aujourd'hui ({today.length})</button>
         <button className={tabCls(tab === "rdv")} onClick={() => setTab("rdv")}>Sur rendez-vous ({rdv.length})</button>
