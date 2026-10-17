@@ -1,5 +1,6 @@
 // Simple in-memory store shared across the app for the demo flow.
 import { useRef, useSyncExternalStore } from "react";
+import { checkArrival, type Arrival } from "./arrival";
 
 export type NeedType =
   | "Présence et Compagnie"
@@ -113,6 +114,8 @@ export type Request = {
   companionCancelNotice?: { companionName: string; reason: string } | null; // dernier motif d'un compagnon qui s'est désisté
   student?: Companion;
   acceptedAt?: number; // heure d'acceptation par le compagnon
+  arrivalAt?: number;
+  travelMinutes?: number;
   completion?: "pending" | "validated" | "auto_validated" | "problem";
   familyValidatedAt?: number;
   companionValidatedAt?: number;
@@ -176,10 +179,10 @@ const emit = () => listeners.forEach((l) => l());
 
 /** Mission commencée : début = scheduledAt (RDV) ou acceptedAt + 30 min (Besoin rapidement). */
 export function missionStartedFor(r: Request, now = Date.now()): boolean {
-  const start = r.scheduledAt ?? (r.acceptedAt != null ? r.acceptedAt + 30 * 60_000 : null);
+  const start = r.scheduledAt ?? r.arrivalAt ?? (r.acceptedAt != null ? r.acceptedAt + 30 * 60_000 : null);
   return start != null && now >= start;
 }
-const LOCKED_FIELDS = ["scheduledAt", "durationHours", "address", "need", "salaryNetHourly"] as const;
+const LOCKED_FIELDS = ["scheduledAt", "arrivalAt", "travelMinutes", "durationHours", "address", "need", "salaryNetHourly"] as const;
 const isLocked = (r: Request) => r.status === "cancelled" || missionStartedFor(r);
 const findReq = (id: string) => state.requests.find((r) => r.id === id);
 
@@ -219,27 +222,31 @@ export const store = {
     emit();
   },
   // Premier répondant : verrouille la mission. Renvoie false si déjà attribuée.
-  acceptRequest: (id: string, studentIdx = 0, as?: Companion) => {
+  acceptRequest: (id: string, studentIdx = 0, as?: Companion, arrival?: Arrival) => {
     const req = state.requests.find((r) => r.id === id);
     if (!req || req.status !== "searching") return false;
+    const acceptedAt = Date.now();
+    if (!req.scheduledAt && arrival && !checkArrival({ ...arrival, durationHours: req.durationHours ?? 1, now: acceptedAt }).ok) return false;
     const companion = as ?? seedStudents[studentIdx % seedStudents.length];
     state = {
       ...state,
       requests: state.requests.map((r) =>
-        r.id === id ? { ...r, status: "accepted" as const, student: companion, acceptedAt: Date.now() } : r,
+        r.id === id ? { ...r, status: "accepted" as const, student: companion, acceptedAt, ...(!req.scheduledAt ? arrival : undefined) } : r,
       ),
     };
     emit();
     return true;
   },
-  acceptRequestBy: (id: string, companionId: string) => {
+  acceptRequestBy: (id: string, companionId: string, arrival?: Arrival) => {
     const req = state.requests.find((r) => r.id === id);
     if (!req || req.status !== "searching") return false;
     const companion = COMPANIONS.find((c) => c.id === companionId) ?? COMPANIONS[0];
+    const acceptedAt = Date.now();
+    if (!req.scheduledAt && arrival && !checkArrival({ ...arrival, durationHours: req.durationHours ?? 1, now: acceptedAt }).ok) return false;
     state = {
       ...state,
       requests: state.requests.map((r) =>
-        r.id === id ? { ...r, status: "accepted" as const, student: companion, acceptedAt: Date.now() } : r,
+        r.id === id ? { ...r, status: "accepted" as const, student: companion, acceptedAt, ...(!req.scheduledAt ? arrival : undefined) } : r,
       ),
     };
     emit();
@@ -351,7 +358,7 @@ export const store = {
     emit();
   },
   // Panneau de test uniquement : décale l'horaire sans les gardes de verrouillage.
-  shiftMissionTimeForTest: (id: string, patch: Partial<Pick<Request, "scheduledAt" | "acceptedAt">>) => {
+  shiftMissionTimeForTest: (id: string, patch: Partial<Pick<Request, "scheduledAt" | "acceptedAt" | "arrivalAt">>) => {
     state = { ...state, requests: state.requests.map((r) => (r.id === id ? { ...r, ...patch } : r)) };
     emit();
   },

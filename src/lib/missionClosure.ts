@@ -14,6 +14,7 @@ export const requestDurationMin = (r: { durationHours?: number }) =>
 /** Début : scheduledAt (RDV) ou acceptedAt + délai de déplacement (urgence). */
 export function getMissionStart(r: Request): number | null {
   if (r.scheduledAt) return r.scheduledAt;
+  if (r.arrivalAt != null) return r.arrivalAt;
   if (r.acceptedAt) return r.acceptedAt + DELAI_DEPLACEMENT_URGENCE_MIN * 60_000;
   return null;
 }
@@ -101,7 +102,8 @@ export function runClosureCheck(id: string) {
   const now = Date.now();
   if (!isCompletionClosed(r) && now > end + AUTO_VALIDATION_DELAY_MS) {
     store.autoValidate(r.id);
-    r = store.getState().requests.find((x) => x.id === id)!;
+    r = store.getState().requests.find((x) => x.id === id);
+    if (!r) return;
   }
   // Clôture par les deux parties : plus aucun rappel.
   if (r.completion === "validated") return;
@@ -109,7 +111,7 @@ export function runClosureCheck(id: string) {
     if (k === "preEnd") return now >= end - 15 * 60_000;
     if (k === "end") return now >= end;
     if (k === "h24") return now >= end + 24 * 3600_000;
-    return r!.completion === "auto_validated";
+    return r?.completion === "auto_validated";
   });
   const sent = r.remindersSent ?? {};
   const pending = reached.filter((k) => !sent[k]);
@@ -118,7 +120,7 @@ export function runClosureCheck(id: string) {
   if (!sent[latest]) {
     const parties: Party[] = ["family", "companion"];
     const targets =
-      latest === "end" || latest === "h24" ? parties.filter((p) => !hasValidated(r!, p)) : parties;
+      latest === "end" || latest === "h24" ? parties.filter((p) => r && !hasValidated(r, p)) : parties;
     for (const p of targets) {
       sendSimulatedEmail(REMINDER_KIND[latest], partyAddress(r, p), {
         hours: missionHours(r),
@@ -149,7 +151,7 @@ export function useMissionClosure(request: Request | undefined) {
     check();
     const t = setInterval(check, 60000);
     return () => clearInterval(t);
-  }, [id, request?.scheduledAt, request?.acceptedAt]);
+  }, [id, request?.scheduledAt, request?.acceptedAt, request?.arrivalAt]);
 }
 
 /** Panneau de test : décale la mission pour que sa fin tombe à `now - offsetMs`. */
@@ -158,5 +160,8 @@ export function shiftMissionEnd(r: Request, offsetMs: number) {
   if (end == null) return;
   const delta = Date.now() - offsetMs - end;
   if (r.scheduledAt) store.shiftMissionTimeForTest(r.id, { scheduledAt: r.scheduledAt + delta });
-  else if (r.acceptedAt) store.shiftMissionTimeForTest(r.id, { acceptedAt: r.acceptedAt + delta });
+  else store.shiftMissionTimeForTest(r.id, {
+    ...(r.acceptedAt != null ? { acceptedAt: r.acceptedAt + delta } : {}),
+    ...(r.arrivalAt != null ? { arrivalAt: r.arrivalAt + delta } : {}),
+  });
 }
