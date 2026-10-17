@@ -2448,6 +2448,10 @@ function FamilyWait({
   const [showPay, setShowPay] = useState(false);
   const [restartedAt, setRestartedAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [refusing, setRefusing] = useState(false);
+  const [refuseReason, setRefuseReason] = useState<"" | "late" | "other">("");
+  const [refuseText, setRefuseText] = useState("");
+  const [refusedBanner, setRefusedBanner] = useState(false);
 
   useEffect(() => {
     const i = setInterval(() => setNow(Date.now()), 1000);
@@ -2466,6 +2470,25 @@ function FamilyWait({
 
 
   if (!request) return null;
+  if (request.status === "cancelled" && request.cancelledBy === "system") {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
+        <div className="text-6xl">🕐</div>
+        <p className="text-2xl font-black">Mission annulée</p>
+        <p className="text-base text-muted-foreground">
+          {request.cancelCode === "out_of_hours"
+            ? `Avec la durée choisie (${request.durationHours ?? 1} h), la mission se terminerait après 21 h 00, ce qui dépasse les heures autorisées par Solélia Accompagnement.`
+            : "Vous n'avez pas répondu dans les 5 minutes qui suivent l'acceptation du compagnon. Pendant ce temps, il ne pouvait pas accepter d'autre mission, votre demande a donc été annulée. Vous pouvez réserver une nouvelle mission."}
+        </p>
+        {request.cancelCode === "out_of_hours" && (
+          <p className="text-sm font-semibold">En cas d'urgence vitale, composez le 15 (SAMU).</p>
+        )}
+        <button onClick={onDone} className="btn-huge bg-primary text-primary-foreground w-full">
+          Retour à l'accueil
+        </button>
+      </div>
+    );
+  }
   if (request.status === "cancelled") {
     const paidAlready = paid || request.paid;
     return (
