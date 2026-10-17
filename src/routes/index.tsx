@@ -3312,6 +3312,10 @@ function StudentFlow() {
   const myFirstName = myApp.data?.first_name?.trim() || "Vous";
   // Compagnon connecté (démo : profil fictif portant le prénom de sa candidature)
   const me: Companion = { ...COMPANIONS[0], id: "me", firstName: myFirstName, photo: "" };
+  // Une mission acceptée non confirmée par le particulier bloque toute autre acceptation.
+  const pendingConfirmation = mine.some(
+    (r) => !r.demo && !r.scheduledAt && r.status === "accepted" && !r.acknowledged,
+  );
 
   const available = allSearching.filter((r) => {
     if (r.demo && !demo && !testOn) return false;
@@ -3351,7 +3355,7 @@ function StudentFlow() {
   }
 
 
-  if (active) return <StudentDetail request={active} onBack={() => setOpenId(null)} />;
+  if (active) return <StudentDetail request={active} onBack={() => setOpenId(null)} blocked={pendingConfirmation} meId={me.id} />;
 
   const acceptedList = mine.filter((r) => !r.demo || demo || testOn);
   const upcomingCount = splitAccepted(acceptedList).upcoming.length;
@@ -3384,6 +3388,7 @@ function StudentFlow() {
         setTab={setMissionsTab}
         onBack={() => setView("home")}
         onAccepted={(id) => setOpenId(id)}
+        blocked={pendingConfirmation}
       />
     );
 
