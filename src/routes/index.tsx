@@ -3717,14 +3717,14 @@ function CompanionMissions({
       {list.length === 0 && <p className="py-10 text-center text-muted-foreground">Aucune mission pour le moment.</p>}
       {tab === "today"
         ? list.map((r) => (
-            <MissionCard key={r.id} r={r} onOpen={() => setDetailId(r.id)} onAccept={(arrival) => accept(r, arrival)} onDecline={() => decline(r)} />
+            <MissionCard key={r.id} r={r} blocked={blocked} onOpen={() => setDetailId(r.id)} onAccept={(arrival) => accept(r, arrival)} onDecline={() => decline(r)} />
           ))
         : list.map((r, i) => {
             const showHead = i === 0 || dayKey(list[i - 1].scheduledAt ?? 0) !== dayKey(r.scheduledAt ?? 0);
             return (
               <div key={r.id} className="flex flex-col gap-2">
                 {showHead && <h3 className="mt-2 text-lg font-black">{dayHeading(r.scheduledAt ?? Date.now())}</h3>}
-                <MissionCard r={r} onOpen={() => setDetailId(r.id)} onAccept={(arrival) => accept(r, arrival)} onDecline={() => decline(r)} />
+                <MissionCard r={r} blocked={blocked} onOpen={() => setDetailId(r.id)} onAccept={(arrival) => accept(r, arrival)} onDecline={() => decline(r)} />
               </div>
             );
           })}
@@ -3779,10 +3779,19 @@ function MissionInfo({ r, full }: { r: Request; full?: boolean }) {
   );
 }
 
-function MissionActions({ request, onAccept, onDecline }: { request: Request; onAccept: (arrival?: Arrival) => void; onDecline: () => void }) {
+function MissionActions({ request, onAccept, onDecline, blocked }: { request: Request; onAccept: (arrival?: Arrival) => void; onDecline: () => void; blocked?: boolean }) {
   const [confirm, setConfirm] = useState<"accept" | "decline" | null>(null);
   const input = useArrivalInput(request.durationHours ?? 1);
   const rapid = !request.scheduledAt;
+  if (blocked)
+    return (
+      <div className="flex flex-col gap-2">
+        <Button disabled className="min-h-14 rounded-2xl bg-success text-lg font-bold text-success-foreground">✅ Accepter</Button>
+        <p className="text-center text-sm font-semibold text-muted-foreground">
+          Vous avez une mission en attente de confirmation du particulier.
+        </p>
+      </div>
+    );
   if (confirm)
     return (
       <div className="flex flex-col gap-2 rounded-2xl border-2 border-border bg-accent p-3">
@@ -3811,14 +3820,14 @@ function MissionActions({ request, onAccept, onDecline }: { request: Request; on
   );
 }
 
-function MissionCard({ r, onOpen, onAccept, onDecline }: { r: Request; onOpen: () => void; onAccept: (arrival?: Arrival) => void; onDecline: () => void }) {
+function MissionCard({ r, onOpen, onAccept, onDecline, blocked }: { r: Request; onOpen: () => void; onAccept: (arrival?: Arrival) => void; onDecline: () => void; blocked?: boolean }) {
   return (
     <div className="flex flex-col gap-3 rounded-2xl border-2 border-border bg-card p-4">
       <button type="button" onClick={onOpen} className="text-left" aria-label="Voir le détail de la mission">
         <MissionInfo r={r} />
         <p className="mt-1 font-semibold text-primary underline">Voir le détail</p>
       </button>
-      <MissionActions request={r} onAccept={onAccept} onDecline={onDecline} />
+      <MissionActions request={r} onAccept={onAccept} onDecline={onDecline} blocked={blocked} />
     </div>
   );
 }
