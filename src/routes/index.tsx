@@ -2874,20 +2874,26 @@ function FamilyWait({
 
 
           {complianceCheck ? (
-            <CesuRecurrenceModal
-              companionId={request.student!.id}
-              companionName={request.student!.firstName}
-              check={complianceCheck}
-              dismissible
-              onClose={() => { store.discardRequest(request.id); onEditRequest(request); }}
-              onContinue={() => setContractOk(true)}
-              onSwitchCompanion={(companionId) => {
-                store.declineRequest(request.id, request.student!.id);
-                store.updateRequest(request.id, { preferredCompanionId: companionId });
-                store.releaseRequest(request.id);
-                setContractOk(false);
-              }}
-            />
+            <>
+              <CesuRecurrenceModal
+                companionId={request.student!.id}
+                companionName={request.student!.firstName}
+                check={complianceCheck}
+                dismissible
+                onClose={() => { store.discardRequest(request.id); onEditRequest(request); }}
+                onContinue={() => setContractOk(true)}
+                onSwitchCompanion={(companionId) => {
+                  store.updateRequest(request.id, { preferredCompanionId: companionId });
+                  store.refuseCompanion(request.id, "Le particulier a choisi un autre compagnon.");
+                  setContractOk(false);
+                }}
+              />
+              {responseLeftLabel && (
+                <p className="w-full text-center text-sm font-bold text-destructive">
+                  Merci de répondre dans les 5 min : il vous reste {responseLeftLabel}
+                </p>
+              )}
+            </>
           ) : !request.acknowledged ? (
             <div className="w-full rounded-2xl border-2 border-primary bg-accent p-4 text-left">
               <p className="text-sm font-black">📩 Accusé de réception</p>
@@ -2900,6 +2906,68 @@ function FamilyWait({
               >
                 👍 C'est noté !
               </button>
+              {!request.demo && !request.scheduledAt && (
+                <>
+                  {!refusing ? (
+                    <button
+                      type="button"
+                      onClick={() => setRefusing(true)}
+                      className="py-4 rounded-2xl border-2 border-border bg-card font-bold text-sm w-full mt-2"
+                    >
+                      Refuser ce compagnon
+                    </button>
+                  ) : (
+                    <div className="mt-3 rounded-2xl border-2 border-border bg-card p-3 text-left flex flex-col gap-2">
+                      <p className="text-sm font-bold">Pourquoi refusez-vous ce compagnon ?</p>
+                      <label className="flex items-center gap-2 text-sm font-semibold">
+                        <input type="radio" name="refuse-reason" checked={refuseReason === "late"} onChange={() => setRefuseReason("late")} />
+                        Heure d'arrivée trop tardive
+                      </label>
+                      <label className="flex items-center gap-2 text-sm font-semibold">
+                        <input type="radio" name="refuse-reason" checked={refuseReason === "other"} onChange={() => setRefuseReason("other")} />
+                        Autre raison
+                      </label>
+                      {refuseReason === "other" && (
+                        <>
+                          <p className="text-xs text-muted-foreground">
+                            Ce texte sera visible par le compagnon, merci de rester factuel.
+                          </p>
+                          <textarea
+                            value={refuseText}
+                            onChange={(e) => setRefuseText(e.target.value.slice(0, 100))}
+                            maxLength={100}
+                            rows={2}
+                            placeholder="Votre raison (100 caractères max)"
+                            className="w-full rounded-xl border-2 border-border bg-background p-3 text-sm"
+                          />
+                        </>
+                      )}
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => { setRefusing(false); setRefuseReason(""); setRefuseText(""); }}
+                          className="py-3 rounded-2xl border-2 border-border bg-background font-bold text-sm"
+                        >
+                          Annuler
+                        </button>
+                        <button
+                          type="button"
+                          disabled={!refuseReason || (refuseReason === "other" && !refuseText.trim())}
+                          onClick={confirmRefuse}
+                          className="py-3 rounded-2xl bg-destructive text-destructive-foreground font-bold text-sm disabled:opacity-50"
+                        >
+                          Confirmer le refus
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+              {responseLeftLabel && (
+                <p className="text-sm font-bold text-destructive mt-3 text-center">
+                  Merci de répondre dans les 5 min : il vous reste {responseLeftLabel}
+                </p>
+              )}
             </div>
           ) : !paid ? (
             <>
