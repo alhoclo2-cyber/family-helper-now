@@ -1,6 +1,10 @@
 // Simple in-memory store shared across the app for the demo flow.
 import { useRef, useSyncExternalStore } from "react";
 import { checkArrival, type Arrival } from "./arrival";
+import { sendSimulatedEmail } from "./simulatedEmails";
+
+// Délai laissé au particulier pour confirmer ou refuser un compagnon (Besoin rapidement).
+export const FAMILY_RESPONSE_DELAY_MS = 5 * 60_000;
 
 export type NeedType =
   | "Présence et Compagnie"
@@ -103,7 +107,9 @@ export type Request = {
   missionInfo?: string; // précisions libres concernant la mission (tous services)
   continuityCertified?: boolean; // services extérieurs : continuité de l'aide à domicile
   status: "searching" | "accepted" | "cancelled";
-  cancelledBy?: "family" | "companion";
+  cancelledBy?: "family" | "companion" | "system";
+  cancelCode?: "no_response" | "out_of_hours"; // annulation automatique
+  refusedNotices?: { companionId: string; companionName: string; reason: string; createdAt: number; seen?: boolean }[]; // refus du compagnon par le particulier
   refunded?: boolean;
   refundAmount?: number; // remboursement partiel simulé (annulation RDV à moins de 24 h)
   refundReason?: string;
