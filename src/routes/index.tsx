@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useAccess, useSession } from "@/lib/auth";
 import { AuthCard } from "@/components/AuthCard";
-import { store, useStore, randomStudent, COMPANIONS, experienceBadge, type NeedType, type Request, type Companion } from "@/lib/store";
+import { store, useStore, randomStudent, COMPANIONS, experienceBadge, FAMILY_RESPONSE_DELAY_MS, type NeedType, type Request, type Companion } from "@/lib/store";
 import { CguAcceptBlock, CguPanel } from "@/components/Cgu";
 import { CesuRecurrenceModal } from "@/components/CesuRecurrence";
 import { startOfWeek, subWeeks } from "date-fns";
@@ -62,7 +62,25 @@ export const Route = createFileRoute("/")({
 
 type Mode = "family" | "student";
 
+// Annule automatiquement les missions « Besoin rapidement » acceptées mais restées
+// sans réponse du particulier au-delà de 5 minutes (quel que soit l'écran affiché).
+function useUnconfirmedExpiry() {
+  useEffect(() => {
+    const sweep = () => {
+      const now = Date.now();
+      for (const r of store.getState().requests) {
+        if (r.demo || r.scheduledAt || r.status !== "accepted" || r.acknowledged || r.acceptedAt == null) continue;
+        if (now - r.acceptedAt > FAMILY_RESPONSE_DELAY_MS) store.autoCancelRequest(r.id, "no_response");
+      }
+    };
+    sweep();
+    const i = setInterval(sweep, 15_000);
+    return () => clearInterval(i);
+  }, []);
+}
+
 function App() {
+  useUnconfirmedExpiry();
   const [mode, setMode] = useState<Mode>("family");
   const navigate = useNavigate();
   const { session } = useSession();
@@ -2430,6 +2448,10 @@ function FamilyWait({
   const [showPay, setShowPay] = useState(false);
   const [restartedAt, setRestartedAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [refusing, setRefusing] = useState(false);
+  const [refuseReason, setRefuseReason] = useState<"" | "late" | "other">("");
+  const [refuseText, setRefuseText] = useState("");
+  const [refusedBanner, setRefusedBanner] = useState(false);
 
   useEffect(() => {
     const i = setInterval(() => setNow(Date.now()), 1000);
@@ -2448,6 +2470,25 @@ function FamilyWait({
 
 
   if (!request) return null;
+  if (request.status === "cancelled" && request.cancelledBy === "system") {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
+        <div className="text-6xl">🕐</div>
+        <p className="text-2xl font-black">Mission annulée</p>
+        <p className="text-base text-muted-foreground">
+          {request.cancelCode === "out_of_hours"
+            ? `Avec la durée choisie (${request.durationHours ?? 1} h), la mission se terminerait après 21 h 00, ce qui dépasse les heures autorisées par Solélia Accompagnement.`
+            : "Vous n'avez pas répondu dans les 5 minutes qui suivent l'acceptation du compagnon. Pendant ce temps, il ne pouvait pas accepter d'autre mission, votre demande a donc été annulée. Vous pouvez réserver une nouvelle mission."}
+        </p>
+        {request.cancelCode === "out_of_hours" && (
+          <p className="text-sm font-semibold">En cas d'urgence vitale, composez le 15 (SAMU).</p>
+        )}
+        <button onClick={onDone} className="btn-huge bg-primary text-primary-foreground w-full">
+          Retour à l'accueil
+        </button>
+      </div>
+    );
+  }
   if (request.status === "cancelled") {
     const paidAlready = paid || request.paid;
     return (
@@ -2552,6 +2593,25 @@ function FamilyWait({
   const limitLabel = !request.scheduledAt ? "20 min" : limit === SCHEDULED_SOON_TIMEOUT_MS ? "4 h" : "8 h";
   const timedOut = !accepted && (simulateNoAnswer || waited > limit);
   const nearbyCount = COMPANIONS.filter((c) => c.distanceKm <= c.radiusKm).length;
+  // Compte à rebours de réponse du particulier (Besoin rapidement, hors missions de test).
+  const responseLeftMs =
+    accepted && !request.acknowledged && !request.demo && !request.scheduledAt && request.acceptedAt != null
+      ? Math.max(0, request.acceptedAt + FAMILY_RESPONSE_DELAY_MS - now)
+      : null;
+  const responseLeftLabel =
+    responseLeftMs != null
+      ? `${String(Math.floor(responseLeftMs / 60000)).padStart(2, "0")}:${String(Math.floor((responseLeftMs % 60000) / 1000)).padStart(2, "0")}`
+      : null;
+  const confirmRefuse = () => {
+    const reason = refuseReason === "late" ? "Heure d'arrivée trop tardive" : refuseText.trim();
+    if (!reason) return;
+    store.refuseCompanion(request.id, reason);
+    setRefusing(false);
+    setRefuseReason("");
+    setRefuseText("");
+    setRefusedBanner(true);
+    setRestartedAt(Date.now());
+  };
 
   const relaunch = () => {
     onSimulateNoAnswer(false);
@@ -2562,6 +2622,11 @@ function FamilyWait({
     <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-6 text-center">
       {!accepted ? (
         <>
+          {refusedBanner && (
+            <div className="w-full rounded-2xl border-2 border-primary bg-accent p-4 text-left">
+              <p className="text-sm font-black">🔄 Nous recherchons un autre compagnon.</p>
+            </div>
+          )}
           {request.companionCancelNotice && (
             <div className="w-full rounded-2xl border-2 border-warning bg-warning/10 p-4 text-left">
               <p className="text-sm font-black">
@@ -2809,20 +2874,26 @@ function FamilyWait({
 
 
           {complianceCheck ? (
-            <CesuRecurrenceModal
-              companionId={request.student!.id}
-              companionName={request.student!.firstName}
-              check={complianceCheck}
-              dismissible
-              onClose={() => { store.discardRequest(request.id); onEditRequest(request); }}
-              onContinue={() => setContractOk(true)}
-              onSwitchCompanion={(companionId) => {
-                store.declineRequest(request.id, request.student!.id);
-                store.updateRequest(request.id, { preferredCompanionId: companionId });
-                store.releaseRequest(request.id);
-                setContractOk(false);
-              }}
-            />
+            <>
+              <CesuRecurrenceModal
+                companionId={request.student!.id}
+                companionName={request.student!.firstName}
+                check={complianceCheck}
+                dismissible
+                onClose={() => { store.discardRequest(request.id); onEditRequest(request); }}
+                onContinue={() => setContractOk(true)}
+                onSwitchCompanion={(companionId) => {
+                  store.updateRequest(request.id, { preferredCompanionId: companionId });
+                  store.refuseCompanion(request.id, "Le particulier a choisi un autre compagnon.");
+                  setContractOk(false);
+                }}
+              />
+              {responseLeftLabel && (
+                <p className="w-full text-center text-sm font-bold text-destructive">
+                  Merci de répondre dans les 5 min : il vous reste {responseLeftLabel}
+                </p>
+              )}
+            </>
           ) : !request.acknowledged ? (
             <div className="w-full rounded-2xl border-2 border-primary bg-accent p-4 text-left">
               <p className="text-sm font-black">📩 Accusé de réception</p>
@@ -2835,6 +2906,68 @@ function FamilyWait({
               >
                 👍 C'est noté !
               </button>
+              {!request.demo && !request.scheduledAt && (
+                <>
+                  {!refusing ? (
+                    <button
+                      type="button"
+                      onClick={() => setRefusing(true)}
+                      className="py-4 rounded-2xl border-2 border-border bg-card font-bold text-sm w-full mt-2"
+                    >
+                      Refuser ce compagnon
+                    </button>
+                  ) : (
+                    <div className="mt-3 rounded-2xl border-2 border-border bg-card p-3 text-left flex flex-col gap-2">
+                      <p className="text-sm font-bold">Pourquoi refusez-vous ce compagnon ?</p>
+                      <label className="flex items-center gap-2 text-sm font-semibold">
+                        <input type="radio" name="refuse-reason" checked={refuseReason === "late"} onChange={() => setRefuseReason("late")} />
+                        Heure d'arrivée trop tardive
+                      </label>
+                      <label className="flex items-center gap-2 text-sm font-semibold">
+                        <input type="radio" name="refuse-reason" checked={refuseReason === "other"} onChange={() => setRefuseReason("other")} />
+                        Autre raison
+                      </label>
+                      {refuseReason === "other" && (
+                        <>
+                          <p className="text-xs text-muted-foreground">
+                            Ce texte sera visible par le compagnon, merci de rester factuel.
+                          </p>
+                          <textarea
+                            value={refuseText}
+                            onChange={(e) => setRefuseText(e.target.value.slice(0, 100))}
+                            maxLength={100}
+                            rows={2}
+                            placeholder="Votre raison (100 caractères max)"
+                            className="w-full rounded-xl border-2 border-border bg-background p-3 text-sm"
+                          />
+                        </>
+                      )}
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => { setRefusing(false); setRefuseReason(""); setRefuseText(""); }}
+                          className="py-3 rounded-2xl border-2 border-border bg-background font-bold text-sm"
+                        >
+                          Annuler
+                        </button>
+                        <button
+                          type="button"
+                          disabled={!refuseReason || (refuseReason === "other" && !refuseText.trim())}
+                          onClick={confirmRefuse}
+                          className="py-3 rounded-2xl bg-destructive text-destructive-foreground font-bold text-sm disabled:opacity-50"
+                        >
+                          Confirmer le refus
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+              {responseLeftLabel && (
+                <p className="text-sm font-bold text-destructive mt-3 text-center">
+                  Merci de répondre dans les 5 min : il vous reste {responseLeftLabel}
+                </p>
+              )}
             </div>
           ) : !paid ? (
             <>
@@ -3179,6 +3312,10 @@ function StudentFlow() {
   const myFirstName = myApp.data?.first_name?.trim() || "Vous";
   // Compagnon connecté (démo : profil fictif portant le prénom de sa candidature)
   const me: Companion = { ...COMPANIONS[0], id: "me", firstName: myFirstName, photo: "" };
+  // Une mission acceptée non confirmée par le particulier bloque toute autre acceptation.
+  const pendingConfirmation = mine.some(
+    (r) => !r.demo && !r.scheduledAt && r.status === "accepted" && !r.acknowledged,
+  );
 
   const available = allSearching.filter((r) => {
     if (r.demo && !demo && !testOn) return false;
@@ -3218,7 +3355,7 @@ function StudentFlow() {
   }
 
 
-  if (active) return <StudentDetail request={active} onBack={() => setOpenId(null)} />;
+  if (active) return <StudentDetail request={active} onBack={() => setOpenId(null)} blocked={pendingConfirmation} />;
 
   const acceptedList = mine.filter((r) => !r.demo || demo || testOn);
   const upcomingCount = splitAccepted(acceptedList).upcoming.length;
@@ -3251,6 +3388,7 @@ function StudentFlow() {
         setTab={setMissionsTab}
         onBack={() => setView("home")}
         onAccepted={(id) => setOpenId(id)}
+        blocked={pendingConfirmation}
       />
     );
 
@@ -3259,6 +3397,7 @@ function StudentFlow() {
       <div className="w-full flex items-center justify-between">
         {menu}
       </div>
+      <RefusedNotices meId={me.id} />
       <AccountStatusBanner />
       {demo && (
         <div className="flex items-center justify-between gap-3 rounded-2xl border-2 border-primary/40 bg-accent p-3">
@@ -3453,10 +3592,40 @@ function CompanionAcceptedMissions({
   );
 }
 
+// Message affiché une seule fois au compagnon refusé par un particulier.
+function RefusedNotices({ meId }: { meId: string }) {
+  const requests = useStore((s) => s.requests);
+  const notices = requests.flatMap((r) =>
+    (r.refusedNotices ?? [])
+      .filter((n) => n.companionId === meId && !n.seen)
+      .map((n) => ({ requestId: r.id, need: r.need, notice: n })),
+  );
+  if (notices.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-2">
+      {notices.map(({ requestId, need, notice }) => (
+        <div key={`${requestId}-${notice.createdAt}`} className="rounded-2xl border-2 border-warning bg-warning/10 p-4 text-left">
+          <p className="text-sm font-semibold">
+            Le particulier n'a pas retenu votre proposition pour la mission « {missionLabel(need)} » : {notice.reason}.
+          </p>
+          <button
+            type="button"
+            onClick={() => store.markRefusedNoticeSeen(requestId, meId)}
+            className="mt-2 py-2 px-6 rounded-xl border-2 border-border bg-card font-bold text-sm"
+          >
+            OK
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function CompanionMissions({
   missions,
   me,
   testMode,
+  blocked,
   tab,
   setTab,
   onBack,
@@ -3473,6 +3642,7 @@ function CompanionMissions({
   setTab: (tab: "today" | "rdv") => void;
   onBack: () => void;
   onAccepted: (id: string) => void;
+  blocked?: boolean;
 }) {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -3484,6 +3654,7 @@ function CompanionMissions({
   const rdv = all.filter((r) => r.flow === "scheduled" || !!r.scheduledAt).sort((a, b) => (a.scheduledAt ?? 0) - (b.scheduledAt ?? 0));
 
   const accept = (r: Request, arrival?: Arrival) => {
+    if (blocked) return setNotice("Vous avez une mission en attente de confirmation du particulier.");
     if (!r.scheduledAt && (!arrival || !checkArrival({ ...arrival, durationHours: r.durationHours ?? 1, now: Date.now() }).ok)) return;
     const ok = store.acceptRequest(r.id, 0, me, arrival);
     setGhosts((g) => g.filter((x) => x.id !== r.id));
@@ -3515,7 +3686,7 @@ function CompanionMissions({
           ← Retour
         </button>
         <MissionInfo r={detail} full />
-        <MissionActions key={detail.id} request={detail} onAccept={(arrival) => accept(detail, arrival)} onDecline={() => decline(detail)} />
+        <MissionActions key={detail.id} request={detail} blocked={blocked} onAccept={(arrival) => accept(detail, arrival)} onDecline={() => decline(detail)} />
       </div>
     );
 
@@ -3532,6 +3703,7 @@ function CompanionMissions({
         </button>
       </div>
       <h2 className="text-2xl font-black">Missions proposées</h2>
+      <RefusedNotices meId={me.id} />
       <div className="grid grid-cols-2 gap-2">
         <button className={tabCls(tab === "today")} onClick={() => setTab("today")}>Aujourd'hui ({today.length})</button>
         <button className={tabCls(tab === "rdv")} onClick={() => setTab("rdv")}>Sur rendez-vous ({rdv.length})</button>
@@ -3545,14 +3717,14 @@ function CompanionMissions({
       {list.length === 0 && <p className="py-10 text-center text-muted-foreground">Aucune mission pour le moment.</p>}
       {tab === "today"
         ? list.map((r) => (
-            <MissionCard key={r.id} r={r} onOpen={() => setDetailId(r.id)} onAccept={(arrival) => accept(r, arrival)} onDecline={() => decline(r)} />
+            <MissionCard key={r.id} r={r} blocked={blocked} onOpen={() => setDetailId(r.id)} onAccept={(arrival) => accept(r, arrival)} onDecline={() => decline(r)} />
           ))
         : list.map((r, i) => {
             const showHead = i === 0 || dayKey(list[i - 1].scheduledAt ?? 0) !== dayKey(r.scheduledAt ?? 0);
             return (
               <div key={r.id} className="flex flex-col gap-2">
                 {showHead && <h3 className="mt-2 text-lg font-black">{dayHeading(r.scheduledAt ?? Date.now())}</h3>}
-                <MissionCard r={r} onOpen={() => setDetailId(r.id)} onAccept={(arrival) => accept(r, arrival)} onDecline={() => decline(r)} />
+                <MissionCard r={r} blocked={blocked} onOpen={() => setDetailId(r.id)} onAccept={(arrival) => accept(r, arrival)} onDecline={() => decline(r)} />
               </div>
             );
           })}
@@ -3607,10 +3779,19 @@ function MissionInfo({ r, full }: { r: Request; full?: boolean }) {
   );
 }
 
-function MissionActions({ request, onAccept, onDecline }: { request: Request; onAccept: (arrival?: Arrival) => void; onDecline: () => void }) {
+function MissionActions({ request, onAccept, onDecline, blocked }: { request: Request; onAccept: (arrival?: Arrival) => void; onDecline: () => void; blocked?: boolean }) {
   const [confirm, setConfirm] = useState<"accept" | "decline" | null>(null);
   const input = useArrivalInput(request.durationHours ?? 1);
   const rapid = !request.scheduledAt;
+  if (blocked)
+    return (
+      <div className="flex flex-col gap-2">
+        <Button disabled className="min-h-14 rounded-2xl bg-success text-lg font-bold text-success-foreground">✅ Accepter</Button>
+        <p className="text-center text-sm font-semibold text-muted-foreground">
+          Vous avez une mission en attente de confirmation du particulier.
+        </p>
+      </div>
+    );
   if (confirm)
     return (
       <div className="flex flex-col gap-2 rounded-2xl border-2 border-border bg-accent p-3">
@@ -3639,14 +3820,14 @@ function MissionActions({ request, onAccept, onDecline }: { request: Request; on
   );
 }
 
-function MissionCard({ r, onOpen, onAccept, onDecline }: { r: Request; onOpen: () => void; onAccept: (arrival?: Arrival) => void; onDecline: () => void }) {
+function MissionCard({ r, onOpen, onAccept, onDecline, blocked }: { r: Request; onOpen: () => void; onAccept: (arrival?: Arrival) => void; onDecline: () => void; blocked?: boolean }) {
   return (
     <div className="flex flex-col gap-3 rounded-2xl border-2 border-border bg-card p-4">
       <button type="button" onClick={onOpen} className="text-left" aria-label="Voir le détail de la mission">
         <MissionInfo r={r} />
         <p className="mt-1 font-semibold text-primary underline">Voir le détail</p>
       </button>
-      <MissionActions request={r} onAccept={onAccept} onDecline={onDecline} />
+      <MissionActions request={r} onAccept={onAccept} onDecline={onDecline} blocked={blocked} />
     </div>
   );
 }
@@ -3797,22 +3978,30 @@ function CompanionCancelBlockInner({ request }: { request: Request }) {
 }
 
 
-function StudentDetail({ request, onBack }: { request: Request; onBack: () => void }) {
+function StudentDetail({ request, onBack, blocked }: { request: Request; onBack: () => void; blocked?: boolean }) {
   const accepted = request.status === "accepted";
   const [taken, setTaken] = useState(false);
   const input = useArrivalInput(request.durationHours ?? 1);
   const accept = () => {
+    if (blocked) return;
     if (!request.scheduledAt && !input.valid) return;
     const ok = store.acceptRequest(request.id, 0, undefined, request.scheduledAt ? undefined : input.arrival);
     if (!ok) setTaken(true);
   };
 
   if (request.status === "cancelled") {
+    const systemCancel = request.cancelledBy === "system";
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
         <div className="text-6xl">🔔</div>
-        <h2 className="text-2xl font-black">Rendez-vous annulé par la famille</h2>
-        <p className="text-base text-muted-foreground">Ne vous déplacez pas pour cette mission.</p>
+        <h2 className="text-2xl font-black">{systemCancel ? "Mission annulée" : "Rendez-vous annulé par la famille"}</h2>
+        <p className="text-base text-muted-foreground">
+          {systemCancel
+            ? request.cancelCode === "out_of_hours"
+              ? "Cette mission a été annulée : elle ne peut plus se terminer avant 21 h 00."
+              : "Cette mission a été annulée : le particulier n'a pas répondu à temps."
+            : "Ne vous déplacez pas pour cette mission."}
+        </p>
         {request.cancelReason && (
           <div className="w-full bg-card rounded-2xl p-4 border-2 border-border text-left">
             <p className="text-sm text-muted-foreground">Motif indiqué par la famille</p>
@@ -3935,15 +4124,25 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
           </div>
           <div className="flex-1" />
           {!request.scheduledAt && <ArrivalFields input={input} />}
-          <Button disabled={!request.scheduledAt && !input.valid} onClick={accept} className="btn-huge bg-success text-success-foreground whitespace-normal">
+          <Button disabled={blocked || (!request.scheduledAt && !input.valid)} onClick={accept} className="btn-huge bg-success text-success-foreground whitespace-normal">
             ✅ Accepter la mission
           </Button>
+          {blocked && (
+            <p className="text-center text-sm font-semibold text-muted-foreground">
+              Vous avez une mission en attente de confirmation du particulier.
+            </p>
+          )}
         </>
       ) : (
 
         <>
           <div className="bg-card rounded-3xl p-6 border-2 border-success">
             <p className="text-sm text-success font-bold uppercase tracking-wide">Mission acceptée</p>
+            {!request.acknowledged && !request.scheduledAt && !request.demo && (
+              <p className="mt-2 rounded-xl bg-warning/10 border-2 border-warning p-3 text-sm font-bold">
+                ⏳ En attente de la réponse du particulier
+              </p>
+            )}
             <div className="mt-4">
               <p className="text-sm text-muted-foreground">Adresse</p>
               <p className="text-lg font-semibold">{request.address}</p>

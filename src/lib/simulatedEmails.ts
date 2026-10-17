@@ -18,7 +18,9 @@ export type EmailKind =
   | "mission_problem_confirmation"
   | "mission_problem_solelia"
   | "mission_incident_solelia"
-  | "mission_incident_confirmation";
+  | "mission_incident_confirmation"
+  | "companion_refused"
+  | "mission_auto_cancelled";
 
 export type SimulatedEmail = {
   id: string;
@@ -60,6 +62,7 @@ type Params = {
   reason?: string;
   detail?: string;
   companionName?: string;
+  need?: string;
 };
 
 const OPEN = { linkLabel: "Ouvrir mon espace", linkTo: "/" };
@@ -125,6 +128,21 @@ export function build(kind: EmailKind, p: Params): { subject: string; body: stri
       return {
         subject: "Votre signalement d'incident a bien été enregistré",
         body: `Nous avons bien enregistré votre signalement pour la mission du ${md} (motif : « ${p.reason ?? ""} »). Solélia en garde une trace, mais ne tranche pas les litiges : la suite se décide directement entre le particulier et le compagnon.`,
+        ...OPEN,
+      };
+    case "companion_refused":
+      return {
+        subject: "Votre proposition n'a pas été retenue",
+        body: `Le particulier n'a pas retenu votre proposition pour la mission « ${p.need ?? ""} » : ${p.reason ?? ""}.`,
+        ...OPEN,
+      };
+    case "mission_auto_cancelled":
+      return {
+        subject: "Mission annulée automatiquement",
+        body:
+          p.role === "companion"
+            ? `La mission « ${p.need ?? ""} » a été annulée : le particulier n'a pas répondu à temps. Vous pouvez de nouveau accepter d'autres missions.`
+            : `Vous n'avez pas répondu dans les 5 minutes qui suivent l'acceptation du compagnon pour la mission « ${p.need ?? ""} ». Votre demande a été annulée, sans aucun frais. Vous pouvez réserver une nouvelle mission.`,
         ...OPEN,
       };
     case "deletion_confirmation":
