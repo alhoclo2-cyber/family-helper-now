@@ -41,6 +41,9 @@ import unBesoinAsset from "@/assets/un-besoin-ordi-3.png.asset.json";
 import { AccountStatusBanner } from "@/components/AccountStatusBanner";
 import { requestDurationMin, getMissionStart, formatMissionRange, isMissionStarted } from "@/lib/missionClosure";
 import { MissionClosureBlock } from "@/components/MissionClosureBlock";
+import { checkArrival, simulatedArrival, formatArrivalTime, type Arrival } from "@/lib/arrival";
+import { MISSION_START_LIMIT_MIN, MISSION_END_LIMIT_MIN } from "@/lib/missionHours";
+import { ArrivalFields, useArrivalInput } from "@/components/ArrivalFields";
 
 
 export const Route = createFileRoute("/")({
@@ -560,8 +563,6 @@ function MandatairePanel() {
 
 // Solélia ne propose pas de missions de nuit : fin de mission au plus tard à 21h00,
 // début au plus tôt à 6h00. Shared par FamilyFlow (blocage au clic) et FamilyForm.
-const MISSION_START_LIMIT_MIN = 6 * 60; // 6h00
-const MISSION_END_LIMIT_MIN = 21 * 60; // 21h00 (fin à 21h00 pile autorisée)
 // Libellés générés depuis les constantes pour ne jamais diverger.
 const fmtLimit = (min: number) => `${Math.floor(min / 60)}h${String(min % 60).padStart(2, "0")}`;
 const MISSION_START_LABEL = fmtLimit(MISSION_START_LIMIT_MIN);
@@ -603,7 +604,13 @@ function FamilyFlow() {
     const preferredId = current?.preferredCompanionId;
     const delay = preferredId ? 6000 : current?.scheduledAt ? 5000 : 3500;
     const t = setTimeout(() => {
-      if (preferredId) store.acceptRequestBy(currentId, preferredId);
+      if (preferredId) {
+        const companion = COMPANIONS.find((c) => c.id === preferredId);
+        if (!companion) return;
+        const arrival = current?.scheduledAt ? undefined : simulatedArrival(companion.distanceKm, current?.durationHours ?? 1);
+        if (!current?.scheduledAt && !arrival) return;
+        store.acceptRequestBy(currentId, preferredId, arrival);
+      }
       else {
         // Exclut les compagnons déjà écartés pour éviter de rouvrir la même alerte.
         const target = current?.scheduledAt ?? Date.now();
@@ -611,12 +618,15 @@ function FamilyFlow() {
         const pool = COMPANIONS.filter(
           (c) =>
             !(current?.declinedBy ?? []).includes(c.id) &&
+            (current?.scheduledAt || !!simulatedArrival(c.distanceKm, current?.durationHours ?? 1)) &&
             isCompanionAvailableFor(c, target, durationMin),
         );
         // Aucun compagnon libre sur ce créneau : on laisse la demande en recherche.
         if (pool.length === 0) return;
         const chosen = pool[Math.floor(Math.random() * pool.length)];
-        store.acceptRequestBy(currentId, chosen.id);
+        const arrival = current?.scheduledAt ? undefined : simulatedArrival(chosen.distanceKm, current?.durationHours ?? 1);
+        if (!current?.scheduledAt && !arrival) return;
+        store.acceptRequestBy(currentId, chosen.id, arrival);
       }
     }, delay);
     return () => clearTimeout(t);
@@ -2795,7 +2805,7 @@ function FamilyWait({
             </div>
             <p className="text-sm text-muted-foreground mt-2">
               {request.student!.missions} missions réalisées
-              {isSos ? " · Arrivée estimée : 10 min" : paid ? " · Rendez-vous confirmé" : ""}
+              {isSos ? (request.arrivalAt != null ? ` · Arrivée prévue à ${formatArrivalTime(request.arrivalAt)}` : "") : paid ? " · Rendez-vous confirmé" : ""}
             </p>
             <p className="text-sm font-semibold mt-2">
               {request.student!.missedCount > 0
@@ -3377,8 +3387,9 @@ function buildDemoAccepted(me: Companion): Request[] {
     return d.getTime();
   };
   const base = { demo: true, student: me, salaryNetHourly: 12, createdAt: now };
+  const arrival = simulatedArrival(me.distanceKm, 2, now);
   return [
-    { ...base, id: "demo-acc-a", flow: "sos", need: "Présence et Compagnie", status: "accepted", acceptedAt: now - 10 * 60_000, scheduledAt: null, durationHours: 2, seniorName: "Mme Lefèvre", phone: "06 00 00 00 01", address: "14 rue Saint-Martin, 02000 Laon", city: "Laon" },
+    ...(arrival ? [{ ...base, ...arrival, id: "demo-acc-a", flow: "sos", need: "Présence et Compagnie", status: "accepted", acceptedAt: now, scheduledAt: null, durationHours: 2, seniorName: "Mme Lefèvre", phone: "06 00 00 00 01", address: "14 rue Saint-Martin, 02000 Laon", city: "Laon" }] : []),
     { ...base, id: "demo-acc-b", flow: "scheduled", need: "Courses urgentes", status: "accepted", acceptedAt: now, scheduledAt: at(2, 14), durationHours: 1, seniorName: "M. Bernard", phone: "06 00 00 00 02", address: "7 rue d'Isle, 02100 Saint-Quentin", city: "Saint-Quentin", missionInfo: "Aide aux courses." },
     { ...base, id: "demo-acc-c", flow: "scheduled", need: "Présence et Compagnie", status: "accepted", acceptedAt: at(-3, 12), scheduledAt: at(-1, 10), durationHours: 2, completion: "validated", familyValidatedAt: at(-1, 12), companionValidatedAt: at(-1, 12), hoursToDeclare: 2, seniorName: "Mme Garnier", phone: "06 00 00 00 03", address: "22 rue du Château, 02200 Soissons", city: "Soissons", missionInfo: "Accompagnement promenade." },
     { ...base, id: "demo-acc-d", flow: "scheduled", need: "Garde d'enfants", status: "cancelled", cancelledBy: "family", acceptedAt: now, scheduledAt: at(4, 9), durationHours: 3, seniorName: "Particulier démo", phone: "06 00 00 00 04", address: "3 rue de la République, 02400 Château-Thierry", city: "Château-Thierry" },
@@ -3496,8 +3507,9 @@ function CompanionMissions({
   const today = all.filter((r) => r.flow !== "scheduled" && !r.scheduledAt).sort((a, b) => b.createdAt - a.createdAt);
   const rdv = all.filter((r) => r.flow === "scheduled" || !!r.scheduledAt).sort((a, b) => (a.scheduledAt ?? 0) - (b.scheduledAt ?? 0));
 
-  const accept = (r: Request) => {
-    const ok = store.acceptRequest(r.id, 0, me);
+  const accept = (r: Request, arrival?: Arrival) => {
+    if (!r.scheduledAt && (!arrival || !checkArrival({ ...arrival, durationHours: r.durationHours ?? 1, now: Date.now() }).ok)) return;
+    const ok = store.acceptRequest(r.id, 0, me, arrival);
     setGhosts((g) => g.filter((x) => x.id !== r.id));
     setDetailId(null);
     if (!ok) return setNotice(TAKEN_MSG);
@@ -3513,7 +3525,8 @@ function CompanionMissions({
   const simulateTaken = () => {
     const target = all.find((r) => r.demo && !ghosts.some((g) => g.id === r.id));
     if (!target) return setNotice("Générez d'abord des missions de test.");
-    store.acceptRequest(target.id, 1);
+    const arrival = target.scheduledAt ? undefined : simulatedArrival(COMPANIONS[1].distanceKm, target.durationHours ?? 1);
+    if ((!target.scheduledAt && !arrival) || !store.acceptRequest(target.id, 1, undefined, arrival)) return setNotice("Aucun compagnon de test disponible pour ces horaires.");
     setGhosts((g) => [...g, target]);
     setNotice(`Mission « ${missionLabel(target.need)} » prise par un autre compagnon : cliquez sur Accepter pour voir le message.`);
   };
@@ -3526,7 +3539,7 @@ function CompanionMissions({
           ← Retour
         </button>
         <MissionInfo r={detail} full />
-        <MissionActions onAccept={() => accept(detail)} onDecline={() => decline(detail)} />
+        <MissionActions key={detail.id} request={detail} onAccept={(arrival) => accept(detail, arrival)} onDecline={() => decline(detail)} />
       </div>
     );
 
@@ -3556,14 +3569,14 @@ function CompanionMissions({
       {list.length === 0 && <p className="py-10 text-center text-muted-foreground">Aucune mission pour le moment.</p>}
       {tab === "today"
         ? list.map((r) => (
-            <MissionCard key={r.id} r={r} onOpen={() => setDetailId(r.id)} onAccept={() => accept(r)} onDecline={() => decline(r)} />
+            <MissionCard key={r.id} r={r} onOpen={() => setDetailId(r.id)} onAccept={(arrival) => accept(r, arrival)} onDecline={() => decline(r)} />
           ))
         : list.map((r, i) => {
             const showHead = i === 0 || dayKey(list[i - 1].scheduledAt ?? 0) !== dayKey(r.scheduledAt ?? 0);
             return (
               <div key={r.id} className="flex flex-col gap-2">
                 {showHead && <h3 className="mt-2 text-lg font-black">{dayHeading(r.scheduledAt ?? Date.now())}</h3>}
-                <MissionCard r={r} onOpen={() => setDetailId(r.id)} onAccept={() => accept(r)} onDecline={() => decline(r)} />
+                <MissionCard r={r} onOpen={() => setDetailId(r.id)} onAccept={(arrival) => accept(r, arrival)} onDecline={() => decline(r)} />
               </div>
             );
           })}
@@ -3618,39 +3631,46 @@ function MissionInfo({ r, full }: { r: Request; full?: boolean }) {
   );
 }
 
-function MissionActions({ onAccept, onDecline }: { onAccept: () => void; onDecline: () => void }) {
+function MissionActions({ request, onAccept, onDecline }: { request: Request; onAccept: (arrival?: Arrival) => void; onDecline: () => void }) {
   const [confirm, setConfirm] = useState<"accept" | "decline" | null>(null);
+  const input = useArrivalInput(request.durationHours ?? 1);
+  const rapid = !request.scheduledAt;
   if (confirm)
     return (
       <div className="flex flex-col gap-2 rounded-2xl border-2 border-border bg-accent p-3">
         <p className="text-center font-bold">{confirm === "accept" ? "Confirmer l'acceptation ?" : "Confirmer le refus ?"}</p>
+        {confirm === "accept" && rapid && <ArrivalFields input={input} />}
         <div className="grid grid-cols-2 gap-2">
           <button onClick={() => setConfirm(null)} className="min-h-14 rounded-2xl border-2 border-foreground bg-background font-bold">Annuler</button>
-          <button
-            onClick={() => (confirm === "accept" ? onAccept() : onDecline())}
+          <Button
+            disabled={confirm === "accept" && rapid && !input.valid}
+            onClick={() => (confirm === "accept" ? onAccept(rapid ? input.arrival : undefined) : onDecline())}
             className={`min-h-14 rounded-2xl font-bold ${confirm === "accept" ? "bg-success text-success-foreground" : "border-2 border-foreground bg-background"}`}
           >
             Confirmer
-          </button>
+          </Button>
         </div>
       </div>
     );
   return (
-    <div className="grid grid-cols-2 gap-2">
-      <button onClick={() => setConfirm("accept")} className="min-h-14 rounded-2xl bg-success text-lg font-bold text-success-foreground">✅ Accepter</button>
+    <div className="flex flex-col gap-3">
+      {rapid && <ArrivalFields input={input} />}
+      <div className="grid grid-cols-2 gap-2">
+      <Button disabled={rapid && !input.valid} onClick={() => setConfirm("accept")} className="min-h-14 rounded-2xl bg-success text-lg font-bold text-success-foreground">✅ Accepter</Button>
       <button onClick={() => setConfirm("decline")} className="min-h-14 rounded-2xl border-2 border-foreground bg-background text-lg font-bold">Refuser</button>
+      </div>
     </div>
   );
 }
 
-function MissionCard({ r, onOpen, onAccept, onDecline }: { r: Request; onOpen: () => void; onAccept: () => void; onDecline: () => void }) {
+function MissionCard({ r, onOpen, onAccept, onDecline }: { r: Request; onOpen: () => void; onAccept: (arrival?: Arrival) => void; onDecline: () => void }) {
   return (
     <div className="flex flex-col gap-3 rounded-2xl border-2 border-border bg-card p-4">
       <button type="button" onClick={onOpen} className="text-left" aria-label="Voir le détail de la mission">
         <MissionInfo r={r} />
         <p className="mt-1 font-semibold text-primary underline">Voir le détail</p>
       </button>
-      <MissionActions onAccept={onAccept} onDecline={onDecline} />
+      <MissionActions request={r} onAccept={onAccept} onDecline={onDecline} />
     </div>
   );
 }
@@ -3804,8 +3824,10 @@ function CompanionCancelBlockInner({ request }: { request: Request }) {
 function StudentDetail({ request, onBack }: { request: Request; onBack: () => void }) {
   const accepted = request.status === "accepted";
   const [taken, setTaken] = useState(false);
+  const input = useArrivalInput(request.durationHours ?? 1);
   const accept = () => {
-    const ok = store.acceptRequest(request.id);
+    if (!request.scheduledAt && !input.valid) return;
+    const ok = store.acceptRequest(request.id, 0, undefined, request.scheduledAt ? undefined : input.arrival);
     if (!ok) setTaken(true);
   };
 
@@ -3936,9 +3958,10 @@ function StudentDetail({ request, onBack }: { request: Request; onBack: () => vo
             </p>
           </div>
           <div className="flex-1" />
-          <button onClick={accept} className="btn-huge bg-success text-success-foreground">
+          {!request.scheduledAt && <ArrivalFields input={input} />}
+          <Button disabled={!request.scheduledAt && !input.valid} onClick={accept} className="btn-huge bg-success text-success-foreground whitespace-normal">
             ✅ Accepter la mission
-          </button>
+          </Button>
         </>
       ) : (
 
