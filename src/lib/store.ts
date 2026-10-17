@@ -267,6 +267,64 @@ export const store = {
     };
     emit();
   },
+  // Le particulier refuse le compagnon qui a accepté : la demande repart en recherche
+  // (sans frais ni annulation), le compagnon refusé ne la revoit plus.
+  refuseCompanion: (id: string, reason: string) => {
+    const req = findReq(id);
+    if (!req || req.status !== "accepted" || !req.student) return;
+    const companion = req.student;
+    sendSimulatedEmail("companion_refused", undefined, { need: req.need, reason, companionName: companion.firstName });
+    state = {
+      ...state,
+      requests: state.requests.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              status: "searching" as const,
+              student: undefined,
+              acceptedAt: undefined,
+              arrivalAt: undefined,
+              travelMinutes: undefined,
+              declinedBy: [...(r.declinedBy ?? []), companion.id],
+              refusedNotices: [
+                ...(r.refusedNotices ?? []),
+                { companionId: companion.id, companionName: companion.firstName, reason, createdAt: Date.now() },
+              ],
+            }
+          : r,
+      ),
+    };
+    emit();
+  },
+  markRefusedNoticeSeen: (id: string, companionId: string) => {
+    state = {
+      ...state,
+      requests: state.requests.map((r) =>
+        r.id === id
+          ? { ...r, refusedNotices: r.refusedNotices?.map((n) => (n.companionId === companionId ? { ...n, seen: true } : n)) }
+          : r,
+      ),
+    };
+    emit();
+  },
+  // Annulation automatique (aucun frais : la mission n'était pas confirmée).
+  autoCancelRequest: (id: string, code: "no_response" | "out_of_hours") => {
+    const req = findReq(id);
+    if (!req || req.status === "cancelled") return;
+    const cancelReason =
+      code === "no_response"
+        ? "Délai de réponse de 5 minutes dépassé."
+        : "L'heure de fin de la mission dépasserait 21 h 00, heure limite autorisée par Solélia Accompagnement.";
+    sendSimulatedEmail("mission_auto_cancelled", undefined, { role: "family", need: req.need, reason: cancelReason });
+    if (req.student) sendSimulatedEmail("mission_auto_cancelled", undefined, { role: "companion", need: req.need, reason: cancelReason, companionName: req.student.firstName });
+    state = {
+      ...state,
+      requests: state.requests.map((r) =>
+        r.id === id ? { ...r, status: "cancelled" as const, cancelledBy: "system" as const, cancelCode: code, cancelReason } : r,
+      ),
+    };
+    emit();
+  },
   // Supprime silencieusement une demande (remplacée par une version modifiée).
   discardRequest: (id: string) => {
     const cur = findReq(id);
