@@ -3642,6 +3642,7 @@ function CompanionMissions({
   setTab: (tab: "today" | "rdv") => void;
   onBack: () => void;
   onAccepted: (id: string) => void;
+  blocked?: boolean;
 }) {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
