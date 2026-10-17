@@ -2446,24 +2446,6 @@ function FamilyWait({
     return () => window.removeEventListener("popstate", onPop);
   }, [paid]);
 
-  // Besoin rapide : cascade automatique. À l'expiration du délai, le compagnon
-  // sollicité est écarté et la mission part vers le suivant, sans action du client.
-  const [autoSkipped, setAutoSkipped] = useState<string | null>(null);
-  useEffect(() => {
-    if (!request || request.scheduledAt || request.status !== "searching") return;
-    const started = restartedAt ?? request.createdAt;
-    if (!simulateNoAnswer && now - started <= SOS_TIMEOUT_MS) return;
-    const durationMin = request.durationHours ? request.durationHours * 60 : DEFAULT_DURATION_MIN;
-    const declined = request.declinedBy ?? [];
-    const pool = COMPANIONS.filter(
-      (c) => !declined.includes(c.id) && isCompanionAvailableFor(c, Date.now(), durationMin),
-    ).sort((a, b) => a.distanceKm - b.distanceKm);
-    if (pool.length <= 1) return; // plus personne à solliciter : bouton manuel en secours
-    store.declineRequest(request.id, pool[0].id);
-    setAutoSkipped(pool[0].firstName);
-    setRestartedAt(Date.now());
-    onSimulateNoAnswer(false);
-  }, [request?.id, request?.status, request?.scheduledAt, request?.declinedBy, now, simulateNoAnswer, restartedAt]);
 
   if (!request) return null;
   if (request.status === "cancelled") {
@@ -2610,12 +2592,6 @@ function FamilyWait({
                   {nearbyCount} compagnon(s) disponible(s) dans leur rayon d'intervention ont reçu une notification.
                   Le premier qui accepte verrouille la mission.
                 </p>
-                {autoSkipped && (
-                  <p className="text-sm font-semibold mt-2">
-                    🔄 {autoSkipped} n'a pas répondu : la demande a été transmise automatiquement au compagnon
-                    disponible suivant.
-                  </p>
-                )}
               </div>
             </>
           ) : preferred ? (
@@ -2671,7 +2647,7 @@ function FamilyWait({
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 {isSos
-                  ? "Tous les compagnons disponibles à proximité ont été sollicités automatiquement, sans réponse. Vous pouvez relancer l'alerte ou modifier vos critères (besoin, durée, adresse)."
+                  ? "Aucun compagnon disponible à proximité n'a accepté votre demande. Vous pouvez relancer l'alerte ou modifier vos critères (besoin, durée, adresse)."
                   : "Choisissez un autre compagnon ou basculez en recherche automatique à proximité."}
               </p>
               <div className="grid grid-cols-1 gap-2 mt-3">
