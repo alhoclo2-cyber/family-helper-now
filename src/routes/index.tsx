@@ -2593,6 +2593,25 @@ function FamilyWait({
   const limitLabel = !request.scheduledAt ? "20 min" : limit === SCHEDULED_SOON_TIMEOUT_MS ? "4 h" : "8 h";
   const timedOut = !accepted && (simulateNoAnswer || waited > limit);
   const nearbyCount = COMPANIONS.filter((c) => c.distanceKm <= c.radiusKm).length;
+  // Compte à rebours de réponse du particulier (Besoin rapidement, hors missions de test).
+  const responseLeftMs =
+    accepted && !request.acknowledged && !request.demo && !request.scheduledAt && request.acceptedAt != null
+      ? Math.max(0, request.acceptedAt + FAMILY_RESPONSE_DELAY_MS - now)
+      : null;
+  const responseLeftLabel =
+    responseLeftMs != null
+      ? `${String(Math.floor(responseLeftMs / 60000)).padStart(2, "0")}:${String(Math.floor((responseLeftMs % 60000) / 1000)).padStart(2, "0")}`
+      : null;
+  const confirmRefuse = () => {
+    const reason = refuseReason === "late" ? "Heure d'arrivée trop tardive" : refuseText.trim();
+    if (!reason) return;
+    store.refuseCompanion(request.id, reason);
+    setRefusing(false);
+    setRefuseReason("");
+    setRefuseText("");
+    setRefusedBanner(true);
+    setRestartedAt(Date.now());
+  };
 
   const relaunch = () => {
     onSimulateNoAnswer(false);
@@ -2603,6 +2622,11 @@ function FamilyWait({
     <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-6 text-center">
       {!accepted ? (
         <>
+          {refusedBanner && (
+            <div className="w-full rounded-2xl border-2 border-primary bg-accent p-4 text-left">
+              <p className="text-sm font-black">🔄 Nous recherchons un autre compagnon.</p>
+            </div>
+          )}
           {request.companionCancelNotice && (
             <div className="w-full rounded-2xl border-2 border-warning bg-warning/10 p-4 text-left">
               <p className="text-sm font-black">
