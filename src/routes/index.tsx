@@ -3397,6 +3397,7 @@ function StudentFlow() {
       <div className="w-full flex items-center justify-between">
         {menu}
       </div>
+      <RefusedNotices meId={me.id} />
       <AccountStatusBanner />
       {demo && (
         <div className="flex items-center justify-between gap-3 rounded-2xl border-2 border-primary/40 bg-accent p-3">
@@ -3591,10 +3592,40 @@ function CompanionAcceptedMissions({
   );
 }
 
+// Message affiché une seule fois au compagnon refusé par un particulier.
+function RefusedNotices({ meId }: { meId: string }) {
+  const requests = useStore((s) => s.requests);
+  const notices = requests.flatMap((r) =>
+    (r.refusedNotices ?? [])
+      .filter((n) => n.companionId === meId && !n.seen)
+      .map((n) => ({ requestId: r.id, need: r.need, notice: n })),
+  );
+  if (notices.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-2">
+      {notices.map(({ requestId, need, notice }) => (
+        <div key={`${requestId}-${notice.createdAt}`} className="rounded-2xl border-2 border-warning bg-warning/10 p-4 text-left">
+          <p className="text-sm font-semibold">
+            Le particulier n'a pas retenu votre proposition pour la mission « {missionLabel(need)} » : {notice.reason}.
+          </p>
+          <button
+            type="button"
+            onClick={() => store.markRefusedNoticeSeen(requestId, meId)}
+            className="mt-2 py-2 px-6 rounded-xl border-2 border-border bg-card font-bold text-sm"
+          >
+            OK
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function CompanionMissions({
   missions,
   me,
   testMode,
+  blocked,
   tab,
   setTab,
   onBack,
