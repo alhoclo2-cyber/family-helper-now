@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useAccess, useSession } from "@/lib/auth";
 import { AuthCard } from "@/components/AuthCard";
-import { store, useStore, randomStudent, COMPANIONS, experienceBadge, type NeedType, type Request, type Companion } from "@/lib/store";
+import { store, useStore, randomStudent, COMPANIONS, experienceBadge, FAMILY_RESPONSE_DELAY_MS, type NeedType, type Request, type Companion } from "@/lib/store";
 import { CguAcceptBlock, CguPanel } from "@/components/Cgu";
 import { CesuRecurrenceModal } from "@/components/CesuRecurrence";
 import { startOfWeek, subWeeks } from "date-fns";
@@ -62,7 +62,25 @@ export const Route = createFileRoute("/")({
 
 type Mode = "family" | "student";
 
+// Annule automatiquement les missions « Besoin rapidement » acceptées mais restées
+// sans réponse du particulier au-delà de 5 minutes (quel que soit l'écran affiché).
+function useUnconfirmedExpiry() {
+  useEffect(() => {
+    const sweep = () => {
+      const now = Date.now();
+      for (const r of store.getState().requests) {
+        if (r.demo || r.scheduledAt || r.status !== "accepted" || r.acknowledged || r.acceptedAt == null) continue;
+        if (now - r.acceptedAt > FAMILY_RESPONSE_DELAY_MS) store.autoCancelRequest(r.id, "no_response");
+      }
+    };
+    sweep();
+    const i = setInterval(sweep, 15_000);
+    return () => clearInterval(i);
+  }, []);
+}
+
 function App() {
+  useUnconfirmedExpiry();
   const [mode, setMode] = useState<Mode>("family");
   const navigate = useNavigate();
   const { session } = useSession();
