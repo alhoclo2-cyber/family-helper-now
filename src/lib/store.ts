@@ -329,7 +329,7 @@ export const store = {
       ...state,
       requests: state.requests.map((r) =>
         r.id === id
-          ? { ...r, status: "searching" as const, student: undefined, companionCancelNotice: { companionName, reason } }
+          ? { ...r, status: "searching" as const, student: undefined, acceptedAt: undefined, arrivalAt: undefined, travelMinutes: undefined, companionCancelNotice: { companionName, reason } }
           : r,
       ),
     };
@@ -352,7 +352,7 @@ export const store = {
     state = {
       ...state,
       requests: state.requests.map((r) =>
-        r.id === id ? { ...r, status: "searching" as const, student: undefined } : r,
+        r.id === id ? { ...r, status: "searching" as const, student: undefined, acceptedAt: undefined, arrivalAt: undefined, travelMinutes: undefined } : r,
       ),
     };
     emit();
