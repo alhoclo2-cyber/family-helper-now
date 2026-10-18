@@ -47,6 +47,10 @@ import { ArrivalFields, useArrivalInput } from "@/components/ArrivalFields";
 
 
 export const Route = createFileRoute("/")({
+  validateSearch: (search: Record<string, unknown>): { respond?: string; responseAt?: number } => ({
+    respond: typeof search.respond === "string" ? search.respond : undefined,
+    responseAt: typeof search.responseAt === "number" ? search.responseAt : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Solélia Accompagnement — Présence à domicile" },
@@ -62,25 +66,8 @@ export const Route = createFileRoute("/")({
 
 type Mode = "family" | "student";
 
-// Annule automatiquement les missions « Besoin rapidement » acceptées mais restées
-// sans réponse du particulier au-delà de 5 minutes (quel que soit l'écran affiché).
-function useUnconfirmedExpiry() {
-  useEffect(() => {
-    const sweep = () => {
-      const now = Date.now();
-      for (const r of store.getState().requests) {
-        if (r.demo || r.scheduledAt || r.status !== "accepted" || r.acknowledged || r.acceptedAt == null) continue;
-        if (now - r.acceptedAt > FAMILY_RESPONSE_DELAY_MS) store.autoCancelRequest(r.id, "no_response");
-      }
-    };
-    sweep();
-    const i = setInterval(sweep, 15_000);
-    return () => clearInterval(i);
-  }, []);
-}
-
 function App() {
-  useUnconfirmedExpiry();
+  const { respond, responseAt } = Route.useSearch();
   const [mode, setMode] = useState<Mode>("family");
   const navigate = useNavigate();
   const { session } = useSession();
@@ -99,6 +86,10 @@ function App() {
     autoTabDone.current = true;
     if (!access.data.isMandataire && myApp.data) setMode("student");
   }, [session, access.isSuccess, access.data, myApp.isSuccess, myApp.data]);
+
+  useEffect(() => {
+    if (respond === store.getState().currentRequestId) setMode("family");
+  }, [respond, responseAt]);
 
   return (
     <div className="min-h-screen bg-background flex justify-center">
@@ -591,6 +582,7 @@ const MISSION_BUTTON_CUTOFF_MIN = 19 * 60;
 const MISSION_BUTTON_CUTOFF_LABEL = fmtLimit(MISSION_BUTTON_CUTOFF_MIN);
 
 function FamilyFlow() {
+  const { respond, responseAt } = Route.useSearch();
   const [step, setStep] = useState<"home" | "form" | "wait" | "account" | "reserved">("home");
   const allRequests = useStore((s) => s.requests);
   const reserved = useMemo(
@@ -614,6 +606,10 @@ function FamilyFlow() {
   // Dossier Particulier obligatoire : lu après la création du profil (bootstrap)
   const access = useAccess(session?.user.id);
   const dossier = useClientDossier(session?.user.id, access.isSuccess && !access.data?.isMandataire);
+
+  useEffect(() => {
+    if (respond && respond === currentId) { setEditRequest(null); setStep("wait"); }
+  }, [respond, responseAt, currentId]);
 
   // Simulation « premier répondant » : un compagnon disponible accepte la mission.
   useEffect(() => {
