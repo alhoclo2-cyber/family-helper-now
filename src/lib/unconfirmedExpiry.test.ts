@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { store, type Request } from "./store";
+import { COMPANIONS, store, type Request } from "./store";
 import { runUnconfirmedExpiry, unconfirmedCancellationCode } from "./unconfirmedExpiry";
 
 const at = (time: string) => Date.parse(`2026-10-18T${time}+02:00`);
@@ -35,7 +35,7 @@ test("expiration de réponse conservée : au-delà de 5 minutes, pas à 5 minute
   assert.equal(unconfirmedCancellationCode(r, acceptedAt + 5 * 60_000 + 1), "no_response");
 });
 test("balayage : annulation système hors horaires et compagnon libéré de l'attente", () => {
-  const r = request({ status: "accepted", student: { ...store.getState().requests[0]?.student } as Request["student"] });
+  const r = request({ status: "accepted", student: COMPANIONS[0] });
   store.setSimulatedRequests([r]);
   runUnconfirmedExpiry(at("19:01:00"));
   const cancelled = store.getState().requests.find((x) => x.id === r.id);
