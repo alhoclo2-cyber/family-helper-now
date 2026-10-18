@@ -89,6 +89,7 @@ export type Request = {
   preferredCompanionId?: string; // parcours RDV : compagnon choisi par son nom
   autoSearch?: boolean; // parcours RDV : recherche automatique à proximité
   acknowledged?: boolean; // le client a cliqué sur « C'est noté ! »
+  familyNotifiedAt?: number; // notification simulée unique pour l'acceptation actuelle
   thumbsGiven?: boolean; // pouce levé attribué en fin de prestation
   declinedBy?: string[]; // compagnons ayant refusé
   durationHours?: number; // durée demandée
@@ -241,6 +242,7 @@ export const store = {
       ),
     };
     emit();
+    store.notifyFamilyAcceptance(id);
     return true;
   },
   acceptRequestBy: (id: string, companionId: string, arrival?: Arrival) => {
