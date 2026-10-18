@@ -84,8 +84,8 @@ function App() {
   useEffect(() => {
     if (autoTabDone.current || !session || !access.isSuccess || !myApp.isSuccess) return;
     autoTabDone.current = true;
-    if (!access.data.isMandataire && myApp.data) setMode("student");
-  }, [session, access.isSuccess, access.data, myApp.isSuccess, myApp.data]);
+    if (!access.data.isMandataire && myApp.data && respond !== store.getState().currentRequestId) setMode("student");
+  }, [session, access.isSuccess, access.data, myApp.isSuccess, myApp.data, respond]);
 
   useEffect(() => {
     if (respond === store.getState().currentRequestId) setMode("family");
