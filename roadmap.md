@@ -1,5 +1,5 @@
-- [ ] Ajouter le bandeau global et l'e-mail simulé unique par acceptation Besoin rapidement hors démo.
-- [ ] Étendre le contrôle global à la limite de 21 h et vérifier les exclusions, le retour à la réponse et les tests.
+- [x] Ajouter le bandeau global et l'e-mail simulé unique par acceptation Besoin rapidement hors démo.
+- [x] Étendre le contrôle global à la limite de 21 h et vérifier les exclusions, le retour à la réponse et les tests.
 - [x] Créer un détail de réservation partagé, repliable, avec états en attente.
 - [x] Ajouter et vérifier l'arrivée Besoin rapidement : saisie, simulations, affichage particulier, début et panneau de test ; rendez-vous inchangés.
 - [x] Corriger le bandeau démo accepté, mémoriser l'onglet missions, isoler les exemples, adapter Courses et le message de génération, remplacer la photo du compagnon démo connecté par son initiale ; vérifier.
