@@ -872,16 +872,29 @@ function FamilyForm({
   const [durationHours, setDurationHours] = useState<number>(initial?.durationHours ?? 1);
   const [parcelWeight, setParcelWeight] = useState<string>(initial?.parcelWeight ?? "moins de 2 kg");
   const [parcelSize, setParcelSize] = useState<string>(initial?.parcelSize ?? "Petit (enveloppe / boîte à chaussures)");
-  // default schedule: today + 2h, rounded to next hour
+  // default schedule: maintenant + 24 h, arrondi à l'heure supérieure ; hors 8h–18h => 10h00 le lendemain.
+  // Un rendez-vous existant conserve sa valeur actuelle.
   const defaultSched = () => {
-    const d = new Date(initial?.scheduledAt ?? Date.now() + 2 * 60 * 60 * 1000);
-    d.setMinutes(0, 0, 0);
     const pad = (n: number) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    if (initial?.scheduledAt) {
+      const d = new Date(initial.scheduledAt);
+      d.setMinutes(0, 0, 0);
+      return fmt(d);
+    }
+    const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    if (d.getMinutes() > 0 || d.getSeconds() > 0) d.setHours(d.getHours() + 1);
+    d.setMinutes(0, 0, 0);
+    if (d.getHours() < 8 || d.getHours() > 18) {
+      d.setDate(d.getDate() + 1);
+      d.setHours(10, 0, 0, 0);
+    }
+    return fmt(d);
   };
   const [when, setWhen] = useState<string>(defaultSched());
   const [minWhen] = useState(() => {
-    const d = new Date(Date.now() + 30 * 60 * 1000);
+    const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   });
@@ -1554,6 +1567,13 @@ function FamilyForm({
         <p className="text-sm text-muted-foreground mb-3">
           Indiquez le temps d'intervention souhaité.
         </p>
+        {mode === "scheduled" && when && (
+          <p className="text-xs text-muted-foreground mb-3">
+            Les durées proposées dépendent de l'heure de début : la mission doit se terminer au plus tard à
+            21 h 00 (maximum {Math.max(1, maxDurationAllowed)} h pour un début à{" "}
+            {new Date(when).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}).
+          </p>
+        )}
         <div className="grid grid-cols-3 gap-2">
           {[1, 2, 3, 4].map((h) => (
             <button
