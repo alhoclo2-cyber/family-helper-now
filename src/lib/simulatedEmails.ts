@@ -20,6 +20,7 @@ export type EmailKind =
   | "mission_incident_solelia"
   | "mission_incident_confirmation"
   | "companion_refused"
+  | "family_acceptance_notification"
   | "mission_auto_cancelled";
 
 export type SimulatedEmail = {
@@ -73,6 +74,12 @@ export function build(kind: EmailKind, p: Params): { subject: string; body: stri
   const h = fmtHours(p.hours);
   const md = p.missionDate ?? "";
   switch (kind) {
+    case "family_acceptance_notification":
+      return {
+        subject: "Un compagnon a accepté votre demande",
+        body: "Un compagnon a accepté votre demande, merci de répondre dans les 5 min.",
+        ...OPEN,
+      };
     case "mission_pre_end":
       return {
         subject: "Votre mission se termine dans 15 minutes",

@@ -89,6 +89,7 @@ export type Request = {
   preferredCompanionId?: string; // parcours RDV : compagnon choisi par son nom
   autoSearch?: boolean; // parcours RDV : recherche automatique à proximité
   acknowledged?: boolean; // le client a cliqué sur « C'est noté ! »
+  familyNotifiedAt?: number; // notification simulée unique pour l'acceptation actuelle
   thumbsGiven?: boolean; // pouce levé attribué en fin de prestation
   declinedBy?: string[]; // compagnons ayant refusé
   durationHours?: number; // durée demandée
@@ -241,6 +242,7 @@ export const store = {
       ),
     };
     emit();
+    store.notifyFamilyAcceptance(id);
     return true;
   },
   acceptRequestBy: (id: string, companionId: string, arrival?: Arrival) => {
@@ -256,7 +258,17 @@ export const store = {
       ),
     };
     emit();
+    store.notifyFamilyAcceptance(id);
     return true;
+  },
+  notifyFamilyAcceptance: (id: string) => {
+    const req = findReq(id);
+    if (!req || req.demo || req.scheduledAt || req.status !== "accepted" || req.acknowledged || req.familyNotifiedAt != null) return;
+    if (typeof window === "undefined") return;
+    const familyNotifiedAt = Date.now();
+    state = { ...state, requests: state.requests.map((r) => r.id === id ? { ...r, familyNotifiedAt } : r) };
+    sendSimulatedEmail("family_acceptance_notification", undefined);
+    emit();
   },
   declineRequest: (id: string, companionId: string) => {
     state = {
@@ -285,6 +297,7 @@ export const store = {
               acceptedAt: undefined,
               arrivalAt: undefined,
               travelMinutes: undefined,
+              familyNotifiedAt: undefined,
               declinedBy: [...(r.declinedBy ?? []), companion.id],
               refusedNotices: [
                 ...(r.refusedNotices ?? []),
@@ -393,7 +406,7 @@ export const store = {
       ...state,
       requests: state.requests.map((r) =>
         r.id === id
-          ? { ...r, status: "searching" as const, student: undefined, acceptedAt: undefined, arrivalAt: undefined, travelMinutes: undefined, companionCancelNotice: { companionName, reason } }
+          ? { ...r, status: "searching" as const, student: undefined, acceptedAt: undefined, arrivalAt: undefined, travelMinutes: undefined, familyNotifiedAt: undefined, companionCancelNotice: { companionName, reason } }
           : r,
       ),
     };
@@ -416,7 +429,7 @@ export const store = {
     state = {
       ...state,
       requests: state.requests.map((r) =>
-        r.id === id ? { ...r, status: "searching" as const, student: undefined, acceptedAt: undefined, arrivalAt: undefined, travelMinutes: undefined } : r,
+        r.id === id ? { ...r, status: "searching" as const, student: undefined, acceptedAt: undefined, arrivalAt: undefined, travelMinutes: undefined, familyNotifiedAt: undefined } : r,
       ),
     };
     emit();

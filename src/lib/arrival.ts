@@ -50,3 +50,9 @@ export function simulatedArrival(distanceKm: number, durationHours: number, now 
   const arrivalAt = now + (8 + travelMinutes) * MINUTE;
   return checkArrival({ arrivalAt, travelMinutes, durationHours, now }).ok ? { arrivalAt, travelMinutes } : undefined;
 }
+
+// Compare against today's exact Paris limit, including seconds and milliseconds.
+export function exceedsMissionEnd(now: number, durationHours: number): boolean {
+  const limit = `${String(Math.floor(MISSION_END_LIMIT_MIN / 60)).padStart(2, "0")}:${String(MISSION_END_LIMIT_MIN % 60).padStart(2, "0")}`;
+  return now + durationHours * 60 * MINUTE > arrivalTimeToday(limit, now);
+}
