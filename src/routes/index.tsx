@@ -210,6 +210,15 @@ function formatSchedule(ts: number) {
 /** Modèle mandataire : seul montant réglé sur la plateforme */
 const SERVICE_FEE = 6; // frais de service mandataire Solélia (forfait fixe)
 const DEFAULT_HOURLY_RATE = 11.5; // salaire net horaire conseillé, congés payés inclus
+const MIN_HOURLY_NET = 10.84; // Plancher de saisie, net de l'heure, congés payés de 10 % inclus. Niveaux IDCC 3239 (juin 2026) : niveau 1 = 10,82 €, niveau 2 = 10,93 €, niveau 3 = 11,07 €. À vérifier à chaque avenant.
+
+function isValidHourlyNet(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= MIN_HOURLY_NET;
+}
+
+function hourlyNetError() {
+  return `Le salaire horaire net ne peut pas être inférieur à ${formatPrice(MIN_HOURLY_NET)} € net de l'heure (congés payés inclus).`;
+}
 
 const bookingAddressSchema = z.object({
   street: z.string().trim().regex(/^\d+[\s\S]+$/).max(150),
@@ -926,9 +935,9 @@ function FamilyForm({
   const nightBlocked =
     referenceStartMin < MISSION_START_LIMIT_MIN ||
     referenceStartMin + Math.max(1, durationHours) * 60 > MISSION_END_LIMIT_MIN;
-  const [submitError, setSubmitError] = useState<null | "form" | "when" | "night">(null);
+  const [submitError, setSubmitError] = useState<null | "form" | "when" | "night" | "salary">(null);
   const submitErrorRef = useRef<HTMLParagraphElement>(null);
-  const showSubmitError = (k: "form" | "when" | "night") => {
+  const showSubmitError = (k: "form" | "when" | "night" | "salary") => {
     setSubmitError(k);
     setTimeout(() => submitErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
   };
@@ -1074,6 +1083,11 @@ function FamilyForm({
   const setAcknowledged = (checked: boolean) => setAcknowledgedLimits((prev) => ({ ...prev, [need]: checked }));
 
   const createAndGo = (companionOverride?: string) => {
+    if (!isValidHourlyNet(salaireNetHoraire)) {
+      setShowErrors(true);
+      showSubmitError("salary");
+      return;
+    }
     const companion = companionOverride ?? pickedCompanion;
     const scheduledAt = mode === "scheduled" ? new Date(when).getTime() : null;
     const dh = durationHours;
@@ -1202,6 +1216,11 @@ function FamilyForm({
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isValidHourlyNet(salaireNetHoraire)) {
+      setShowErrors(true);
+      showSubmitError("salary");
+      return;
+    }
     if (!formValid) {
       setShowErrors(true);
       showSubmitError("form");
@@ -1641,7 +1660,8 @@ function FamilyForm({
               setSalaireNetHoraire(Number.isFinite(n) ? n : 0);
             }}
             onBlur={() => setSalaireText(formatPrice(salaireNetHoraire))}
-            className="flex-1 min-w-0 w-full px-5 py-4 rounded-2xl border-2 border-border bg-background text-lg focus:border-primary outline-none"
+            aria-invalid={bad(isValidHourlyNet(salaireNetHoraire))}
+            className={`flex-1 min-w-0 w-full px-5 py-4 rounded-2xl border-2 bg-background text-lg outline-none ${bad(isValidHourlyNet(salaireNetHoraire)) ? "border-destructive focus:border-destructive" : "border-border focus:border-primary"}`}
           />
           <span className="shrink-0 text-lg font-bold">€/h</span>
         </div>
@@ -1655,7 +1675,7 @@ function FamilyForm({
           )}
           mais vous pouvez modifier le montant.
         </p>
-        <p className="text-xs text-muted-foreground mt-1">vous pouvez modifier le salaire horaire net/h en respectant le salaire minimum de la convention collective des particuliers employeurs (IDCC 3239), applicable au CESU.</p>
+        <p className="text-xs text-muted-foreground mt-1">Le montant recommandé tient compte des minima de la convention collective (IDCC 3239) pour les missions proposées sur Solélia Accompagnement. Si vous choisissez un montant inférieur, il vous appartient de vérifier le niveau de classification de votre compagnon et de respecter son minimum.</p>
         <p className="text-sm font-semibold mt-2">Soit un salaire de {formatPrice(durationHours * salaireNetHoraire)} € net à verser au salarié</p>
         <div className="h-px bg-border my-3" />
         <p className="text-sm font-semibold">
@@ -1958,7 +1978,9 @@ function FamilyForm({
       <div className="flex-1" />
       {submitError && (
         <p ref={submitErrorRef} role="alert" className="my-2 scroll-mt-24 text-sm font-semibold text-destructive text-center">
-          {submitError === "form"
+          {submitError === "salary"
+            ? hourlyNetError()
+            : submitError === "form"
             ? "Un champ est incomplet ou une case n'est pas cochée : vérifiez les éléments signalés en rouge."
             : submitError === "when"
               ? "Le créneau choisi n'est pas possible : un rendez-vous se réserve au moins 24 h à l'avance."
@@ -2583,6 +2605,7 @@ function FamilyWait({
         deferred={deferred}
         chargeAt={chargeAt}
         onDone={(salaireNetHoraire) => {
+          if (!isValidHourlyNet(salaireNetHoraire)) return false;
           addOrderToAccount({
             id: request.id,
             date: Date.now(),
@@ -2603,6 +2626,7 @@ function FamilyWait({
           }
           setPaid(true);
           setShowPay(false);
+          return true;
         }}
         onBack={() => setShowPay(false)}
       />
@@ -3066,11 +3090,17 @@ function PaymentScreen({
   childAges?: string[];
   deferred?: boolean; // mission à plus de 24 h : enregistrement de carte, pas de débit
   chargeAt?: number | null; // date/heure prévue du débit (J-24 h)
-  onDone: (salaireNetHoraire: number) => void;
+  onDone: (salaireNetHoraire: number) => boolean;
   onBack: () => void;
 }) {
   const [method, setMethod] = useState<"card" | "apple" | "paypal">("card");
   const [processing, setProcessing] = useState(false);
+  const [salaryError, setSalaryError] = useState(false);
+  const salaryErrorRef = useRef<HTMLParagraphElement>(null);
+  const showSalaryError = () => {
+    setSalaryError(true);
+    setTimeout(() => salaryErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+  };
   const [card, setCard] = useState("");
   const [exp, setExp] = useState("");
   const [cvc, setCvc] = useState("");
@@ -3080,8 +3110,18 @@ function PaymentScreen({
 
   const pay = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isValidHourlyNet(salaireNum)) {
+      showSalaryError();
+      return;
+    }
+    setSalaryError(false);
     setProcessing(true);
-    setTimeout(() => onDone(salaireNum), 1500);
+    setTimeout(() => {
+      if (!onDone(salaireNum)) {
+        setProcessing(false);
+        showSalaryError();
+      }
+    }, 1500);
   };
 
   return (
@@ -3261,6 +3301,11 @@ function PaymentScreen({
       )}
 
       <div className="flex-1" />
+      {salaryError && (
+        <p ref={salaryErrorRef} role="alert" className="my-2 scroll-mt-24 text-sm font-semibold text-destructive text-center">
+          {hourlyNetError()}
+        </p>
+      )}
       <button type="submit" disabled={processing} className="btn-huge bg-success text-success-foreground disabled:opacity-60">
         {processing
           ? "Traitement…"

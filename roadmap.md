@@ -1,3 +1,4 @@
+- [ ] Bloquer les salaires invalides ou sous le plancher dans le formulaire et à l'enregistrement du paiement, préciser le rappel et vérifier.
 - [x] Inclure les frais fixes dans les deux estimations Particulier, préciser les textes CESU+ et vérifier les montants et le parcours.
 - [x] Ajouter le bandeau global et l'e-mail simulé unique par acceptation Besoin rapidement hors démo.
 - [x] Étendre le contrôle global à la limite de 21 h et vérifier les exclusions, le retour à la réponse et les tests.

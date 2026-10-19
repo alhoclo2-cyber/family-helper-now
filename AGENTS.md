@@ -15,3 +15,4 @@
 - Share mission hour limits through missionHours and rapid-arrival validation through arrival; use ArrivalFields for companion inputs so booking, simulations and mission timing remain consistent.
 - Mount rapid-request expiry and the family acceptance banner in the root layout so account-page navigation cannot pause checks or hide notifications; route search selects the existing family response screen.
 - Keep both family price bubbles on the same estimateMissionCost calculation, with rounding only at its return boundary, so their totals cannot diverge.
+- Validate family hourly salaries through one shared predicate before submission and persistence, returning payment failures to the visible payment error state to prevent silent rejection.
