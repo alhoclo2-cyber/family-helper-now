@@ -225,12 +225,18 @@ function splitBookingAddress(address: string) {
 }
 
 // Estimation indicative du coût employeur, avant/après crédit d'impôt de 50 %.
-function estimateMissionCost(salaireNetHoraire: number, durationHours: number) {
+function estimateMissionCost(salaireNetHoraire: number, durationHours: number, sapActive: boolean = sapDeclarationActive) {
   const brut1h = salaireNetHoraire / 0.78;
   const charges1h = brut1h * 0.45 - 2.0 + brut1h * 0.22;
   const cout1h = salaireNetHoraire + charges1h;
-  const avant = cout1h * durationHours;
-  return { avant, apres: avant / 2 };
+  const salaireEtCotisations = cout1h * durationHours;
+  const avant = salaireEtCotisations + SERVICE_FEE;
+  const apres = sapActive ? avant / 2 : salaireEtCotisations / 2 + SERVICE_FEE;
+  return {
+    salaireEtCotisations: Math.round(salaireEtCotisations * 100) / 100,
+    avant: Math.round(avant * 100) / 100,
+    apres: Math.round(apres * 100) / 100,
+  };
 }
 
 /**
@@ -1651,25 +1657,29 @@ function FamilyForm({
         </p>
         <p className="text-xs text-muted-foreground mt-1">vous pouvez modifier le salaire horaire net/h en respectant le salaire minimum de la convention collective des particuliers employeurs (IDCC 3239), applicable au CESU.</p>
         <p className="text-sm font-semibold mt-2">Soit un salaire de {formatPrice(durationHours * salaireNetHoraire)} € net à verser au salarié</p>
-        <div className="mt-4 space-y-1">
-          <p className="text-base font-semibold">
-            Coût total avant crédit d'impôt : {formatPrice(costEstimate.avant)} €
-          </p>
-          <p className="text-lg font-black text-success">
-            Coût total après crédit d'impôt (-50%) : {formatPrice(costEstimate.apres)} €
-          </p>
-          <p className="text-xs text-muted-foreground mt-2">
-            Estimation indicative. Le montant définitif est calculé et prélevé par l'URSSAF.
-          </p>
-        </div>
         <div className="h-px bg-border my-3" />
         <p className="text-sm font-semibold">
           <span className="text-2xl font-black text-foreground">+ </span>
-          Frais de mise en relation Solélia : {formatPrice(SERVICE_FEE)} €
+          Frais de service Solélia Accompagnement : {formatPrice(SERVICE_FEE)} €
         </p>
-        <p className="text-xs text-muted-foreground mt-2">
-          Également éligible au crédit d'impôt de 50 %.
-        </p>
+        {sapDeclarationActive && (
+          <p className="text-xs text-muted-foreground mt-2">
+            Également éligible au crédit d'impôt de 50 %, versé l'année suivante.
+          </p>
+        )}
+        <div className="mt-4 space-y-1">
+          <p className="text-base font-semibold">
+            Coût total avant crédit d'impôt (salaire + cotisations URSSAF + frais de service) : {formatPrice(costEstimate.avant)} €
+          </p>
+          <p className="text-lg font-black text-success">
+            {sapDeclarationActive
+              ? "Coût total après crédit d'impôt (-50 %)"
+              : "Coût total après crédit d'impôt (-50 % sur le salaire et les cotisations)"} : {formatPrice(costEstimate.apres)} €
+          </p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Estimation indicative : le montant définitif du salaire et des cotisations est calculé par l'URSSAF.
+          </p>
+        </div>
       </div>
       {need === "Retrait ou dépôt d'un colis" && (
         <div className="flex flex-col gap-4">
@@ -3089,15 +3099,27 @@ function PaymentScreen({
           Tarif choisi dans le formulaire de réservation. Durée prévue : {hours}h — salaire estimé{" "}
           {formatPrice(salaireNum * hours)} €
         </p>
+        <div className="h-px bg-border my-3" />
+        <p className="text-sm font-semibold">
+          <span className="text-2xl font-black text-foreground">+ </span>
+          Frais de service Solélia Accompagnement : {formatPrice(SERVICE_FEE)} €
+        </p>
+        {sapDeclarationActive && (
+          <p className="text-xs text-muted-foreground mt-2">
+            Également éligible au crédit d'impôt de 50 %, versé l'année suivante.
+          </p>
+        )}
         <div className="mt-3 space-y-1">
           <p className="text-base font-semibold">
-            Coût total avant crédit d'impôt : {formatPrice(costEstimate.avant)} €
+            Coût total avant crédit d'impôt (salaire + cotisations URSSAF + frais de service) : {formatPrice(costEstimate.avant)} €
           </p>
           <p className="text-lg font-black text-success">
-            Coût total après crédit d'impôt (-50%) : {formatPrice(costEstimate.apres)} €
+            {sapDeclarationActive
+              ? "Coût total après crédit d'impôt (-50 %)"
+              : "Coût total après crédit d'impôt (-50 % sur le salaire et les cotisations)"} : {formatPrice(costEstimate.apres)} €
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            Estimation indicative. Le montant définitif est calculé et prélevé par l'URSSAF.
+            Estimation indicative : le montant définitif du salaire et des cotisations est calculé par l'URSSAF.
           </p>
         </div>
         <p className="text-xs text-muted-foreground mt-2">
@@ -3119,7 +3141,7 @@ function PaymentScreen({
           <span>{formatPrice(SERVICE_FEE)} €</span>
         </div>
         <p className="text-[11px] text-muted-foreground mt-1">
-          Frais de service mandataire Solélia — forfait fixe, quelle que soit la durée.
+          Seuls ces frais de service sont réglés par carte sur Solélia ; le salaire et les cotisations sont réglés séparément.
         </p>
       </div>
 
@@ -3142,8 +3164,12 @@ function PaymentScreen({
             ✅ Votre compagnon est agréé CESU+ Avance Immédiate !
           </p>
           <p className="text-xs text-muted-foreground mt-2">
-            Vous réglez aujourd'hui {formatPrice(SERVICE_FEE)} € de frais de service. Grâce à l'Avance Immédiate de
-            l'URSSAF, vous bénéficiez automatiquement de vos 50 % de crédit d'impôt. L'URSSAF prélèvera directement sur
+            {deferred
+              ? `Vos ${SERVICE_FEE} € de frais de service seront prélevés 24 h avant la mission.`
+              : `Vous réglez aujourd'hui ${SERVICE_FEE} € de frais de service.`}{" "}
+            Grâce à l'Avance Immédiate de l'URSSAF, vous bénéficiez automatiquement de vos 50 % de crédit d'impôt sur le salaire et les cotisations URSSAF.{" "}
+            {sapDeclarationActive && <>Le crédit d'impôt sur les frais de service vous sera versé l'année suivante.{" "}</>}
+            L'URSSAF prélèvera directement sur
             votre compte, sous 48 à 72h après la mission, le reste à charge estimé de la prestation (montant calculé
             lors du prélèvement URSSAF), et versera la rémunération à votre compagnon. Vous n'avez aucun salaire à lui
             verser la main à la main.
@@ -3153,11 +3179,15 @@ function PaymentScreen({
         <div className="bg-accent border-2 border-primary rounded-2xl p-4 text-left">
           <p className="text-sm font-black">⏳ Votre compagnon est en cours d'activation CESU+</p>
           <p className="text-xs text-muted-foreground mt-2">
-            Vous réglez aujourd'hui {formatPrice(SERVICE_FEE)} € de frais de service. Ce compagnon finalise son compte
+            {deferred
+              ? `Vos ${SERVICE_FEE} € de frais de service seront prélevés 24 h avant la mission.`
+              : `Vous réglez aujourd'hui ${SERVICE_FEE} € de frais de service.`}{" "}
+            Ce compagnon finalise son compte
             CESU+ : pour cette mission, vous réglerez directement son salaire conseillé de{" "}
             <b className="text-foreground">{formatPrice(salaireNum * hours)} €</b> sur place le jour de l'intervention
             (espèces, chèque ou virement immédiat). Solélia transmet la déclaration à l'URSSAF ; vous bénéficierez de
-            vos 50 % de déduction fiscale lors de votre déclaration d'impôts annuelle.
+            votre crédit d'impôt de 50 % sur le salaire et les cotisations lors de votre déclaration d'impôts annuelle.
+            {sapDeclarationActive && <> Le crédit d'impôt sur les frais de service vous sera également versé l'année suivante.</>}
           </p>
         </div>
       )}
