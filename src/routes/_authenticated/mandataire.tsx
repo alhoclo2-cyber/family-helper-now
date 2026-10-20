@@ -1,4 +1,5 @@
 import { CopyButton } from "@/components/CopyButton";
+import { ContractSettingsPanel } from "@/components/ContractSettingsPanel";
 import { MissionsTab, useMissionsToDeclareCount } from "@/components/MandataireMissionsTab";
 import { departmentLabel, formatBirthDate } from "@/components/BirthFields";
 import { missingCompanionItems } from "@/lib/companionDossier";
@@ -194,6 +195,7 @@ function Dashboard() {
 
   return (
     <div className="flex flex-col gap-4">
+      <ContractSettingsPanel />
       <div className="grid grid-cols-2 gap-2">
         {(
           [

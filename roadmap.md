@@ -1,3 +1,7 @@
+- [x] Préparer l'identité contrat, les tables sécurisées et les paramètres Mandataire, sans parcours contrat ni blocage des comptes existants.
+- [x] Vérifier les champs d'inscription, l'enregistrement et relecture du profil Compagnon approuvé, les politiques d'accès et les tests de régression (37 réussis).
+- [ ] Vérifier la création complète d'un nouveau compte et le compte Particulier existant : compte de test Particulier nécessaire, non disponible dans la session autorisée.
+- [ ] Vérifier les interrupteurs Mandataire et le bandeau activé : session Mandataire autorisée nécessaire, non disponible dans la session actuelle.
 - [x] Bloquer les salaires invalides ou sous le plancher dans le formulaire et à l'enregistrement du paiement, préciser le rappel et vérifier.
 - [x] Inclure les frais fixes dans les deux estimations Particulier, préciser les textes CESU+ et vérifier les montants et le parcours.
 - [x] Ajouter le bandeau global et l'e-mail simulé unique par acceptation Besoin rapidement hors démo.
