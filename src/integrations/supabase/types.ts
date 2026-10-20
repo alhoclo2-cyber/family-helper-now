@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
       client_documents: {
         Row: {
           doc_type: Database["public"]["Enums"]["client_doc_type"]
@@ -164,6 +185,50 @@ export type Database = {
         }
         Relationships: []
       }
+      contract_signature_log: {
+        Row: {
+          actor_id: string | null
+          actor_role: string | null
+          auth_method: string | null
+          contract_id: string
+          document_hash: string | null
+          event: string
+          id: string
+          metadata: Json
+          occurred_at: string
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_role?: string | null
+          auth_method?: string | null
+          contract_id: string
+          document_hash?: string | null
+          event: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+        }
+        Update: {
+          actor_id?: string | null
+          actor_role?: string | null
+          auth_method?: string | null
+          contract_id?: string
+          document_hash?: string | null
+          event?: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_signature_log_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "work_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mission_payments: {
         Row: {
           amount_cents: number
@@ -250,6 +315,7 @@ export type Database = {
           address_line: string
           birth_date: string | null
           birth_department: string | null
+          birth_name: string
           birth_place: string | null
           cesu_number: string | null
           city: string
@@ -268,6 +334,7 @@ export type Database = {
           address_line?: string
           birth_date?: string | null
           birth_department?: string | null
+          birth_name?: string
           birth_place?: string | null
           cesu_number?: string | null
           city?: string
@@ -286,6 +353,7 @@ export type Database = {
           address_line?: string
           birth_date?: string | null
           birth_department?: string | null
+          birth_name?: string
           birth_place?: string | null
           cesu_number?: string | null
           city?: string
@@ -320,6 +388,72 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      work_contracts: {
+        Row: {
+          answers: Json
+          client_id: string
+          companion_answer_deadline: string | null
+          companion_ref: string
+          companion_signed_at: string | null
+          companion_user_id: string | null
+          contract_kind: string | null
+          contract_snapshot: Json | null
+          created_at: string
+          document_hash: string | null
+          effective_from: string | null
+          effective_until: string | null
+          employer_signed_at: string | null
+          first_mission_id: string | null
+          id: string
+          pdf_path: string | null
+          refused_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          answers?: Json
+          client_id: string
+          companion_answer_deadline?: string | null
+          companion_ref: string
+          companion_signed_at?: string | null
+          companion_user_id?: string | null
+          contract_kind?: string | null
+          contract_snapshot?: Json | null
+          created_at?: string
+          document_hash?: string | null
+          effective_from?: string | null
+          effective_until?: string | null
+          employer_signed_at?: string | null
+          first_mission_id?: string | null
+          id?: string
+          pdf_path?: string | null
+          refused_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          answers?: Json
+          client_id?: string
+          companion_answer_deadline?: string | null
+          companion_ref?: string
+          companion_signed_at?: string | null
+          companion_user_id?: string | null
+          contract_kind?: string | null
+          contract_snapshot?: Json | null
+          created_at?: string
+          document_hash?: string | null
+          effective_from?: string | null
+          effective_until?: string | null
+          employer_signed_at?: string | null
+          first_mission_id?: string | null
+          id?: string
+          pdf_path?: string | null
+          refused_at?: string | null
+          status?: string
+          updated_at?: string
         }
         Relationships: []
       }

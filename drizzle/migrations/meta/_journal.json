@@ -78,6 +78,13 @@
       "when": 1790937761530,
       "tag": "0010_companion_birth_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792507614629,
+      "tag": "0011_contract_foundation",
+      "breakpoints": true
     }
   ]
 }
