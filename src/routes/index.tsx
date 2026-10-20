@@ -4678,10 +4678,6 @@ function StudentEnroll({
         reviewed_by: null,
         ...paths,
       };
-      const res = app
-        ? await supabase.from("companion_applications").update(row).eq("id", app.id)
-        : await supabase.from("companion_applications").insert(row);
-      if (res.error) throw new Error(res.error.message);
       const profileRes = await supabase.from("profiles").upsert({
         id: session.user.id,
         first_name: p.firstName.trim(),
@@ -4692,6 +4688,10 @@ function StudentEnroll({
         city: p.city.trim(),
       });
       if (profileRes.error) throw new Error(profileRes.error.message);
+      const res = app
+        ? await supabase.from("companion_applications").update(row).eq("id", app.id)
+        : await supabase.from("companion_applications").insert(row);
+      if (res.error) throw new Error(res.error.message);
       void qc.invalidateQueries({ queryKey: contractIdentityKey(session.user.id) });
       onSubmitted();
       setStep("intro");
