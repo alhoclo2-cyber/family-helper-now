@@ -1,3 +1,5 @@
+- [ ] Préparer l'identité contrat, les tables sécurisées et les paramètres Mandataire, sans parcours contrat ni blocage des comptes existants.
+- [ ] Vérifier inscriptions, enregistrement des profils, réglages, politiques d'accès et absence de régression.
 - [x] Bloquer les salaires invalides ou sous le plancher dans le formulaire et à l'enregistrement du paiement, préciser le rappel et vérifier.
 - [x] Inclure les frais fixes dans les deux estimations Particulier, préciser les textes CESU+ et vérifier les montants et le parcours.
 - [x] Ajouter le bandeau global et l'e-mail simulé unique par acceptation Besoin rapidement hors démo.
