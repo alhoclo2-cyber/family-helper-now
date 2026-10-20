@@ -252,9 +252,7 @@ export function AuthCard({
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              {familyFields
-                ? "Si un contrat de travail est nécessaire avec un compagnon, votre nom et votre adresse y figureront."
-                : "Si un contrat de travail est nécessaire avec un compagnon ou un particulier, votre nom et votre adresse y figureront."}
+              Si un contrat de travail est nécessaire avec un compagnon, votre nom et votre adresse y figureront.
             </p>
             <input
               required
