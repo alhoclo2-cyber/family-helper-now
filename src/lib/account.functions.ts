@@ -27,7 +27,7 @@ export const bootstrapAccount = createServerFn({ method: "POST" })
 
     const { data: existing } = await supabase
       .from("profiles")
-      .select("id, tax_number, has_cesu_number, birth_date, birth_place, birth_department")
+      .select("id, birth_name, tax_number, has_cesu_number, birth_date, birth_place, birth_department")
       .eq("id", userId)
       .maybeSingle();
 
@@ -66,6 +66,7 @@ export const bootstrapAccount = createServerFn({ method: "POST" })
         email,
         first_name: meta["first_name"] ?? meta["given_name"] ?? "",
         last_name: meta["last_name"] ?? meta["family_name"] ?? "",
+        birth_name: meta["birth_name"] ?? "",
         address_line: meta["address_line"] ?? "",
         postal_code: meta["postal_code"] ?? "",
         city: meta["city"] ?? "",
@@ -75,6 +76,7 @@ export const bootstrapAccount = createServerFn({ method: "POST" })
       });
     } else {
       const patch = {
+        ...(!existing.birth_name && meta["birth_name"]?.trim() ? { birth_name: meta["birth_name"].trim() } : {}),
         ...(hasMetaFiscal && !existing.tax_number && existing.has_cesu_number === null ? fiscal : {}),
         ...(hasMetaBirth && !existing.birth_date && !existing.birth_place && !existing.birth_department ? birth : {}),
       };

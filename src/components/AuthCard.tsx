@@ -4,6 +4,7 @@ import { lovable } from "@/integrations/lovable";
 import { inputCls } from "@/lib/auth";
 import { BirthFields, EMPTY_BIRTH, isBirthComplete, type BirthValue } from "@/components/BirthFields";
 import { TaxCesuFields, cleanTaxNumber, isTaxCesuComplete, type TaxCesuValue } from "@/components/TaxCesuFields";
+import { IdentityNames } from "@/components/IdentityNames";
 
 type Mode = "login" | "signup" | "forgot" | "check-email";
 
@@ -76,6 +77,7 @@ export function AuthCard({
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [birthName, setBirthName] = useState("");
   const [address, setAddress] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [city, setCity] = useState("");
@@ -104,6 +106,9 @@ export function AuthCard({
   const signup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password.length < 8) return setErr("Le mot de passe doit contenir au moins 8 caractères.");
+    if (![firstName, lastName, birthName, address, postalCode, city, phone].every((value) => value.trim())) {
+      return setErr("Merci de compléter tous les champs obligatoires.");
+    }
     if (familyFields && (!isTaxCesuComplete(taxCesu) || !isBirthComplete(birth))) {
       setShowTaxErrors(true);
       return setErr("Merci de compléter les champs signalés en rouge.");
@@ -118,6 +123,7 @@ export function AuthCard({
         data: {
           first_name: firstName.trim(),
           last_name: lastName.trim(),
+          birth_name: birthName.trim(),
           address_line: address.trim(),
           postal_code: postalCode.trim(),
           city: city.trim(),
@@ -214,22 +220,13 @@ export function AuthCard({
       >
         {mode === "signup" && (
           <>
-            <div className="grid grid-cols-2 gap-3">
-              <input
-                required
-                placeholder="Prénom"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                className={inputCls}
-              />
-              <input
-                required
-                placeholder="Nom"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                className={inputCls}
-              />
-            </div>
+            <IdentityNames required inputClass={inputCls}
+              value={{ firstName, lastName, birthName }}
+              onChange={(names) => {
+                setFirstName(names.firstName);
+                setLastName(names.lastName);
+                setBirthName(names.birthName);
+              }} />
             <input
               required
               placeholder="Adresse (n° et rue)"
@@ -254,6 +251,11 @@ export function AuthCard({
                 className={inputCls}
               />
             </div>
+            <p className="text-xs text-muted-foreground">
+              {familyFields
+                ? "Si un contrat de travail est nécessaire avec un compagnon, votre nom et votre adresse y figureront."
+                : "Si un contrat de travail est nécessaire avec un compagnon ou un particulier, votre nom et votre adresse y figureront."}
+            </p>
             <input
               required
               type="tel"

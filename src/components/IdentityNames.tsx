@@ -3,12 +3,13 @@ import { useState } from "react";
 type Names = { firstName: string; lastName: string; birthName: string };
 
 /** lastName est le nom d'usage ; birthName est le nom de naissance. */
-export function IdentityNames({ value, onChange, inputClass, required = false, showErrors = false }: {
+export function IdentityNames({ value, onChange, inputClass, required = false, showErrors = false, validateBirthName = required }: {
   value: Names;
   onChange: (value: Names) => void;
   inputClass: string;
   required?: boolean;
   showErrors?: boolean;
+  validateBirthName?: boolean;
 }) {
   const [same, setSame] = useState(false);
   const field = (key: keyof Names, placeholder: string, optionalForExisting = false) => {
@@ -32,7 +33,7 @@ export function IdentityNames({ value, onChange, inputClass, required = false, s
         {field("firstName", "Prénom")}
         {field("lastName", "Nom d'usage")}
       </div>
-      {field("birthName", "Nom de naissance", !required && !showErrors)}
+      {field("birthName", "Nom de naissance", !validateBirthName)}
       <label className="flex items-start gap-2 text-sm">
         <input type="checkbox" checked={same} className="mt-1 shrink-0 accent-primary" onChange={(e) => {
           setSame(e.target.checked);

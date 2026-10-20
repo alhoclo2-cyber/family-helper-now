@@ -28,6 +28,8 @@ import { ClientDocumentsPanel } from "@/components/ClientDocumentsPanel";
 import { useClientDossier } from "@/lib/clientDossier";
 import { missingCompanionItems } from "@/lib/companionDossier";
 import { BirthFields, EMPTY_BIRTH, isBirthComplete, type BirthValue } from "@/components/BirthFields";
+import { IdentityNames } from "@/components/IdentityNames";
+import { contractIdentityKey } from "@/lib/contractIdentity";
 import { CompanionAvailabilityPanel } from "@/components/CompanionAvailabilityPanel";
 import { ReservationSummaryPanel } from "@/components/ReservationSummaryPanel";
 import { AudienceMedallion } from "@/components/AudienceIllustrations";
@@ -4286,7 +4288,10 @@ type HousingStatus = "owner" | "hosted";
 type EnrollForm = {
   firstName: string;
   lastName: string;
+  birthName: string;
   address: string;
+  postalCode: string;
+  city: string;
   email: string;
   phone: string;
   situation: string;
@@ -4397,6 +4402,7 @@ function StudentEnroll({
   onDemo: () => void;
   onSubmitted: () => void;
 }) {
+  const qc = useQueryClient();
   const [step, setStep] = useState<"intro" | "auth" | "form">("intro");
   const [cguOk, setCguOk] = useState(false);
   const [limitsOk, setLimitsOk] = useState(false);
@@ -4408,7 +4414,10 @@ function StudentEnroll({
   const [p, setP] = useState<EnrollForm>({
     firstName: "",
     lastName: "",
+    birthName: "",
     address: "",
+    postalCode: "",
+    city: "",
     email: "",
     phone: "",
     situation: "Étudiant(e)",
@@ -4430,11 +4439,14 @@ function StudentEnroll({
       if (cancelled) return;
       setP((prev) => ({
         ...prev,
-        firstName: prev.firstName || app?.first_name || prof?.first_name || "",
-        lastName: prev.lastName || app?.last_name || prof?.last_name || "",
+        firstName: prev.firstName || prof?.first_name || app?.first_name || "",
+        lastName: prev.lastName || prof?.last_name || app?.last_name || "",
+        birthName: prev.birthName || prof?.birth_name || "",
         email: prev.email || app?.email || prof?.email || session.user.email || "",
         phone: prev.phone || app?.phone || prof?.phone || "",
-        address: prev.address || app?.address || prof?.address_line || "",
+        address: prev.address || prof?.address_line || (!prof?.postal_code && !prof?.city ? app?.address : "") || "",
+        postalCode: prev.postalCode || prof?.postal_code || "",
+        city: prev.city || prof?.city || "",
         situation: app?.situation || prev.situation,
         motivation: prev.motivation || app?.motivation || "",
         nir: prev.nir || app?.nir || "",
@@ -4647,7 +4659,7 @@ function StudentEnroll({
         user_id: session.user.id,
         first_name: p.firstName.trim(),
         last_name: p.lastName.trim(),
-        address: p.address.trim(),
+        address: `${p.address.trim()}, ${p.postalCode.trim()} ${p.city.trim()}`,
         email: p.email.trim(),
         phone: p.phone.trim(),
         situation: p.situation,
@@ -4670,6 +4682,17 @@ function StudentEnroll({
         ? await supabase.from("companion_applications").update(row).eq("id", app.id)
         : await supabase.from("companion_applications").insert(row);
       if (res.error) throw new Error(res.error.message);
+      const profileRes = await supabase.from("profiles").upsert({
+        id: session.user.id,
+        first_name: p.firstName.trim(),
+        last_name: p.lastName.trim(),
+        birth_name: p.birthName.trim(),
+        address_line: p.address.trim(),
+        postal_code: p.postalCode.trim(),
+        city: p.city.trim(),
+      });
+      if (profileRes.error) throw new Error(profileRes.error.message);
+      void qc.invalidateQueries({ queryKey: contractIdentityKey(session.user.id) });
       onSubmitted();
       setStep("intro");
     } catch (e) {
@@ -4724,7 +4747,10 @@ function StudentEnroll({
   const valid = Boolean(
     p.firstName.trim() &&
       p.lastName.trim() &&
+      p.birthName.trim() &&
       p.address.trim() &&
+      p.postalCode.trim() &&
+      p.city.trim() &&
       p.email.trim() &&
       p.phone.trim() &&
       p.situation &&
@@ -4771,20 +4797,26 @@ function StudentEnroll({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col">
-          <input placeholder="Prénom" value={p.firstName} onChange={(e) => setP({ ...p, firstName: e.target.value })} className={field + errCls(!!p.firstName.trim())} />
-          <Missing ok={!!p.firstName.trim()} text="Champ obligatoire" />
-        </div>
-        <div className="flex flex-col">
-          <input placeholder="Nom" value={p.lastName} onChange={(e) => setP({ ...p, lastName: e.target.value })} className={field + errCls(!!p.lastName.trim())} />
-          <Missing ok={!!p.lastName.trim()} text="Champ obligatoire" />
-        </div>
-      </div>
+      <IdentityNames inputClass={field} showErrors={showErrors} validateBirthName
+        value={{ firstName: p.firstName, lastName: p.lastName, birthName: p.birthName }}
+        onChange={(names) => setP((prev) => ({ ...prev, ...names }))} />
       <div className="flex flex-col">
-        <input placeholder="Adresse complète (n°, rue, code postal, ville)" value={p.address} onChange={(e) => setP({ ...p, address: e.target.value })} className={field + errCls(!!p.address.trim())} />
+        <input aria-label="Rue (n° et rue)" placeholder="Rue (n° et rue)" value={p.address} onChange={(e) => setP({ ...p, address: e.target.value })} className={field + errCls(!!p.address.trim())} />
         <Missing ok={!!p.address.trim()} text="Champ obligatoire" />
       </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="min-w-0 flex flex-col">
+          <input aria-label="Code postal" placeholder="Code postal" inputMode="numeric" value={p.postalCode} onChange={(e) => setP({ ...p, postalCode: e.target.value })} className={field + " w-full min-w-0" + errCls(!!p.postalCode.trim())} />
+          <Missing ok={!!p.postalCode.trim()} text="Champ obligatoire" />
+        </div>
+        <div className="min-w-0 flex flex-col">
+          <input aria-label="Ville" placeholder="Ville" value={p.city} onChange={(e) => setP({ ...p, city: e.target.value })} className={field + " w-full min-w-0" + errCls(!!p.city.trim())} />
+          <Missing ok={!!p.city.trim()} text="Champ obligatoire" />
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Si un contrat de travail est nécessaire avec un particulier, votre nom, votre adresse, votre numéro de Sécurité sociale et votre numéro CESU y figureront et seront communiqués au particulier qui vous emploie.
+      </p>
       <div className="flex flex-col">
         <input type="email" placeholder="Email" value={p.email} onChange={(e) => setP({ ...p, email: e.target.value })} className={field + errCls(!!p.email.trim())} />
         <Missing ok={!!p.email.trim()} text="Champ obligatoire" />
@@ -4829,6 +4861,7 @@ function StudentEnroll({
           🔒 Ce numéro est strictement conservé pour établir vos déclarations administratives et contrats auprès de
           l'URSSAF.
         </p>
+        <p className="text-xs text-muted-foreground mt-1">Si un contrat de travail est nécessaire, il y figurera.</p>
         {!nirLenOk && nirDigits.length > 0 && (
           <p className="text-xs text-destructive mt-1">Le NIR doit comporter 15 chiffres.</p>
         )}

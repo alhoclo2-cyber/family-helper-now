@@ -5,6 +5,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { TaxCesuFields, cleanTaxNumber, isTaxNumberValid, type TaxCesuValue } from "@/components/TaxCesuFields";
 import { BirthFields, EMPTY_BIRTH, isBirthComplete, isBirthDateValid, type BirthValue } from "@/components/BirthFields";
 import { clientDossierKey } from "@/lib/clientDossier";
+import { IdentityNames } from "@/components/IdentityNames";
+import { useContractIdentity, contractIdentityKey } from "@/lib/contractIdentity";
+import { useAppSetting } from "@/lib/appSettings";
 
 const inputCls =
   "w-full px-4 py-3 rounded-2xl border-2 border-border bg-background text-base focus:border-primary outline-none";
@@ -12,6 +15,7 @@ const inputCls =
 type ProfileForm = {
   first_name: string;
   last_name: string;
+  birth_name: string;
   address_line: string;
   postal_code: string;
   city: string;
@@ -21,6 +25,7 @@ type ProfileForm = {
 const EMPTY: ProfileForm = {
   first_name: "",
   last_name: "",
+  birth_name: "",
   address_line: "",
   postal_code: "",
   city: "",
@@ -38,6 +43,8 @@ export function AccountInfoPanel({
 }: { familyFields?: boolean; defaultOpen?: boolean; showErrors?: boolean } = {}) {
   const { session } = useSession();
   const qc = useQueryClient();
+  const contractIdentity = useContractIdentity(session?.user.id);
+  const contractEnabled = useAppSetting("contract_flow_enabled", false);
   const [open, setOpen] = useState(defaultOpen);
   const [birth, setBirth] = useState<BirthValue>(EMPTY_BIRTH);
   const [form, setForm] = useState<ProfileForm>(EMPTY);
@@ -61,7 +68,7 @@ export function AccountInfoPanel({
     setEmail(session.user.email ?? "");
     supabase
       .from("profiles")
-      .select("first_name,last_name,address_line,postal_code,city,phone,tax_number,has_cesu_number,cesu_number,birth_date,birth_place,birth_department")
+      .select("first_name,last_name,birth_name,address_line,postal_code,city,phone,tax_number,has_cesu_number,cesu_number,birth_date,birth_place,birth_department")
       .eq("id", session.user.id)
       .maybeSingle()
       .then(({ data }) => {
@@ -119,6 +126,7 @@ export function AccountInfoPanel({
       .update({
         first_name: form.first_name.trim(),
         last_name: form.last_name.trim(),
+        birth_name: form.birth_name.trim(),
         address_line: form.address_line.trim(),
         postal_code: form.postal_code.trim(),
         city: form.city.trim(),
@@ -154,6 +162,7 @@ export function AccountInfoPanel({
       void qc.invalidateQueries({ queryKey: clientDossierKey(session.user.id) });
     }
     setSaved(true);
+    void qc.invalidateQueries({ queryKey: contractIdentityKey(session.user.id) });
     setTimeout(() => setSaved(false), 2000);
   };
 
@@ -223,14 +232,18 @@ export function AccountInfoPanel({
           sont obligatoires pour utiliser votre compte Solélia.
         </p>
       )}
+      {contractEnabled.data === true && contractIdentity.isSuccess && contractIdentity.data.missing.length > 0 && (
+        <p className="mt-3 rounded-2xl bg-accent p-3 text-xs text-accent-foreground">
+          📝 Si un contrat de travail devient nécessaire avec un compagnon ou un particulier, merci de compléter dès maintenant : {contractIdentity.data.missing.join(", ")}.
+        </p>
+      )}
 
       {open && (
         <div className="mt-4 flex flex-col gap-5">
           <div className="flex flex-col gap-3">
-            <div className="grid grid-cols-2 gap-2">
-              <input placeholder="Prénom" value={form.first_name} onChange={set("first_name")} className={miss("first_name")} />
-              <input placeholder="Nom" value={form.last_name} onChange={set("last_name")} className={miss("last_name")} />
-            </div>
+            <IdentityNames inputClass={inputCls} showErrors={showErrors}
+              value={{ firstName: form.first_name, lastName: form.last_name, birthName: form.birth_name }}
+              onChange={(names) => setForm((f) => ({ ...f, first_name: names.firstName, last_name: names.lastName, birth_name: names.birthName }))} />
             <input placeholder="Adresse" value={form.address_line} onChange={set("address_line")} className={miss("address_line")} />
             <div className="grid grid-cols-2 gap-2">
               <input placeholder="Code postal" value={form.postal_code} onChange={set("postal_code")} className={miss("postal_code")} />
