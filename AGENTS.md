@@ -21,3 +21,7 @@
 - Information notices state that identity data appears on the employment contract only if a contract is necessary.
 - Contracts reference companions and missions by text (companion_ref, first_mission_id) while missions remain in memory in store.ts.
 - Keep contract identity completeness and app settings in independent React Query hooks; settings writes use Mandataire-only RLS and the contract signature log is writable only by service_role.
+- Règle du seuil : contrat écrit obligatoire au-delà de 3 h sur une semaine civile (sans moyenne) ou à partir de la 5ᵉ semaine consécutive avec le même compagnon ; jusqu'à 4 semaines consécutives, pas de contrat.
+- Les recherches automatiques n'attribuent jamais un compagnon qui atteindrait le seuil de contrat ou avec qui un contrat est en vigueur ; getPairState (contractEligibility.ts) est la seule source de cette décision.
+- Le parcours contrat n'est actif que si app_settings.contract_flow_enabled vaut true ; sinon le comportement historique est conservé (hors correction du seuil et choix du compagnon amélioré).
+- En Prise de RDV, le Particulier peut choisir n'importe quel compagnon, par recherche (prénom ou numéro d'inscription uniquement) ou dans la liste des disponibles. Dans les listes, un compagnon s'affiche par son prénom, l'initiale de son nom et son numéro d'inscription ; jamais par son nom complet.
