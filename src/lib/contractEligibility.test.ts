@@ -54,7 +54,7 @@ describe("Recherche d'un compagnon", () => {
   const names = (q: string) => COMPANIONS.filter((c) => matchesCompanionSearch(c, q)).map((c) => c.firstName);
   test("prénom sans accents ni majuscules", () => {
     assert.deepEqual(names("lea"), ["Léa"]);
-    assert.ok(names("ma").includes("Malik"));
+    assert.deepEqual(names("ma"), ["Malik"]);
   });
   test("numéro avec ou sans zéros ni n°", () => {
     for (const q of ["3", "0003", "n°3", "n° 0003"]) assert.deepEqual(names(q), ["Camille"]);

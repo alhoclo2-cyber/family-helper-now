@@ -20,5 +20,5 @@ export function matchesCompanionSearch(c: Labelled, query: string): boolean {
   if (!q) return true;
   const digits = q.replace(/^n\s*°?\s*/, "").replace(/^no\s*/, "");
   if (/^\d+$/.test(digits)) return c.registrationNumber != null && Number(digits) === c.registrationNumber;
-  return norm(c.firstName).startsWith(q) || norm(c.firstName).includes(q);
+  return norm(c.firstName).startsWith(q);
 }
