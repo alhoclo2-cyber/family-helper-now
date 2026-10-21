@@ -28,6 +28,8 @@ export type NeedType =
 export type Companion = {
   id: string;
   firstName: string;
+  lastInitial?: string; // initiale du nom (affichage « Prénom X. »)
+  registrationNumber?: number; // numéro d'inscription Solélia (fictif en démo)
   photo: string;
   rating: number;
   missions: number;
@@ -48,10 +50,10 @@ export type UnavailabilitySlot = {
 };
 
 export const COMPANIONS: Companion[] = [
-  { id: "c1", firstName: "Léa", photo: "https://i.pravatar.cc/200?img=47", rating: 4.9, missions: 8, thumbs: 7, distanceKm: 1.2, radiusKm: 3, city: "Paris", cesuActive: true, hourlyRate: 11.5, missedCount: 0, unavailabilitySlots: [] },
-  { id: "c2", firstName: "Thomas", photo: "https://i.pravatar.cc/200?img=12", rating: 4.8, missions: 34, thumbs: 29, distanceKm: 2.4, radiusKm: 5, city: "Paris", cesuActive: false, hourlyRate: 11.5, missedCount: 0, unavailabilitySlots: [{ day: 3, start: "08:00", end: "11:00" }] },
-  { id: "c3", firstName: "Camille", photo: "https://i.pravatar.cc/200?img=32", rating: 5.0, missions: 96, thumbs: 88, distanceKm: 4.1, radiusKm: 8, city: "Paris", cesuActive: true, hourlyRate: 11.5, missedCount: 0, unavailabilitySlots: [{ day: 0, start: "00:00", end: "23:59" }] },
-  { id: "c4", firstName: "Malik", photo: "https://i.pravatar.cc/200?img=15", rating: 4.9, missions: 212, thumbs: 197, distanceKm: 2.9, radiusKm: 6, city: "Paris", cesuActive: true, hourlyRate: 12, missedCount: 0, unavailabilitySlots: [] },
+  { id: "c1", lastInitial: "M", registrationNumber: 1, firstName: "Léa", photo: "https://i.pravatar.cc/200?img=47", rating: 4.9, missions: 8, thumbs: 7, distanceKm: 1.2, radiusKm: 3, city: "Paris", cesuActive: true, hourlyRate: 11.5, missedCount: 0, unavailabilitySlots: [] },
+  { id: "c2", lastInitial: "D", registrationNumber: 2, firstName: "Thomas", photo: "https://i.pravatar.cc/200?img=12", rating: 4.8, missions: 34, thumbs: 29, distanceKm: 2.4, radiusKm: 5, city: "Paris", cesuActive: false, hourlyRate: 11.5, missedCount: 0, unavailabilitySlots: [{ day: 3, start: "08:00", end: "11:00" }] },
+  { id: "c3", lastInitial: "R", registrationNumber: 3, firstName: "Camille", photo: "https://i.pravatar.cc/200?img=32", rating: 5.0, missions: 96, thumbs: 88, distanceKm: 4.1, radiusKm: 8, city: "Paris", cesuActive: true, hourlyRate: 11.5, missedCount: 0, unavailabilitySlots: [{ day: 0, start: "00:00", end: "23:59" }] },
+  { id: "c4", lastInitial: "B", registrationNumber: 4, firstName: "Malik", photo: "https://i.pravatar.cc/200?img=15", rating: 4.9, missions: 212, thumbs: 197, distanceKm: 2.9, radiusKm: 6, city: "Paris", cesuActive: true, hourlyRate: 12, missedCount: 0, unavailabilitySlots: [] },
 ];
 
 export type ExperienceBadge = {
@@ -132,6 +134,7 @@ export type Request = {
   remindersSent?: { preEnd?: number; end?: number; h24?: number; auto?: number };
   declaredAt?: number; // date de déclaration par Solélia Accompagnement
   soleliaNote?: string; // note interne Mandataire
+  contractChoiceRequired?: boolean; // recherche auto : aucun compagnon éligible, le particulier doit choisir lui-même
   demo?: boolean; // mission fictive du Mode test Compagnon (jamais visible côté particulier)
   distanceKm?: number; // distance depuis le domicile du compagnon (missions de test)
 };

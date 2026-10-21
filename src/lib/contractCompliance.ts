@@ -8,11 +8,12 @@ import type { Request } from "@/lib/store";
    Un contrat écrit devient obligatoire pour un binôme (famille, compagnon)
    dès que l'une des deux conditions est remplie :
    - plus de 3 h sur une même semaine civile (lundi → dimanche)
-   - 4 semaines civiles consécutives ou plus avec ce compagnon
+   - plus de 4 semaines civiles consécutives avec ce compagnon, soit à partir
+     de la 5ᵉ (la semaine de la nouvelle réservation comprise)
 ------------------------------------------------------------------- */
 
 export const WEEKLY_HOURS_THRESHOLD = 3;
-export const CONSECUTIVE_WEEKS_THRESHOLD = 4;
+export const CONSECUTIVE_WEEKS_THRESHOLD = 5; // à partir de la 5ᵉ semaine consécutive (semaine réservée comprise)
 
 export interface ContractCheckResult {
   requiresContract: boolean;
