@@ -16,6 +16,11 @@ import { CguAcceptBlock, CguPanel } from "@/components/Cgu";
 import { CesuRecurrenceModal } from "@/components/CesuRecurrence";
 import { startOfWeek, subWeeks } from "date-fns";
 import { checkContractRequirement, type ContractCheckResult } from "@/lib/contractCompliance";
+import { getPairState, type PairState } from "@/lib/contractEligibility";
+import { useContractsInForce, getInForceRefs, setSimulatedInForce, useSimulatedInForce } from "@/lib/contractsInForce";
+import { useAppSetting } from "@/lib/appSettings";
+import { companionFullLabel, matchesCompanionSearch } from "@/lib/companionLabel";
+import { Switch } from "@/components/ui/switch";
 import {
   ExperienceBadgeChip,
   ExperienceBadgeScale,
@@ -628,9 +633,16 @@ function FamilyFlow() {
     if (respond && respond === currentId) { setEditRequest(null); setStep("wait"); }
   }, [respond, responseAt, currentId]);
 
+  const [editPick, setEditPick] = useState(false);
+  const contractFlowSetting = useAppSetting("contract_flow_enabled", false).data === true;
+  const flowInForce = useContractsInForce(contractFlowSetting ? session?.user.id : undefined).data;
+  const contractRef = useRef({ enabled: contractFlowSetting, inForce: flowInForce });
+  contractRef.current = { enabled: contractFlowSetting, inForce: flowInForce };
+
   // Simulation « premier répondant » : un compagnon disponible accepte la mission.
   useEffect(() => {
     if (step !== "wait" || !currentId || current?.status !== "searching") return;
+    if (current?.contractChoiceRequired) return;
     if (simulateNoAnswer) return;
     const preferredId = current?.preferredCompanionId;
     const delay = preferredId ? 6000 : current?.scheduledAt ? 5000 : 3500;
@@ -646,14 +658,33 @@ function FamilyFlow() {
         // Exclut les compagnons déjà écartés pour éviter de rouvrir la même alerte.
         const target = current?.scheduledAt ?? Date.now();
         const durationMin = current?.durationHours ? current.durationHours * 60 : DEFAULT_DURATION_MIN;
-        const pool = COMPANIONS.filter(
+        const candidates = COMPANIONS.filter(
           (c) =>
             !(current?.declinedBy ?? []).includes(c.id) &&
             (current?.scheduledAt || !!simulatedArrival(c.distanceKm, current?.durationHours ?? 1)) &&
             isCompanionAvailableFor(c, target, durationMin),
         );
         // Aucun compagnon libre sur ce créneau : on laisse la demande en recherche.
-        if (pool.length === 0) return;
+        if (candidates.length === 0) return;
+        // Parcours contrat actif : seuls les binômes « free » peuvent être attribués automatiquement.
+        const { enabled, inForce } = contractRef.current;
+        const history = store.getState().requests.filter((r) => r.id !== currentId);
+        const pool = enabled
+          ? candidates.filter(
+              (c) =>
+                getPairState({
+                  companionId: c.id,
+                  bookingTs: target,
+                  durationHours: current?.durationHours ?? 1,
+                  requests: history,
+                  inForceRefs: getInForceRefs(inForce),
+                }) === "free",
+            )
+          : candidates;
+        if (pool.length === 0) {
+          store.updateRequest(currentId, { contractChoiceRequired: true });
+          return;
+        }
         const chosen = pool[Math.floor(Math.random() * pool.length)];
         const arrival = current?.scheduledAt ? undefined : simulatedArrival(chosen.distanceKm, current?.durationHours ?? 1);
         if (!current?.scheduledAt && !arrival) return;
@@ -661,7 +692,7 @@ function FamilyFlow() {
       }
     }, delay);
     return () => clearTimeout(t);
-  }, [step, current?.status, current?.preferredCompanionId, current?.scheduledAt, current?.durationHours, currentId, simulateNoAnswer]);
+  }, [step, current?.status, current?.preferredCompanionId, current?.scheduledAt, current?.durationHours, current?.contractChoiceRequired, currentId, simulateNoAnswer]);
 
 
   if (session && access.isSuccess && !access.data.isMandataire && dossier.data && !dossier.data.isCompanion && !dossier.data.complete)
@@ -839,12 +870,15 @@ function FamilyFlow() {
       );
     return (
       <FamilyForm
-        mode={editRequest ? (editRequest.scheduledAt ? "scheduled" : "asap") : requestMode}
-        initial={editRequest}
+        key={editPick ? "pick" : "form"}
+        mode={editPick ? "scheduled" : editRequest ? (editRequest.scheduledAt ? "scheduled" : "asap") : requestMode}
+        initial={editPick && editRequest
+          ? { ...editRequest, scheduledAt: editRequest.scheduledAt ?? null, autoSearch: false, preferredCompanionId: undefined, contractChoiceRequired: false }
+          : editRequest}
         editId={editRequest?.id}
-        inPlace={!!editRequest?.paid && !editRequest?.scheduledAt}
-        onSubmit={() => { setEditRequest(null); setStep("wait"); }}
-        onBack={() => (editRequest ? (setEditRequest(null), setStep("wait")) : setStep("home"))}
+        inPlace={!editPick && !!editRequest?.paid && !editRequest?.scheduledAt}
+        onSubmit={() => { setEditRequest(null); setEditPick(false); setStep("wait"); }}
+        onBack={() => (editRequest ? (setEditRequest(null), setEditPick(false), setStep(editPick ? "home" : "wait")) : setStep("home"))}
       />
     );
   }
@@ -854,7 +888,7 @@ function FamilyFlow() {
       request={current}
       simulateNoAnswer={simulateNoAnswer}
       onSimulateNoAnswer={setSimulateNoAnswer}
-      onEditRequest={(req) => { const r = req ?? current; if (r) { setEditRequest(r); setStep("form"); } }}
+      onEditRequest={(req, opts) => { const r = req ?? current; if (r) { setEditRequest(r); setEditPick(!!opts?.pickCompanion); setStep("form"); } }}
       onDone={() => { store.clearCurrent(); setSimulateNoAnswer(false); setEditRequest(null); setStep("home"); }}
     />
   );
@@ -976,6 +1010,12 @@ function FamilyForm({
   const [simCompanion, setSimCompanion] = useState<string>("");
   const [simWeeks, setSimWeeks] = useState(0);
   const [simHours, setSimHours] = useState(0);
+  const [simInForce, setSimInForce] = useState(false);
+  const [companionQuery, setCompanionQuery] = useState("");
+  const [showAllCompanions, setShowAllCompanions] = useState(false);
+  const { session: contractSession } = useSession();
+  const contractFlow = useAppSetting("contract_flow_enabled", false).data === true;
+  const dbInForce = useContractsInForce(contractFlow ? contractSession?.user.id : undefined).data;
   // Commissions extérieures rattachées à une présence à domicile (conformité SAP)
   const [commissions, setCommissions] = useState<string[]>(parsed.commissions);
   const [commissionCertified, setCommissionCertified] = useState(parsed.commissions.length > 0);
@@ -1146,54 +1186,36 @@ function FamilyForm({
     onSubmit();
   };
 
-  // Injecte les missions fictives du panneau de simulation puis lance le contrôle réel.
-  const runComplianceCheck = (companionId: string, simOverride?: string): ContractCheckResult | null => {
-    const bookingTs = new Date(when).getTime();
-    const target = simOverride ?? (simCompanion || companionId);
+  // Injecte les missions fictives (et contrats en vigueur simulés) du panneau de test.
+  const simTarget = simCompanion || pickedCompanion || COMPANIONS[0].id;
+  const injectSimulations = () => {
+    const bookingTs = mode === "scheduled" ? new Date(when).getTime() : Date.now();
     const sims: Request[] = [];
     const weekStart = startOfWeek(new Date(bookingTs), { weekStartsOn: 1 });
-    const companionObj = COMPANIONS.find((c) => c.id === target);
-    if (companionObj) {
+    const targets = simTarget === "all" ? COMPANIONS : COMPANIONS.filter((c) => c.id === simTarget);
+    for (const companionObj of targets) {
+      const base = { need: "Présence et Compagnie" as NeedType, address: "Simulation", city: "Simulation", phone: "", seniorName: "Vous", status: "accepted" as const, student: companionObj };
       for (let i = 1; i <= simWeeks; i++) {
         const d = subWeeks(weekStart, i).getTime() + 24 * 60 * 60 * 1000;
-        sims.push({
-          id: `sim-w${i}`,
-          need: "Présence et Compagnie",
-          address: "Simulation",
-          city: "Simulation",
-          phone: "",
-          seniorName: "Vous",
-          createdAt: d,
-          scheduledAt: d,
-          durationHours: 1,
-          status: "accepted",
-          student: companionObj,
-        });
+        sims.push({ ...base, id: `sim-${companionObj.id}-w${i}`, createdAt: d, scheduledAt: d, durationHours: 1 });
       }
       if (simHours > 0) {
         const d = weekStart.getTime() + 60 * 60 * 1000;
-        sims.push({
-          id: "sim-h",
-          need: "Présence et Compagnie",
-          address: "Simulation",
-          city: "Simulation",
-          phone: "",
-          seniorName: "Vous",
-          createdAt: d,
-          scheduledAt: d,
-          durationHours: simHours,
-          status: "accepted",
-          student: companionObj,
-        });
+        sims.push({ ...base, id: `sim-${companionObj.id}-h`, createdAt: d, scheduledAt: d, durationHours: simHours });
       }
     }
     store.setSimulatedRequests(sims);
-    return checkContractRequirement(
-      companionId,
-      bookingTs,
-      durationHours,
-      store.getState().requests,
-    );
+    setSimulatedInForce(new Set(simInForce ? targets.map((c) => c.id) : []));
+  };
+  // Décision unique : getPairState si le parcours contrat est actif, sinon contrôle historique.
+  const evaluatePair = (companionId: string): { state: PairState; check: ContractCheckResult } => {
+    const bookingTs = new Date(when).getTime();
+    const requests = store.getState().requests.filter((r) => r.id !== editId);
+    const check = checkContractRequirement(companionId, bookingTs, durationHours, requests);
+    const state: PairState = contractFlow
+      ? getPairState({ companionId, bookingTs, durationHours, requests, inForceRefs: getInForceRefs(dbInForce) })
+      : check.requiresContract ? "threshold_reached" : "free";
+    return { state, check };
   };
 
   const [showErrors, setShowErrors] = useState(false);
@@ -1265,9 +1287,10 @@ function FamilyForm({
       }
     }
 
+    injectSimulations();
     if (mode === "scheduled" && autoSearch === false && pickedCompanion) {
-      const check = runComplianceCheck(pickedCompanion);
-      if (check?.requiresContract) {
+      const { state, check } = evaluatePair(pickedCompanion);
+      if (state === "threshold_reached") {
         setComplianceCheck(check);
         return;
       }
@@ -1823,17 +1846,57 @@ function FamilyForm({
             </button>
           </div>
           <Missing ok={okWho} text={autoSearch === false ? "Choisissez un compagnon dans la liste" : "Choisissez une option"} />
-          {autoSearch === false && (
+          {autoSearch === false && (() => {
+            const whenTs = new Date(when).getTime();
+            const dateChosen = !Number.isNaN(whenTs);
+            const isFree = (c: Companion) => !dateChosen || isCompanionAvailableFor(c, whenTs, durationHours * 60);
+            const sorted = [...COMPANIONS].sort((a, b) => a.distanceKm - b.distanceKm);
+            const query = companionQuery.trim();
+            const visible = query
+              ? sorted.filter((c) => matchesCompanionSearch(c, query))
+              : !dateChosen || showAllCompanions
+                ? sorted
+                : sorted.filter(isFree);
+            const linkCls = "self-start text-xs font-semibold text-primary underline";
+            return (
             <div className="mt-3 flex flex-col gap-2">
-              <p className="text-sm font-bold">Choisir un compagnon par son nom</p>
+              <p className="text-sm font-bold">Choisir un compagnon</p>
               <p className="text-xs text-muted-foreground -mt-1">
                 Liste triée par distance et disponibilité uniquement. Les badges et pouces sont purement informatifs.
               </p>
-              {[...COMPANIONS].sort((a, b) => a.distanceKm - b.distanceKm).map((c) => {
-                const whenTs = new Date(when).getTime();
-                const free =
-                  Number.isNaN(whenTs) ||
-                  isCompanionAvailableFor(c, whenTs, durationHours * 60);
+              <div className="relative">
+                <input
+                  type="search"
+                  aria-label="Rechercher un compagnon par prénom ou n° d'inscription"
+                  placeholder="Rechercher par prénom ou n° d'inscription"
+                  value={companionQuery}
+                  onChange={(e) => setCompanionQuery(e.target.value)}
+                  className="w-full pl-4 pr-11 py-3 rounded-2xl border-2 border-border bg-card text-base focus:border-primary outline-none"
+                />
+                {companionQuery && (
+                  <button
+                    type="button"
+                    aria-label="Effacer la recherche"
+                    onClick={() => setCompanionQuery("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-muted-foreground"
+                  >
+                    <X className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                )}
+              </div>
+              {query && visible.length === 0 && (
+                <p className="text-xs text-muted-foreground">Aucun compagnon ne correspond à « {query} ».</p>
+              )}
+              {!query && dateChosen && (
+                <p className="text-xs font-semibold">
+                  {showAllCompanions ? "Tous les compagnons" : "Compagnons disponibles à cette date et cette heure"}
+                </p>
+              )}
+              {!query && dateChosen && !showAllCompanions && visible.length === 0 && (
+                <p className="text-xs text-muted-foreground">Aucun compagnon disponible à cette date et cette heure.</p>
+              )}
+              {visible.map((c) => {
+                const free = isFree(c);
                 return (
                 <button
                   key={c.id}
@@ -1850,7 +1913,7 @@ function FamilyForm({
                 >
                   <img src={c.photo} alt={c.firstName} className="h-12 w-12 rounded-full object-cover" />
                   <span className="min-w-0">
-                    <span className="block text-base font-bold">{c.firstName}</span>
+                    <span className="block text-base font-bold">{companionFullLabel(c)}</span>
                     {free ? (
                       <span className="block text-xs text-muted-foreground mt-0.5">
                         {experienceBadge(c.missions).emoji} {experienceBadge(c.missions).label} · 👍 {c.thumbs} ·{" "}
@@ -1865,12 +1928,18 @@ function FamilyForm({
                 </button>
                 );
               })}
+              {!query && dateChosen && (
+                <button type="button" className={linkCls} onClick={() => setShowAllCompanions((v) => !v)}>
+                  {showAllCompanions ? "Voir seulement les disponibles" : "Voir tous les compagnons"}
+                </button>
+              )}
               <p className="text-xs text-muted-foreground">
                 Sans réponse du compagnon choisi sous 4 h (ou 8 h si le rendez-vous est à plus de 48 h), nous vous
                 proposerons un autre compagnon ou une recherche automatique.
               </p>
             </div>
-          )}
+            );
+          })()}
         </div>
       )}
 
@@ -1935,7 +2004,7 @@ function FamilyForm({
         <CguAcceptBlock checked={cguOk} onChange={setCguOk} role="client" />
       </div>
       <Missing ok={cguOk} text="Acceptation des CGU obligatoire" />
-      {mode === "scheduled" && !!pickedCompanion && (
+      {((mode === "scheduled" && !!pickedCompanion) || (contractFlow && (mode === "asap" || autoSearch === true))) && (
         <div className="rounded-2xl border-2 border-dashed border-border p-3 text-left">
           <p className="text-xs font-bold">🧪 Simulation d'historique (test)</p>
           <p className="text-[11px] text-muted-foreground mt-1">
@@ -1943,10 +2012,11 @@ function FamilyForm({
           </p>
           <label className="block text-xs font-semibold mt-3">Compagnon simulé</label>
           <select
-            value={simCompanion || pickedCompanion}
+            value={simTarget}
             onChange={(e) => setSimCompanion(e.target.value)}
             className="w-full mt-1 px-3 py-2 rounded-xl border-2 border-border bg-card text-sm"
           >
+            <option value="all">Tous les compagnons</option>
             {COMPANIONS.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.firstName}
@@ -1975,6 +2045,10 @@ function FamilyForm({
             onChange={(e) => setSimHours(Number(e.target.value))}
             className="w-full"
           />
+          <label className="flex items-center justify-between gap-3 text-xs font-semibold mt-3">
+            <span>Contrat en vigueur avec ce compagnon (simulation)</span>
+            <Switch checked={simInForce} onCheckedChange={setSimInForce} aria-label="Contrat en vigueur avec ce compagnon (simulation)" />
+          </label>
         </div>
       )}
       <div className="flex-1" />
@@ -2007,10 +2081,10 @@ function FamilyForm({
           }}
           onSwitchCompanion={(id) => {
             setPickedCompanion(id);
-            // Le nouveau compagnon est évalué sur ses données réelles (la simulation ne le suit pas).
-            const next = runComplianceCheck(id, simCompanion || pickedCompanion);
-            if (next?.requiresContract) {
-              setComplianceCheck(next);
+            // Le nouveau compagnon est évalué sur l'historique déjà injecté.
+            const next = evaluatePair(id);
+            if (next.state === "threshold_reached") {
+              setComplianceCheck(next.check);
             } else {
               setComplianceCheck(null);
               createAndGo(id);
@@ -2490,11 +2564,15 @@ function FamilyWait({
   request: Request | undefined;
   simulateNoAnswer: boolean;
   onSimulateNoAnswer: (v: boolean) => void;
-  onEditRequest: (req?: Request) => void;
+  onEditRequest: (req?: Request, opts?: { pickCompanion?: boolean }) => void;
   onDone: () => void;
 }) {
   const [paid, setPaid] = useState(() => !!request?.paid);
   const [contractOk, setContractOk] = useState(false);
+  const { session: waitSession } = useSession();
+  const contractFlow = useAppSetting("contract_flow_enabled", false).data === true;
+  const dbInForce = useContractsInForce(contractFlow ? waitSession?.user.id : undefined).data;
+  useSimulatedInForce();
   const [showPay, setShowPay] = useState(false);
   const [restartedAt, setRestartedAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -2581,8 +2659,17 @@ function FamilyWait({
   const hours = request?.durationHours ?? 1;
 
   // Contrôle de conformité (contrat de travail écrit) au moment de l'acceptation.
+  const pairInForce =
+    contractFlow && !!request.student &&
+    getPairState({
+      companionId: request.student.id,
+      bookingTs: request.scheduledAt ?? request.createdAt,
+      durationHours: hours,
+      requests: store.getState().requests.filter((r) => r.id !== request.id),
+      inForceRefs: getInForceRefs(dbInForce),
+    }) === "in_force";
   const rawCheck =
-    accepted && request.student && !request.acknowledged && !contractOk
+    accepted && request.student && !request.acknowledged && !contractOk && !pairInForce
       ? checkContractRequirement(
           request.student.id,
           request.scheduledAt ?? request.createdAt,
@@ -2669,6 +2756,35 @@ function FamilyWait({
     onSimulateNoAnswer(false);
     setRestartedAt(Date.now());
   };
+
+  if (!accepted && contractFlow && request.contractChoiceRequired && request.status === "searching") {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
+        <div className="w-full rounded-2xl border-2 border-primary bg-accent p-5 text-left">
+          <p className="text-lg font-black">Choisissez vous-même votre compagnon</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Pour cette mission, la recherche automatique ne peut pas vous proposer de compagnon : ceux qui sont
+            disponibles interviennent déjà régulièrement chez vous. Pour continuer, choisissez vous-même votre
+            compagnon en Prise de RDV.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => { store.discardRequest(request.id); onEditRequest(request, { pickCompanion: true }); }}
+          className="btn-huge bg-primary text-primary-foreground w-full"
+        >
+          📅 Choisir mon compagnon
+        </button>
+        <button
+          type="button"
+          onClick={() => { store.cancelRequest(request.id, false, "Aucun compagnon proposé par la recherche automatique"); onDone(); }}
+          className="py-4 rounded-2xl border-2 border-border bg-card font-bold w-full"
+        >
+          Retour à l'accueil
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-6 text-center">
@@ -2804,14 +2920,14 @@ function FamilyWait({
                             key={c.id}
                             type="button"
                             onClick={() => {
-                              store.updateRequest(request.id, { preferredCompanionId: c.id });
+                              store.updateRequest(request.id, { preferredCompanionId: c.id, contractChoiceRequired: false });
                               relaunch();
                             }}
                             className="flex items-center gap-3 rounded-xl border-2 border-border p-2 text-left"
                           >
                             <img src={c.photo} alt={c.firstName} className="h-10 w-10 rounded-full object-cover" />
                             <span className="min-w-0">
-                              <span className="block text-sm font-bold">{c.firstName}</span>
+                              <span className="block text-sm font-bold">{companionFullLabel(c)}</span>
                               <span className="block text-[11px] text-muted-foreground">
                                 {experienceBadge(c.missions).emoji} {experienceBadge(c.missions).label} · 👍 {c.thumbs}
                               </span>
@@ -2823,7 +2939,7 @@ function FamilyWait({
                     <button
                       type="button"
                       onClick={() => {
-                        store.updateRequest(request.id, { preferredCompanionId: undefined, autoSearch: true });
+                        store.updateRequest(request.id, { preferredCompanionId: undefined, autoSearch: true, contractChoiceRequired: false });
                         relaunch();
                       }}
                       className="py-4 rounded-2xl border-2 border-primary text-primary font-bold text-sm"

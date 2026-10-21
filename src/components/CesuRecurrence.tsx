@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { COMPANIONS } from "@/lib/store";
+import { companionFullLabel } from "@/lib/companionLabel";
 import type { ContractCheckResult } from "@/lib/contractCompliance";
 
 /* ------------------------------------------------------------------
@@ -68,7 +69,7 @@ export function CesuRecurrenceModal({
               >
                 <img src={c.photo} alt={c.firstName} className="h-14 w-14 rounded-full object-cover" />
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold">{c.firstName}</p>
+                  <p className="font-bold">{companionFullLabel(c)}</p>
                   <p className="text-xs text-muted-foreground">
                     👍 {c.thumbs} · à {c.distanceKm} km
                   </p>
