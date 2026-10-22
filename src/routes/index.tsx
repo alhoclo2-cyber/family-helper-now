@@ -14,6 +14,7 @@ import { AuthCard } from "@/components/AuthCard";
 import { store, useStore, randomStudent, COMPANIONS, experienceBadge, FAMILY_RESPONSE_DELAY_MS, type NeedType, type Request, type Companion } from "@/lib/store";
 import { CguAcceptBlock, CguPanel } from "@/components/Cgu";
 import { CesuRecurrenceModal } from "@/components/CesuRecurrence";
+import { ContractQuestionnaire } from "@/components/ContractQuestionnaire";
 import { startOfWeek, subWeeks } from "date-fns";
 import { checkContractRequirement, type ContractCheckResult } from "@/lib/contractCompliance";
 import { getPairState, type PairState } from "@/lib/contractEligibility";
@@ -1219,6 +1220,7 @@ function FamilyForm({
   };
 
   const [showErrors, setShowErrors] = useState(false);
+  const [showContractQ, setShowContractQ] = useState(false);
   const okStreet = bookingAddressSchema.shape.street.safeParse(addressParts.street).success;
   const okPostalCode = bookingAddressSchema.shape.postalCode.safeParse(addressParts.postalCode).success;
   const okCity = bookingAddressSchema.shape.city.safeParse(addressParts.city).success;
