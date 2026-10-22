@@ -7,7 +7,6 @@ const missionTs = new Date(2026, 9, 21, 10).getTime(); // 21/10/2026
 const day = (d: Date) => format(d, "yyyy-MM-dd");
 const missionDay = day(startOfDay(new Date(missionTs)));
 const maxEnd = day(addMonths(startOfDay(new Date(missionTs)), 18));
-const beyondMax = day(addMonths(startOfDay(new Date(missionTs)), 18).getTime() + 86_400_000 as unknown as Date);
 
 const replaced = { firstName: "Marie", lastName: "Dupont", role: "aide à domicile" };
 const cddBase: ContractAnswers = { hasEnd: "yes", replacesAbsentEmployee: true, replaced };
