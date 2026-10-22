@@ -14,6 +14,7 @@ import { AuthCard } from "@/components/AuthCard";
 import { store, useStore, randomStudent, COMPANIONS, experienceBadge, FAMILY_RESPONSE_DELAY_MS, type NeedType, type Request, type Companion } from "@/lib/store";
 import { CguAcceptBlock, CguPanel } from "@/components/Cgu";
 import { CesuRecurrenceModal } from "@/components/CesuRecurrence";
+import { ContractQuestionnaire } from "@/components/ContractQuestionnaire";
 import { startOfWeek, subWeeks } from "date-fns";
 import { checkContractRequirement, type ContractCheckResult } from "@/lib/contractCompliance";
 import { getPairState, type PairState } from "@/lib/contractEligibility";
@@ -1219,6 +1220,7 @@ function FamilyForm({
   };
 
   const [showErrors, setShowErrors] = useState(false);
+  const [showContractQ, setShowContractQ] = useState(false);
   const okStreet = bookingAddressSchema.shape.street.safeParse(addressParts.street).success;
   const okPostalCode = bookingAddressSchema.shape.postalCode.safeParse(addressParts.postalCode).success;
   const okCity = bookingAddressSchema.shape.city.safeParse(addressParts.city).success;
@@ -1298,6 +1300,24 @@ function FamilyForm({
     createAndGo();
   };
 
+  // Parcours contrat actif : le questionnaire 1 (CDI/CDD) remplace le formulaire.
+  // Placé après tous les hooks ; l'état du formulaire est conservé au retour.
+  if (showContractQ && contractFlow && pickedCompanion) {
+    return (
+      <ContractQuestionnaire
+        companionId={pickedCompanion}
+        companionName={COMPANIONS.find((c) => c.id === pickedCompanion)?.firstName ?? "ce compagnon"}
+        missionTs={mode === "scheduled" ? new Date(when).getTime() : Date.now()}
+        durationHours={durationHours}
+        onBack={() => setShowContractQ(false)}
+        onDone={() => {
+          setShowContractQ(false);
+          // TODO prompt 4 : brancher la suite du parcours contrat ici (questionnaire 2).
+          createAndGo();
+        }}
+      />
+    );
+  }
 
   return (
     <form onSubmit={submit} className="flex-1 flex flex-col px-5 py-6 gap-6">
@@ -2077,7 +2097,8 @@ function FamilyForm({
           onClose={() => setComplianceCheck(null)}
           onContinue={() => {
             setComplianceCheck(null);
-            createAndGo();
+            if (contractFlow) setShowContractQ(true);
+            else createAndGo();
           }}
           onSwitchCompanion={(id) => {
             setPickedCompanion(id);
@@ -2569,6 +2590,7 @@ function FamilyWait({
 }) {
   const [paid, setPaid] = useState(() => !!request?.paid);
   const [contractOk, setContractOk] = useState(false);
+  const [showContractQ, setShowContractQ] = useState(false);
   const { session: waitSession } = useSession();
   const contractFlow = useAppSetting("contract_flow_enabled", false).data === true;
   const dbInForce = useContractsInForce(contractFlow ? waitSession?.user.id : undefined).data;
@@ -3041,7 +3063,19 @@ function FamilyWait({
           )}
 
 
-          {complianceCheck ? (
+          {showContractQ && contractFlow && request.student ? (
+            <ContractQuestionnaire
+              companionId={request.student.id}
+              companionName={request.student.firstName}
+              missionTs={request.scheduledAt ?? request.createdAt}
+              durationHours={hours}
+              onBack={() => setShowContractQ(false)}
+              onDone={() => {
+                setShowContractQ(false);
+                setContractOk(true);
+              }}
+            />
+          ) : complianceCheck ? (
             <>
               <CesuRecurrenceModal
                 companionId={request.student!.id}
@@ -3049,7 +3083,7 @@ function FamilyWait({
                 check={complianceCheck}
                 dismissible
                 onClose={() => { store.discardRequest(request.id); onEditRequest(request); }}
-                onContinue={() => setContractOk(true)}
+                onContinue={() => (contractFlow ? setShowContractQ(true) : setContractOk(true))}
                 onSwitchCompanion={(companionId) => {
                   store.updateRequest(request.id, { preferredCompanionId: companionId });
                   store.refuseCompanion(request.id, "Le particulier a choisi un autre compagnon.");

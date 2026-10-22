@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/auth";
 
-export type AppSettingKey = "contract_flow_enabled" | "contract_convalescence_enabled";
+export type AppSettingKey = "contract_flow_enabled";
 export const appSettingKey = (key: AppSettingKey, userId?: string) => ["app-setting", key, userId] as const;
 
 export function useAppSetting(key: AppSettingKey, defaultValue: boolean) {
