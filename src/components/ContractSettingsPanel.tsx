@@ -22,7 +22,6 @@ export function ContractSettingsPanel() {
     <section className="border-2 border-border rounded-2xl p-4">
       <h2 className="font-bold text-sm mb-2">Paramètres du contrat</h2>
       <Setting settingKey="contract_flow_enabled" defaultValue={false} label="Activer le parcours contrat" />
-      <Setting settingKey="contract_convalescence_enabled" defaultValue={true} label="Autoriser le motif convalescence (CDD)" />
     </section>
   );
 }

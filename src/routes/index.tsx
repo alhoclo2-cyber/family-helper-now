@@ -3063,7 +3063,19 @@ function FamilyWait({
           )}
 
 
-          {complianceCheck ? (
+          {showContractQ && contractFlow && request.student ? (
+            <ContractQuestionnaire
+              companionId={request.student.id}
+              companionName={request.student.firstName}
+              missionTs={request.scheduledAt ?? request.createdAt}
+              durationHours={hours}
+              onBack={() => setShowContractQ(false)}
+              onDone={() => {
+                setShowContractQ(false);
+                setContractOk(true);
+              }}
+            />
+          ) : complianceCheck ? (
             <>
               <CesuRecurrenceModal
                 companionId={request.student!.id}
@@ -3071,7 +3083,7 @@ function FamilyWait({
                 check={complianceCheck}
                 dismissible
                 onClose={() => { store.discardRequest(request.id); onEditRequest(request); }}
-                onContinue={() => setContractOk(true)}
+                onContinue={() => (contractFlow ? setShowContractQ(true) : setContractOk(true))}
                 onSwitchCompanion={(companionId) => {
                   store.updateRequest(request.id, { preferredCompanionId: companionId });
                   store.refuseCompanion(request.id, "Le particulier a choisi un autre compagnon.");

@@ -25,3 +25,6 @@
 - Les recherches automatiques n'attribuent jamais un compagnon qui atteindrait le seuil de contrat ou avec qui un contrat est en vigueur ; getPairState (contractEligibility.ts) est la seule source de cette décision.
 - Le parcours contrat n'est actif que si app_settings.contract_flow_enabled vaut true ; sinon le comportement historique est conservé (hors correction du seuil et choix du compagnon amélioré).
 - En Prise de RDV, le Particulier peut choisir n'importe quel compagnon, par recherche (prénom ou numéro d'inscription uniquement) ou dans la liste des disponibles. Dans les listes, un compagnon s'affiche par son prénom, l'initiale de son nom et son numéro d'inscription ; jamais par son nom complet.
+- La décision CDI / CDD est une fonction pure (src/lib/contractDecision.ts) : le CDD n'est proposé que pour remplacer un salarié habituel absent, avec une date de fin fixe limitée à 18 mois ; en cas de doute, de réponse manquante ou incohérente, la décision retombe toujours sur CDI.
+- La décision CDI / CDD sera rappelée côté serveur à la signature : le résultat enregistré par le navigateur ne fait jamais foi.
+- Le parcours contrat ne pose aucune question sur la santé et ne comporte aucune zone de texte libre : la nature de l'absence du salarié remplacé n'est jamais collectée.
