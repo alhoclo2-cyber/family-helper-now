@@ -70,9 +70,10 @@ export function ContractQuestionnaire({
   const draftQuery = useContractDraft(userId, companionId);
 
   const [step, setStep] = useState<Step>("q1");
-  const [answers, setAnswers] = useState<ContractAnswers>({ hasEnd: "no" });
+  const [answers, setAnswers] = useState<ContractAnswers>({});
   const [initialized, setInitialized] = useState(false);
   const [errors, setErrors] = useState<ValidationError[]>([]);
+  const [choiceError, setChoiceError] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [certified, setCertified] = useState(false);
@@ -166,6 +167,12 @@ export function ContractQuestionnaire({
   };
 
   const goNext = async () => {
+    // Aucune valeur présélectionnée : une réponse explicite est exigée.
+    if ((step === "q1" && !answers.hasEnd) || (step === "q2" && answers.replacesAbsentEmployee === undefined)) {
+      setChoiceError(true);
+      return;
+    }
+    setChoiceError(false);
     if (step === "q3") {
       const errs = validateAnswers(answers, { missionTs });
       setErrors(errs);
@@ -231,6 +238,11 @@ export function ContractQuestionnaire({
       {saveError && (
         <p role="alert" className="text-sm font-semibold text-destructive">
           {SAVE_ERROR}
+        </p>
+      )}
+      {choiceError && (
+        <p role="alert" className="text-sm font-semibold text-destructive">
+          Choisissez une réponse pour continuer.
         </p>
       )}
 
