@@ -2079,7 +2079,8 @@ function FamilyForm({
           onClose={() => setComplianceCheck(null)}
           onContinue={() => {
             setComplianceCheck(null);
-            createAndGo();
+            if (contractFlow) setShowContractQ(true);
+            else createAndGo();
           }}
           onSwitchCompanion={(id) => {
             setPickedCompanion(id);
