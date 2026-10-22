@@ -10,7 +10,7 @@ import { addMonths, startOfDay } from "date-fns";
 export const CDD_MAX_MONTHS_FIXED_END = 18;
 
 export type ContractAnswers = {
-  hasEnd: "no" | "unknown" | "yes";
+  hasEnd?: "no" | "unknown" | "yes";
   replacesAbsentEmployee?: boolean;
   replaced?: { firstName: string; lastName: string; role: string };
   endMode?: "date" | "return";
