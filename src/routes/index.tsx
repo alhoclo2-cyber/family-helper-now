@@ -1300,6 +1300,24 @@ function FamilyForm({
     createAndGo();
   };
 
+  // Parcours contrat actif : le questionnaire 1 (CDI/CDD) remplace le formulaire.
+  // Placé après tous les hooks ; l'état du formulaire est conservé au retour.
+  if (showContractQ && contractFlow && pickedCompanion) {
+    return (
+      <ContractQuestionnaire
+        companionId={pickedCompanion}
+        companionName={COMPANIONS.find((c) => c.id === pickedCompanion)?.firstName ?? "ce compagnon"}
+        missionTs={mode === "scheduled" ? new Date(when).getTime() : Date.now()}
+        durationHours={durationHours}
+        onBack={() => setShowContractQ(false)}
+        onDone={() => {
+          setShowContractQ(false);
+          // TODO prompt 4 : brancher la suite du parcours contrat ici (questionnaire 2).
+          createAndGo();
+        }}
+      />
+    );
+  }
 
   return (
     <form onSubmit={submit} className="flex-1 flex flex-col px-5 py-6 gap-6">
@@ -2572,6 +2590,7 @@ function FamilyWait({
 }) {
   const [paid, setPaid] = useState(() => !!request?.paid);
   const [contractOk, setContractOk] = useState(false);
+  const [showContractQ, setShowContractQ] = useState(false);
   const { session: waitSession } = useSession();
   const contractFlow = useAppSetting("contract_flow_enabled", false).data === true;
   const dbInForce = useContractsInForce(contractFlow ? waitSession?.user.id : undefined).data;
