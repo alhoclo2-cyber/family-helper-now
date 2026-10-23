@@ -108,7 +108,7 @@ export function ContractTermsQuestionnaire({
   const effectiveUntil = kind === "cdd" && answers.endMode === "date" ? answers.endDate ?? null : null;
 
   const saveIdentity = async () => {
-    const patch: Record<string, string> = {};
+    const patch: Partial<Record<keyof typeof need, string>> = {};
     (Object.keys(need) as (keyof typeof need)[]).forEach((k) => { if (need[k]) patch[k] = idForm[k].trim(); });
     if (Object.values(patch).some((v) => !v)) return;
     setSaving(true);

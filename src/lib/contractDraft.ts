@@ -106,7 +106,7 @@ export async function saveContractDraft({
       merged.terms = prev.terms;
       merged.terms_version = prev.terms_version;
     }
-    const update: Record<string, unknown> = { answers: merged as unknown as Json };
+    const update: { answers: Json; contract_kind?: string; effective_from?: null; effective_until?: null } = { answers: merged as unknown as Json };
     if (contractKind !== null) update.contract_kind = contractKind;
     if (kindChanged) {
       update.effective_from = null;
