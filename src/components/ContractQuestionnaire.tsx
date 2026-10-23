@@ -8,7 +8,9 @@ import {
   type ContractKind,
   type ValidationError,
 } from "@/lib/contractDecision";
-import { fetchLatestDraftAnswers, saveContractDraft, useContractDraft, type StoredContractAnswers } from "@/lib/contractDraft";
+import { useQueryClient } from "@tanstack/react-query";
+import { CONTRACT_NOTICE_SENTENCE } from "@/lib/contractTerms";
+import { fetchLatestDraftAnswers, saveContractDraft, stripTerms, useContractDraft, type StoredContractAnswers } from "@/lib/contractDraft";
 import { useSession } from "@/lib/auth";
 
 /* ------------------------------------------------------------------
@@ -21,6 +23,10 @@ const INTRO =
 const SAVE_ERROR = "Impossible d'enregistrer vos réponses, réessayez.";
 
 type Step = "q1" | "q2" | "q3" | "confirm";
+
+export function ContractNoticeSentence() {
+  return <p className="text-sm font-bold text-destructive">{CONTRACT_NOTICE_SENTENCE}</p>;
+}
 
 function Choice({
   label,
@@ -63,8 +69,9 @@ export function ContractQuestionnaire({
   missionTs: number;
   durationHours: number;
   onBack: () => void;
-  onDone: (result: { kind: ContractKind; draftId: string }) => void;
+  onDone: (result: { kind: ContractKind; draftId: string; answers: ContractAnswers }) => void;
 }) {
+  const qc = useQueryClient();
   const { session } = useSession();
   const userId = session?.user.id;
   const draftQuery = useContractDraft(userId, companionId);
@@ -84,7 +91,8 @@ export function ContractQuestionnaire({
     if (initialized || !userId || draftQuery.data === undefined) return;
     const own = draftQuery.data;
     if (own?.answers && typeof own.answers === "object") {
-      setAnswers(own.answers as StoredContractAnswers);
+      const { decision_version: _v, certified_at: _c, ...rest } = stripTerms(own.answers as Record<string, unknown>) as StoredContractAnswers;
+      setAnswers(rest);
       setInitialized(true);
       return;
     }
@@ -128,6 +136,7 @@ export function ContractQuestionnaire({
   if (draftQuery.data?.status === "awaiting_companion") {
     return (
       <div className="flex-1 flex flex-col px-5 py-6 gap-4">
+        <ContractNoticeSentence />
         <h2 className="text-xl font-black">Contrat de travail</h2>
         <p className="text-base">
           Une demande de contrat est déjà en attente de la réponse de ce compagnon. Vous pouvez choisir un autre compagnon.
@@ -157,6 +166,7 @@ export function ContractQuestionnaire({
     setSaveError(false);
     try {
       const draftId = await saveContractDraft({ userId, companionRef: companionId, answers: finalAnswers, contractKind: kindValue });
+      qc.invalidateQueries({ queryKey: ["contract-draft", userId, companionId] });
       return draftId;
     } catch {
       setSaveError(true);
@@ -199,7 +209,7 @@ export function ContractQuestionnaire({
     };
     const draftId = await persist(kind, finalAnswers);
     if (!draftId) return;
-    onDone({ kind, draftId });
+    onDone({ kind, draftId, answers });
   };
 
   const nav = (
@@ -235,6 +245,7 @@ export function ContractQuestionnaire({
 
   return (
     <div className="flex-1 flex flex-col px-5 py-6 gap-4">
+      <ContractNoticeSentence />
       {saveError && (
         <p role="alert" className="text-sm font-semibold text-destructive">
           {SAVE_ERROR}

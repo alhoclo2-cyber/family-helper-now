@@ -16,3 +16,5 @@
 - [x] Placer l'acceptation des services non autorisés avant l'envoi de la candidature, renommer l'action de carte, retirer le modèle mandataire de la connexion Famille et placer les pièces d'identité avant le RIB.
 - [x] Contrat prompt 2 : seuil 5ᵉ semaine, getPairState, recherche auto filtrée, choix du compagnon (recherche + disponibles)
 - [x] Contrat prompt 3 : questionnaire 1 CDI/CDD (fonction pure + tests), brouillon work_contracts, branchement FamilyForm/FamilyWait, réglage convalescence supprimé
+- [x] Prompt 4 : questionnaire 2 du contrat, délai minimum de 5 jours, enregistrement des choix.
+- [ ] Prompt 4 : vérification navigateur complète avec le réglage activé (non faite dans cette session).

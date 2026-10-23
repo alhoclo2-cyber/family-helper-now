@@ -14,7 +14,8 @@ import { AuthCard } from "@/components/AuthCard";
 import { store, useStore, randomStudent, COMPANIONS, experienceBadge, FAMILY_RESPONSE_DELAY_MS, type NeedType, type Request, type Companion } from "@/lib/store";
 import { CguAcceptBlock, CguPanel } from "@/components/Cgu";
 import { CesuRecurrenceModal } from "@/components/CesuRecurrence";
-import { ContractQuestionnaire } from "@/components/ContractQuestionnaire";
+import { ContractFlow, ContractNoticeBlock } from "@/components/ContractFlow";
+import { meetsContractNotice } from "@/lib/contractTerms";
 import { startOfWeek, subWeeks } from "date-fns";
 import { checkContractRequirement, type ContractCheckResult } from "@/lib/contractCompliance";
 import { getPairState, type PairState } from "@/lib/contractEligibility";
@@ -1221,6 +1222,7 @@ function FamilyForm({
 
   const [showErrors, setShowErrors] = useState(false);
   const [showContractQ, setShowContractQ] = useState(false);
+  const [noticeBlocked, setNoticeBlocked] = useState(false);
   const okStreet = bookingAddressSchema.shape.street.safeParse(addressParts.street).success;
   const okPostalCode = bookingAddressSchema.shape.postalCode.safeParse(addressParts.postalCode).success;
   const okCity = bookingAddressSchema.shape.city.safeParse(addressParts.city).success;
@@ -1292,6 +1294,11 @@ function FamilyForm({
     injectSimulations();
     if (mode === "scheduled" && autoSearch === false && pickedCompanion) {
       const { state, check } = evaluatePair(pickedCompanion);
+      // Contrat applicable : délai minimum de 5 jours (+ marge de réponse), avant la modale et le raccourci « in_force ».
+      if (contractFlow && (state === "threshold_reached" || state === "in_force") && !meetsContractNotice(new Date(when).getTime(), Date.now())) {
+        setNoticeBlocked(true);
+        return;
+      }
       if (state === "threshold_reached") {
         setComplianceCheck(check);
         return;
@@ -1304,7 +1311,7 @@ function FamilyForm({
   // Placé après tous les hooks ; l'état du formulaire est conservé au retour.
   if (showContractQ && contractFlow && pickedCompanion) {
     return (
-      <ContractQuestionnaire
+      <ContractFlow
         companionId={pickedCompanion}
         companionName={COMPANIONS.find((c) => c.id === pickedCompanion)?.firstName ?? "ce compagnon"}
         missionTs={mode === "scheduled" ? new Date(when).getTime() : Date.now()}
@@ -1312,7 +1319,7 @@ function FamilyForm({
         onBack={() => setShowContractQ(false)}
         onDone={() => {
           setShowContractQ(false);
-          // TODO prompt 4 : brancher la suite du parcours contrat ici (questionnaire 2).
+          // TODO prompt 5 : génération et relecture du contrat.
           createAndGo();
         }}
       />
@@ -2089,6 +2096,16 @@ function FamilyForm({
       >
         {mode === "asap" ? "Lancer la recherche" : "Valider la réservation"}
       </button>
+      {noticeBlocked && (
+        <div className="fixed inset-0 z-50 bg-foreground/40 flex items-center justify-center p-4">
+          <div className="w-full max-w-[440px]">
+            <ContractNoticeBlock
+              onEditDate={() => setNoticeBlocked(false)}
+              onOtherCompanion={() => { setNoticeBlocked(false); setPickedCompanion(""); }}
+            />
+          </div>
+        </div>
+      )}
       {complianceCheck && (
         <CesuRecurrenceModal
           companionId={pickedCompanion}
@@ -3064,7 +3081,7 @@ function FamilyWait({
 
 
           {showContractQ && contractFlow && request.student ? (
-            <ContractQuestionnaire
+            <ContractFlow
               companionId={request.student.id}
               companionName={request.student.firstName}
               missionTs={request.scheduledAt ?? request.createdAt}
