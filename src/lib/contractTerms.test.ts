@@ -35,9 +35,9 @@ describe("defaultTerms", () => {
 
 describe("maxTrialDaysCdd", () => {
   test("10 jours → 1", () => assert.equal(maxTrialDaysCdd({ startDate: start, endDate: d(9) }), 1));
-  test("3 mois → semaines complètes plafonnées à 14", () => assert.equal(maxTrialDaysCdd({ startDate: start, endDate: m(3, -1) }), 12));
+  test("3 mois → semaines complètes plafonnées à 14", () => assert.equal(maxTrialDaysCdd({ startDate: start, endDate: m(3, -1) }), 13));
   test("exactement 6 mois → 14", () => assert.equal(maxTrialDaysCdd({ startDate: start, endDate: m(6) }), 14));
-  test("6 mois et 1 jour → 30", () => assert.equal(maxTrialDaysCdd({ startDate: start, endDate: m(6, 1) }), 30));
+  test("6 mois et 1 jour → plafond 30 (26 semaines complètes)", () => assert.equal(maxTrialDaysCdd({ startDate: start, endDate: m(6, 1) }), 26));
   test("12 mois → 30", () => assert.equal(maxTrialDaysCdd({ startDate: start, endDate: m(12) }), 30));
   test("moins de 7 jours → 0", () => assert.equal(maxTrialDaysCdd({ startDate: start, endDate: d(5) }), 0));
   test("terme imprécis 1 semaine → 1", () => assert.equal(maxTrialDaysCdd({ startDate: start, minDuration: { value: 1, unit: "weeks" } }), 1));
