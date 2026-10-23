@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { ContractAnswers, ContractKind } from "./contractDecision";
 import type { Json } from "@/integrations/supabase/types";
+import type { ContractTerms } from "./contractTerms";
 
 /* ------------------------------------------------------------------
    Brouillon de contrat (work_contracts) : les missions vivent en
@@ -48,7 +49,33 @@ export async function fetchLatestDraftAnswers(userId: string, excludeCompanionRe
     .limit(1)
     .maybeSingle();
   if (error) throw error;
-  return (data?.answers ?? null) as StoredContractAnswers | null;
+  if (!data?.answers) return null;
+  return stripTerms(data.answers as Record<string, unknown>) as StoredContractAnswers;
+}
+
+/** Retire les réponses du questionnaire 2 : le questionnaire 1 ne les réinjecte jamais. */
+export function stripTerms(answers: Record<string, unknown>): Record<string, unknown> {
+  const { terms: _t, terms_version: _v, ...rest } = answers;
+  return rest;
+}
+
+export async function fetchContractTerms(draftId: string): Promise<Partial<ContractTerms> | null> {
+  const { data, error } = await supabase.from("work_contracts").select("answers").eq("id", draftId).maybeSingle();
+  if (error) throw error;
+  const a = data?.answers as Record<string, unknown> | null;
+  return (a?.terms as Partial<ContractTerms>) ?? null;
+}
+
+export async function saveContractTerms({ draftId, terms, effectiveUntil }: { draftId: string; terms: ContractTerms; effectiveUntil: string | null }) {
+  const { data, error: readError } = await supabase.from("work_contracts").select("answers").eq("id", draftId).eq("status", "draft").single();
+  if (readError) throw readError;
+  const answers = { ...((data.answers as Record<string, unknown>) ?? {}), terms, terms_version: 1 };
+  const { error } = await supabase
+    .from("work_contracts")
+    .update({ answers: answers as unknown as Json, effective_from: terms.startDate, effective_until: effectiveUntil })
+    .eq("id", draftId)
+    .eq("status", "draft");
+  if (error) throw error;
 }
 
 export async function saveContractDraft({
@@ -62,26 +89,39 @@ export async function saveContractDraft({
   answers: StoredContractAnswers;
   contractKind: ContractKind | null;
 }): Promise<string> {
-  const payload = answers as unknown as Json;
   const { data: existing, error: readError } = await supabase
     .from("work_contracts")
-    .select("id")
+    .select("id, answers, contract_kind")
     .eq("client_id", userId)
     .eq("companion_ref", companionRef)
     .eq("status", "draft")
     .maybeSingle();
   if (readError) throw readError;
   if (existing) {
+    // Conserve les réponses du questionnaire 2, sauf si le type de contrat change (CDI <-> CDD).
+    const prev = (existing.answers as Record<string, unknown>) ?? {};
+    const kindChanged = contractKind !== null && existing.contract_kind !== null && existing.contract_kind !== contractKind;
+    const merged: Record<string, unknown> = { ...stripTerms(answers as Record<string, unknown>) };
+    if (!kindChanged && prev.terms !== undefined) {
+      merged.terms = prev.terms;
+      merged.terms_version = prev.terms_version;
+    }
+    const update: Record<string, unknown> = { answers: merged as unknown as Json };
+    if (contractKind !== null) update.contract_kind = contractKind;
+    if (kindChanged) {
+      update.effective_from = null;
+      update.effective_until = null;
+    }
     const { error } = await supabase
       .from("work_contracts")
-      .update({ answers: payload, contract_kind: contractKind })
+      .update(update)
       .eq("id", existing.id);
     if (error) throw error;
     return existing.id;
   }
   const { data, error } = await supabase
     .from("work_contracts")
-    .insert({ client_id: userId, companion_ref: companionRef, status: "draft", answers: payload, contract_kind: contractKind })
+    .insert({ client_id: userId, companion_ref: companionRef, status: "draft", answers: answers as unknown as Json, contract_kind: contractKind })
     .select("id")
     .single();
   if (error) throw error;
