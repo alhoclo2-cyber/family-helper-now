@@ -148,7 +148,8 @@ export function ContractTermsQuestionnaire({
     setStep((step - 1) as Step);
   };
 
-  const idComplete = (Object.keys(need) as (keyof typeof need)[]).every((k) => !need[k] || !!idForm[k].trim());
+  const cesuMissing = !!userId && cesu.data?.hasCesu === false;
+  const idComplete = !cesuMissing && (Object.keys(need) as (keyof typeof need)[]).every((k) => !need[k] || !!idForm[k].trim());
 
   const setDay = (weekday: Weekday, patch: Partial<FixedDay> | null) => {
     const others = fixedDays.filter((d) => d.weekday !== weekday);
@@ -199,6 +200,15 @@ export function ContractTermsQuestionnaire({
           {need.city && (
             <div><label htmlFor="ct-city" className="block text-sm font-bold mb-1">Ville</label>
               <input id="ct-city" className={inputCls} value={idForm.city} onChange={(e) => setIdForm((f) => ({ ...f, city: e.target.value }))} /></div>
+          )}
+          {cesuMissing && userId && (
+            <>
+              <p className="text-sm leading-relaxed">
+                Pour établir un contrat de travail, votre numéro CESU est nécessaire. Vous pouvez le demander sur
+                cesu.urssaf.fr puis le renseigner ci-dessous.
+              </p>
+              <CesuNumberField userId={userId} />
+            </>
           )}
         </>
       )}
@@ -277,7 +287,7 @@ export function ContractTermsQuestionnaire({
             <Choice label="Planning défini" selected={terms.organization.mode === "fixed"} onSelect={() => terms.organization.mode !== "fixed" && set({ organization: { mode: "fixed", days: [] } })} />
           </div>
           {terms.organization.mode === "irregular" ? (
-            <p className="text-sm">Les missions varient selon vos demandes, de {WEEKLY_HOURS.min} à {WEEKLY_HOURS.max} heures par semaine. Elles sont communiquées au compagnon par la plateforme Solélia dès leur réservation, au moins 5 jours avant leur début. Le compagnon est libre d'accepter ou de refuser chaque mission.</p>
+            <p className="text-sm">Les missions varient selon vos demandes, de {WEEKLY_HOURS.min} à {WEEKLY_HOURS.max} heures par semaine. Le planning est généré par la plateforme Solélia à partir des missions réservées. Il est envoyé par e-mail au compagnon et chacun peut le consulter dans son compte, dans Mes contrats, au moins 5 jours avant chaque mission. Le compagnon est libre d'accepter ou de refuser chaque mission.</p>
           ) : (
             <>
               <p className="text-sm">Mêmes jours et mêmes horaires chaque semaine.</p>
@@ -295,9 +305,9 @@ export function ContractTermsQuestionnaire({
                     {day && (
                       <div className="grid grid-cols-2 gap-2">
                         <label className="text-xs font-bold">Heure de début
-                          <input type="time" className={inputCls} value={day.start} onChange={(e) => setDay(wd, { start: e.target.value })} /></label>
+                          <input type="time" min="06:00" max="21:00" className={inputCls} value={day.start} onChange={(e) => setDay(wd, { start: e.target.value })} /></label>
                         <label className="text-xs font-bold">Heure de fin
-                          <input type="time" className={inputCls} value={day.end} onChange={(e) => setDay(wd, { end: e.target.value })} /></label>
+                          <input type="time" min="06:00" max="21:00" className={inputCls} value={day.end} onChange={(e) => setDay(wd, { end: e.target.value })} /></label>
                       </div>
                     )}
                   </div>
