@@ -4043,6 +4043,14 @@ function MissionInfo({ r, full }: { r: Request; full?: boolean }) {
       <p className="text-muted-foreground">🧭 {companionDistance(r)} km de chez vous</p>
       <p>⏱️ {hours} h</p>
       <p><span className="text-lg font-black">💶 Total net : {formatPrice(rate * hours)} €</span><span className="text-base font-normal">, soit {formatPrice(rate)} € net/h</span></p>
+      {r.contractId && (
+        <p className="rounded-xl bg-mission-violet/10 text-mission-violet text-sm font-bold px-3 py-2 mt-1">
+          📄 Mission avec contrat de travail (CDI ou CDD)
+          {r.contractAnswerDeadline != null && (
+            <span className="block mt-1">Répondez avant le {format(new Date(r.contractAnswerDeadline), "EEEE d MMMM 'à' HH:mm", { locale: fr })}.</span>
+          )}
+        </p>
+      )}
       {full && (
         <div className="mt-2 flex flex-col gap-1">
           {r.childAge && <p>🎂 Enfant : {r.childAge} ans</p>}
@@ -4060,10 +4068,17 @@ function MissionInfo({ r, full }: { r: Request; full?: boolean }) {
   );
 }
 
-function MissionActions({ request, onAccept, onDecline, blocked }: { request: Request; onAccept: (arrival?: Arrival) => void; onDecline: () => void; blocked?: boolean }) {
+function MissionActions({ request, onAccept, onDecline, onOpenContract, blocked }: { request: Request; onAccept: (arrival?: Arrival) => void; onDecline: () => void; onOpenContract?: () => void; blocked?: boolean }) {
   const [confirm, setConfirm] = useState<"accept" | "decline" | null>(null);
   const input = useArrivalInput(request.durationHours ?? 1);
   const rapid = !request.scheduledAt;
+  // Mission sous contrat : aucune acceptation rapide, la lecture du contrat est obligatoire.
+  if (request.contractId && request.status === "searching")
+    return (
+      <Button onClick={onOpenContract} className="min-h-14 rounded-2xl bg-mission-violet text-lg font-bold text-background">
+        📄 Lire le contrat
+      </Button>
+    );
   if (blocked)
     return (
       <div className="flex flex-col gap-2">
@@ -4101,14 +4116,14 @@ function MissionActions({ request, onAccept, onDecline, blocked }: { request: Re
   );
 }
 
-function MissionCard({ r, onOpen, onAccept, onDecline, blocked }: { r: Request; onOpen: () => void; onAccept: (arrival?: Arrival) => void; onDecline: () => void; blocked?: boolean }) {
+function MissionCard({ r, onOpen, onAccept, onDecline, onOpenContract, blocked }: { r: Request; onOpen: () => void; onAccept: (arrival?: Arrival) => void; onDecline: () => void; onOpenContract?: () => void; blocked?: boolean }) {
   return (
     <div className="flex flex-col gap-3 rounded-2xl border-2 border-border bg-card p-4">
       <button type="button" onClick={onOpen} className="text-left" aria-label="Voir le détail de la mission">
         <MissionInfo r={r} />
         <p className="mt-1 font-semibold text-primary underline">Voir le détail</p>
       </button>
-      <MissionActions request={r} onAccept={onAccept} onDecline={onDecline} blocked={blocked} />
+      <MissionActions request={r} onAccept={onAccept} onDecline={onDecline} onOpenContract={onOpenContract} blocked={blocked} />
     </div>
   );
 }
