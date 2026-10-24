@@ -2646,6 +2646,45 @@ function FamilyWait({
     return () => window.removeEventListener("popstate", onPop);
   }, [paid]);
 
+  // Suivi du contrat lié : statut relu régulièrement, expiration des contrats dépassés.
+  const contractStatus = useContractStatus(request?.contractId).data;
+  const expireContracts = useServerFn(expireOverdueContracts);
+  const simulateAnswer = useServerFn(simulateCompanionAnswer);
+  const waitQc = useQueryClient();
+  useEffect(() => {
+    void expireContracts().catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const contractStatusValue = contractStatus?.status;
+  useEffect(() => {
+    if (!request?.contractId || !contractStatus) return;
+    if (contractStatusValue === "refused" || contractStatusValue === "expired") {
+      store.releaseContractRequest(request.id, contractStatus.companion_ref, contractStatusValue);
+      void waitQc.invalidateQueries({ queryKey: ["contract-status", request.contractId] });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [request?.contractId, contractStatusValue]);
+  // Tant que le compagnon n'a pas répondu, seule l'attente est possible côté famille.
+  const awaitingCompanion = !!request?.contractId && contractStatusValue === "awaiting_companion";
+  const demoContractCompanion =
+    awaitingCompanion && contractFlow && !!contractStatus && !/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(contractStatus.companion_ref);
+
+  const simulateCompanion = async (action: "accept" | "refuse" | "timeout") => {
+    if (!request?.contractId || !contractStatus) return;
+    const r = await simulateAnswer({ data: { contractId: request.contractId, action } });
+    if (!r.ok) return;
+    if (action === "accept") {
+      if (r.emailText) {
+        for (const to of [r.employerEmail, "demo@example.fr"]) {
+          sendSimulatedEmail("contract_signed_both", to, { contractId: request.contractId, hash: r.finalHash, contractText: r.emailText });
+        }
+      }
+      store.acceptRequestBy(request.id, contractStatus.companion_ref);
+    } else {
+      store.releaseContractRequest(request.id, contractStatus.companion_ref, action === "refuse" ? "refused" : "expired");
+    }
+    void waitQc.invalidateQueries({ queryKey: ["contract-status", request.contractId] });
+  };
 
   if (!request) return null;
   if (request.status === "cancelled" && request.cancelledBy === "system") {
