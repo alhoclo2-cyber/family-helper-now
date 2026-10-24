@@ -350,7 +350,7 @@ export const requestCompanionSignatureCode = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     const ctx = context as Ctx;
-    const { OTP_TTL_MS, COMPANION_ANSWER_MESSAGES: _m } = { OTP_TTL_MS: 10 * 60_000, COMPANION_ANSWER_MESSAGES: {} };
+    const { OTP_TTL_MS } = await import("./contractSignature");
     const c = await readOwnCompanionContract(ctx, data.contractId);
     if (!c) throw new Error("Ce contrat ne vous est pas adressé.");
     if (c.status !== "awaiting_companion") throw new Error("Ce contrat n'attend plus votre réponse.");
