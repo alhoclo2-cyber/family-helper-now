@@ -92,6 +92,8 @@ export type Request = {
   autoSearch?: boolean; // parcours RDV : recherche automatique à proximité
   acknowledged?: boolean; // le client a cliqué sur « C'est noté ! »
   familyNotifiedAt?: number; // notification simulée unique pour l'acceptation actuelle
+  contractId?: string; // contrat de travail signé par l'employeur, lié à cette mission
+  contractAnswerDeadline?: number; // échéance de réponse du compagnon au contrat
   thumbsGiven?: boolean; // pouce levé attribué en fin de prestation
   declinedBy?: string[]; // compagnons ayant refusé
   durationHours?: number; // durée demandée
@@ -202,8 +204,8 @@ export const store = {
     listeners.add(l);
     return () => listeners.delete(l);
   },
-  createRequest: (data: Omit<Request, "id" | "createdAt" | "status" | "seniorName" | "city">) => {
-    const id = `req-${Date.now()}`;
+  createRequest: (data: Omit<Request, "id" | "createdAt" | "status" | "seniorName" | "city"> & { id?: string }) => {
+    const id = data.id ?? `req-${Date.now()}`;
     const city = data.address.split(",").pop()?.trim() || "Ville inconnue";
     const req: Request = {
       ...data,
