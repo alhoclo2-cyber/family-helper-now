@@ -3597,8 +3597,15 @@ function StudentFlow() {
   const pendingConfirmation = mine.some(
     (r) => !r.demo && !r.scheduledAt && r.status === "accepted" && !r.acknowledged,
   );
+  // Contrats adressés au compagnon connecté : une mission sous contrat n'est visible que de lui.
+  const contractLinks = useMyContractLinks(session?.user.id).data ?? [];
+  const [contractViewId, setContractViewId] = useState<string | null>(null);
 
   const available = allSearching.filter((r) => {
+    if (r.contractId) {
+      const link = contractLinks.find((l) => l.id === r.contractId);
+      if (!link || link.status !== "awaiting_companion") return false;
+    }
     if (r.demo && !demo && !testOn) return false;
     if (r.declinedBy?.includes(me.id)) return false;
     if (companionDistance(r) > settings.radiusKm) return false;
@@ -3636,7 +3643,29 @@ function StudentFlow() {
   }
 
 
-  if (active) return <StudentDetail request={active} onBack={() => setOpenId(null)} blocked={pendingConfirmation} />;
+  if (contractViewId && session) {
+    const contractReq = allRequestsForContract(store.getState().requests, contractViewId);
+    return (
+      <ContractCompanionView
+        contractId={contractViewId}
+        userId={session.user.id}
+        onBack={() => setContractViewId(null)}
+        onOpenAccount={() => { setContractViewId(null); setView("home"); }}
+        onSigned={() => {
+          // La mission est acceptée pour ce compagnon (toujours sur rendez-vous : pas d'heure d'arrivée).
+          if (contractReq) store.acceptRequest(contractReq.id, 0, me);
+          setContractViewId(null);
+          if (contractReq) setOpenId(contractReq.id);
+        }}
+        onRefused={() => {
+          if (contractReq) store.releaseContractRequest(contractReq.id, session.user.id, "refused");
+          setContractViewId(null);
+        }}
+      />
+    );
+  }
+
+  if (active) return <StudentDetail request={active} onBack={() => setOpenId(null)} blocked={pendingConfirmation} onOpenContract={active.contractId ? () => setContractViewId(active.contractId!) : undefined} />;
 
   const acceptedList = mine.filter((r) => !r.demo || demo || testOn);
   const upcomingCount = splitAccepted(acceptedList).upcoming.length;
@@ -3669,6 +3698,7 @@ function StudentFlow() {
         setTab={setMissionsTab}
         onBack={() => setView("home")}
         onAccepted={(id) => setOpenId(id)}
+        onOpenContract={(cid) => setContractViewId(cid)}
         blocked={pendingConfirmation}
       />
     );
