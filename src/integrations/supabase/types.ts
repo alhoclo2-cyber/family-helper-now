@@ -185,6 +185,41 @@ export type Database = {
         }
         Relationships: []
       }
+      contract_signature_codes: {
+        Row: {
+          attempts: number
+          code_hash: string
+          contract_id: string
+          created_at: string
+          expires_at: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          code_hash: string
+          contract_id: string
+          created_at?: string
+          expires_at: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string
+          contract_id?: string
+          created_at?: string
+          expires_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_signature_codes_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: true
+            referencedRelation: "work_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contract_signature_log: {
         Row: {
           actor_id: string | null
@@ -468,6 +503,21 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      sign_contract_employer: {
+        Args: {
+          _client_id: string
+          _companion_user_id: string
+          _contract_id: string
+          _contract_kind: string
+          _deadline: string
+          _effective_from: string
+          _effective_until: string
+          _first_mission_id: string
+          _hash: string
+          _snapshot: Json
+        }
+        Returns: undefined
       }
     }
     Enums: {

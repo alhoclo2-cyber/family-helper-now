@@ -16,7 +16,8 @@ import { CguAcceptBlock, CguPanel } from "@/components/Cgu";
 import { CesuRecurrenceModal } from "@/components/CesuRecurrence";
 import { ContractFlow, ContractNoticeBlock } from "@/components/ContractFlow";
 import { meetsContractNotice } from "@/lib/contractTerms";
-import { startOfWeek, subWeeks } from "date-fns";
+import { format, startOfWeek, subWeeks } from "date-fns";
+import { fr } from "date-fns/locale";
 import { checkContractRequirement, type ContractCheckResult } from "@/lib/contractCompliance";
 import { getPairState, type PairState } from "@/lib/contractEligibility";
 import { useContractsInForce, getInForceRefs, setSimulatedInForce, useSimulatedInForce } from "@/lib/contractsInForce";
@@ -244,7 +245,7 @@ function splitBookingAddress(address: string) {
 
 // Estimation indicative du coût employeur, avant/après crédit d'impôt de 50 %.
 function estimateMissionCost(salaireNetHoraire: number, durationHours: number, sapActive: boolean = sapDeclarationActive) {
-  const brut1h = salaireNetHoraire / 0.78;
+  const brut1h = salaireNetHoraire / 0.78; // même rapport que grossHourlyFromNet (src/lib/salary.ts)
   const charges1h = brut1h * 0.45 - 2.0 + brut1h * 0.22;
   const cout1h = salaireNetHoraire + charges1h;
   const salaireEtCotisations = cout1h * durationHours;
@@ -1126,7 +1127,7 @@ function FamilyForm({
   const okAcknowledgement = !(requiresLimitsAcknowledgement || requiresFiscalAcknowledgement) || !!acknowledgedLimits[need];
   const setAcknowledged = (checked: boolean) => setAcknowledgedLimits((prev) => ({ ...prev, [need]: checked }));
 
-  const createAndGo = (companionOverride?: string) => {
+  const createAndGo = (companionOverride?: string, contract?: { contractId: string; deadline: number }) => {
     if (!isValidHourlyNet(salaireNetHoraire)) {
       setShowErrors(true);
       showSubmitError("salary");
@@ -1137,6 +1138,7 @@ function FamilyForm({
     const dh = durationHours;
     const isParcel = need === "Retrait ou dépôt d'un colis";
     const data: Parameters<typeof store.createRequest>[0] = {
+      ...(contract ? { id: contractMissionId, contractId: contract.contractId, contractAnswerDeadline: contract.deadline } : {}),
       need,
       address,
       phone,
@@ -1223,6 +1225,8 @@ function FamilyForm({
   const [showErrors, setShowErrors] = useState(false);
   const [showContractQ, setShowContractQ] = useState(false);
   const [noticeBlocked, setNoticeBlocked] = useState(false);
+  // Identifiant de la mission liée au contrat (first_mission_id), connu avant la signature.
+  const [contractMissionId] = useState(() => `req-${crypto.randomUUID()}`);
   const okStreet = bookingAddressSchema.shape.street.safeParse(addressParts.street).success;
   const okPostalCode = bookingAddressSchema.shape.postalCode.safeParse(addressParts.postalCode).success;
   const okCity = bookingAddressSchema.shape.city.safeParse(addressParts.city).success;
@@ -1316,11 +1320,12 @@ function FamilyForm({
         companionName={COMPANIONS.find((c) => c.id === pickedCompanion)?.firstName ?? "ce compagnon"}
         missionTs={mode === "scheduled" ? new Date(when).getTime() : Date.now()}
         durationHours={durationHours}
+        mission={{ address, need, salaryNet: salaireNetHoraire }}
+        missionId={contractMissionId}
         onBack={() => setShowContractQ(false)}
-        onDone={() => {
+        onSigned={(signed) => {
           setShowContractQ(false);
-          // TODO prompt 5 : génération et relecture du contrat.
-          createAndGo();
+          createAndGo(undefined, signed);
         }}
       />
     );
@@ -2606,7 +2611,7 @@ function FamilyWait({
   onDone: () => void;
 }) {
   const [paid, setPaid] = useState(() => !!request?.paid);
-  const [contractOk, setContractOk] = useState(false);
+  const [contractOk, setContractOk] = useState(() => !!request?.contractId);
   const [showContractQ, setShowContractQ] = useState(false);
   const { session: waitSession } = useSession();
   const contractFlow = useAppSetting("contract_flow_enabled", false).data === true;
@@ -2832,6 +2837,13 @@ function FamilyWait({
           {refusedBanner && (
             <div className="w-full rounded-2xl border-2 border-primary bg-accent p-4 text-left">
               <p className="text-sm font-black">🔄 Nous recherchons un autre compagnon.</p>
+            </div>
+          )}
+          {request.contractId && request.contractAnswerDeadline && (
+            <div role="status" className="w-full rounded-2xl border-2 border-primary bg-card p-4 text-left">
+              <p className="text-base font-bold">
+                Votre signature est enregistrée. Le compagnon a jusqu'à {format(new Date(request.contractAnswerDeadline), "EEEE d MMMM 'à' HH:mm", { locale: fr })} pour accepter la mission et signer le contrat. Il peut aussi refuser.
+              </p>
             </div>
           )}
           {request.companionCancelNotice && (
@@ -3086,8 +3098,11 @@ function FamilyWait({
               companionName={request.student.firstName}
               missionTs={request.scheduledAt ?? request.createdAt}
               durationHours={hours}
+              mission={{ address: request.address, need: request.need, salaryNet: request.salaryNetHourly ?? DEFAULT_HOURLY_RATE }}
+              missionId={request.id}
               onBack={() => setShowContractQ(false)}
-              onDone={() => {
+              onSigned={(signed) => {
+                store.updateRequest(request.id, { contractId: signed.contractId, contractAnswerDeadline: signed.deadline });
                 setShowContractQ(false);
                 setContractOk(true);
               }}

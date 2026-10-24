@@ -31,6 +31,9 @@
 - Le questionnaire 2 enregistre ses choix dans work_contracts.answers.terms (type ContractTerms, contractTerms.ts) ; ses règles (période d'essai CDI 30 jours maximum, CDD 1 jour par semaine plafonné à 2 semaines jusqu'à 6 mois puis 1 mois, délai de congés d'au moins 2 mois, planning défini au plus 48 h par semaine) sont des fonctions pures, rappelées côté serveur à la signature.
 - Changer le type de contrat (CDI ↔ CDD) dans le questionnaire 1 supprime les réponses du questionnaire 2.
 - Le questionnaire du contrat ne demande aucune donnée du Compagnon : elles sont reprises côté serveur.
-- Solélia n'impose aucun choix d'employeur : planning défini ou durée irrégulière, jour de paiement du salaire, jours fériés sont choisis par le Particulier, sans valeur imposée pour le jour de paiement.
+- Solélia n'impose aucun choix d'employeur : planning défini ou durée irrégulière et jours fériés sont choisis par le Particulier.
+- Le paiement du salaire suit le circuit de la plateforme : acomptes possibles, solde au plus tard le 5 du mois suivant ; aucune question n'est posée au particulier sur ce point.
 - Dès qu'un contrat s'applique (seuil atteint ou contrat en vigueur), la mission doit être réservée et validée par le compagnon au moins 5 jours avant son début (marge de 8 h pour la réponse du compagnon) ; phrase explicative en rouge dans le parcours. Le compagnon peut refuser le contrat à tout moment avant de l'accepter, sans justification ni pénalité.
 - Sans numéro CESU renseigné, aucun contrat n'est possible : la modale du seuil grise "Continuer" et la signature (prompt à venir) re-vérifiera côté serveur que le particulier a un numéro CESU.
+- La signature de l'employeur est faite par une fonction serveur qui revérifie tout ; le navigateur ne fait jamais foi. Les données personnelles du compagnon ne sont jamais envoyées en clair au particulier avant la signature des deux parties.
+- The contract document is built by the pure buildContractDocument (contractDocument.ts) on both review and server signature; the stored snapshot holds masked companion data so its SHA-256 matches what the employer signed.

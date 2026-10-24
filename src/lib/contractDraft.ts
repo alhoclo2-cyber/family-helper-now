@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { ContractAnswers, ContractKind } from "./contractDecision";
 import type { Json } from "@/integrations/supabase/types";
-import type { ContractTerms } from "./contractTerms";
+import { TERMS_VERSION, normalizeStoredTerms, type ContractTerms } from "./contractTerms";
 
 /* ------------------------------------------------------------------
    Brouillon de contrat (work_contracts) : les missions vivent en
@@ -62,21 +62,13 @@ export function stripTerms(answers: Record<string, unknown>): Record<string, unk
 export async function fetchContractTerms(draftId: string): Promise<Partial<ContractTerms> | null> {
   const { data, error } = await supabase.from("work_contracts").select("answers").eq("id", draftId).maybeSingle();
   if (error) throw error;
-  const a = data?.answers as Record<string, unknown> | null;
-  const terms = (a?.terms as Record<string, unknown> | undefined) ?? null;
-  if (!terms) return null;
-  // Version 1 -> 2 : weeklyRestDay (un seul jour) devient weeklyRestDays (liste).
-  if ((a?.terms_version ?? 1) === 1 && "weeklyRestDay" in terms) {
-    const { weeklyRestDay, ...rest } = terms;
-    return { ...rest, weeklyRestDays: typeof weeklyRestDay === "number" ? [weeklyRestDay as ContractTerms["weeklyRestDays"][number]] : [] };
-  }
-  return terms as Partial<ContractTerms>;
+  return normalizeStoredTerms(data?.answers as Record<string, unknown> | null);
 }
 
 export async function saveContractTerms({ draftId, terms, effectiveUntil }: { draftId: string; terms: ContractTerms; effectiveUntil: string | null }) {
   const { data, error: readError } = await supabase.from("work_contracts").select("answers").eq("id", draftId).eq("status", "draft").single();
   if (readError) throw readError;
-  const answers = { ...((data.answers as Record<string, unknown>) ?? {}), terms, terms_version: 2 };
+  const answers = { ...((data.answers as Record<string, unknown>) ?? {}), terms, terms_version: TERMS_VERSION };
   const { error } = await supabase
     .from("work_contracts")
     .update({ answers: answers as unknown as Json, effective_from: terms.startDate, effective_until: effectiveUntil })

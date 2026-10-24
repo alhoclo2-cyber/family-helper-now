@@ -24,8 +24,8 @@ const STEP_FIELDS: Record<number, TermsField[]> = {
   1: ["trialDays", "minDuration"],
   2: ["days"],
   3: ["weeklyRestDays", "mayFirst"],
-  4: ["salaryPayDay", "leaveNoticeMonths"],
-  5: ["trialDays", "minDuration", "days", "weeklyRestDays", "mayFirst", "salaryPayDay", "leaveNoticeMonths", "specialConditions"],
+  4: ["leaveNoticeMonths"],
+  5: ["trialDays", "minDuration", "days", "weeklyRestDays", "mayFirst", "leaveNoticeMonths", "specialConditions"],
 };
 const SAVE_ERROR = "Impossible d'enregistrer vos réponses, réessayez.";
 const fmtDay = (v?: string) => (v ? format(new Date(`${v}T00:00:00`), "dd/MM/yyyy") : "");
@@ -44,9 +44,14 @@ function Choice({ label, selected, onSelect }: { label: string; selected: boolea
 const inputCls = "w-full p-3 rounded-2xl border-2 bg-card border-border";
 
 export function ContractTermsQuestionnaire({
-  draftId, kind, answers, missionTs, onBack, onDone,
+  draftId, kind, answers, missionTs, onBack, onDone, initialStep, editMode = false, companionCesuActive,
 }: {
   draftId: string;
+  /** Étape ouverte directement (bouton « Modifier » de la relecture). */
+  initialStep?: 1 | 2 | 3 | 4 | 5;
+  /** Depuis la relecture : l'étape enregistrée ramène directement à la relecture. */
+  editMode?: boolean;
+  companionCesuActive: boolean;
   kind: ContractKind;
   answers: ContractAnswers;
   missionTs: number;
@@ -85,7 +90,7 @@ export function ContractTermsQuestionnaire({
     const base = defaultTerms(ctx);
     const prev = stored.data ?? {};
     setTerms({ ...base, ...prev, startDate: base.startDate });
-    setStep((identity.data?.missing.length ?? 0) > 0 || cesu.data?.hasCesu === false ? 0 : 1);
+    setStep((identity.data?.missing.length ?? 0) > 0 || cesu.data?.hasCesu !== true ? 0 : initialStep ?? 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stored.isLoading, identity.isLoading, cesu.isLoading, terms]);
 
@@ -114,13 +119,18 @@ export function ContractTermsQuestionnaire({
     const patch: Partial<Record<keyof typeof need, string>> = {};
     (Object.keys(need) as (keyof typeof need)[]).forEach((k) => { if (need[k]) patch[k] = idForm[k].trim(); });
     if (Object.values(patch).some((v) => !v)) return;
+    // Seul le CESU manquait : aucune mise à jour vide, on passe simplement à la suite.
+    if (Object.keys(patch).length === 0) {
+      if (cesu.data?.hasCesu === true) setStep(initialStep ?? 1);
+      return;
+    }
     setSaving(true);
     setSaveError(false);
     const { error } = await supabase.from("profiles").update(patch).eq("id", userId!);
     setSaving(false);
     if (error) return setSaveError(true);
     await qc.invalidateQueries({ queryKey: contractIdentityKey(userId) });
-    setStep(1);
+    setStep(initialStep ?? 1);
   };
 
   const goNext = async () => {
@@ -138,7 +148,7 @@ export function ContractTermsQuestionnaire({
     } finally {
       setSaving(false);
     }
-    if (step === 5) return onDone();
+    if (step === 5 || editMode) return onDone();
     setStep((step + 1) as Step);
   };
 
@@ -148,7 +158,8 @@ export function ContractTermsQuestionnaire({
     setStep((step - 1) as Step);
   };
 
-  const cesuMissing = !!userId && cesu.data?.hasCesu === false;
+  // Chargement en cours = numéro non vérifié : « Continuer » reste désactivé.
+  const cesuMissing = !!userId && cesu.data?.hasCesu !== true;
   const idComplete = !cesuMissing && (Object.keys(need) as (keyof typeof need)[]).every((k) => !need[k] || !!idForm[k].trim());
 
   const setDay = (weekday: Weekday, patch: Partial<FixedDay> | null) => {
@@ -389,16 +400,11 @@ export function ContractTermsQuestionnaire({
         <>
           <Title>Salaire et congés</Title>
           {progress}
-          <div>
-            <label htmlFor="ct-pay" className="block text-base font-bold mb-1">Jour du mois où vous versez le salaire</label>
-            {/* Choix de l'employeur ; Solélia ne l'impose pas. Liaison avec le circuit de paiement de la plateforme à valider par l'avocat. */}
-            <select id="ct-pay" className={`${inputCls}${err("salaryPayDay") ? " border-destructive" : ""}`} value={terms.salaryPayDay ?? ""}
-              onChange={(e) => set({ salaryPayDay: e.target.value ? Number(e.target.value) : null })}>
-              <option value="" disabled>Choisir un jour</option>
-              {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => <option key={d} value={d}>{d}</option>)}
-            </select>
-            <p className="text-sm text-muted-foreground mt-1">Le salaire du mois écoulé est versé le {terms.salaryPayDay ?? "…"} du mois suivant.</p>
-            <ErrorText f="salaryPayDay" />
+          <div className="rounded-2xl border-2 border-border bg-accent p-4 text-sm">
+            <p className="font-bold mb-1">Versement du salaire</p>
+            <p>{companionCesuActive
+              ? "Le salaire sera versé au compagnon par l'URSSAF (Cesu+), à partir des déclarations faites par Solélia Accompagnement en votre nom."
+              : "Tant que le compagnon n'a pas son numéro CESU, vous réglez le salaire le jour de chaque mission (acompte), et il est soldé au plus tard le 5 du mois suivant. Ensuite, le salaire est versé par l'URSSAF."}</p>
           </div>
           <div>
             <label htmlFor="ct-leave" className="block text-base font-bold mb-1">Délai de prévenance pour fixer les congés (en mois)</label>
@@ -440,7 +446,6 @@ export function ContractTermsQuestionnaire({
               <p><b>Jours fériés travaillés :</b> {terms.workedHolidays.length ? PUBLIC_HOLIDAYS.filter((h) => terms.workedHolidays.includes(h.key)).map((h) => h.label).join(", ") : "Aucun"}</p>
             </div><Edit to={3} /></div>
             <div className="flex justify-between gap-2"><div>
-              <p><b>Versement du salaire :</b> le {terms.salaryPayDay ?? "…"} du mois suivant</p>
               <p><b>Délai de prévenance des congés :</b> {terms.leaveNoticeMonths} mois</p>
             </div><Edit to={4} /></div>
           </div>

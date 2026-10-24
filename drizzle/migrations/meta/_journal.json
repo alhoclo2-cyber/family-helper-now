@@ -85,6 +85,13 @@
       "when": 1792507614629,
       "tag": "0011_contract_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792844222392,
+      "tag": "0012_contract_employer_signature",
+      "breakpoints": true
     }
   ]
 }

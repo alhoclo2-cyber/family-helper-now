@@ -52,6 +52,8 @@ export function CesuRecurrenceModal({
   const userId = session?.user.id;
   const cesu = useCesuStatus(userId);
   const cesuMissing = !!userId && cesu.data?.hasCesu === false;
+  // Chargement en cours = numéro non vérifié : « Continuer » reste désactivé.
+  const cesuUnverified = !!userId && cesu.data?.hasCesu !== true;
 
   if (view === "companions")
     return (
@@ -133,8 +135,8 @@ export function CesuRecurrenceModal({
       <button
         type="button"
         onClick={onContinue}
-        disabled={cesuMissing}
-        aria-disabled={cesuMissing}
+        disabled={cesuUnverified}
+        aria-disabled={cesuUnverified}
         className="w-full mt-2 py-4 rounded-2xl border-2 border-border font-bold disabled:opacity-50"
       >
         Continuer avec {companionName}

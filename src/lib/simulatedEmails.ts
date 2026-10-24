@@ -21,7 +21,8 @@ export type EmailKind =
   | "mission_incident_confirmation"
   | "companion_refused"
   | "family_acceptance_notification"
-  | "mission_auto_cancelled";
+  | "mission_auto_cancelled"
+  | "contract_signature_code";
 
 export type SimulatedEmail = {
   id: string;
@@ -74,6 +75,11 @@ export function build(kind: EmailKind, p: Params): { subject: string; body: stri
   const h = fmtHours(p.hours);
   const md = p.missionDate ?? "";
   switch (kind) {
+    case "contract_signature_code":
+      return {
+        subject: "Votre code de signature du contrat",
+        body: `Votre code de signature est ${p.code}. Il est valable 10 minutes (3 essais). Ne le communiquez à personne. Si vous n'êtes pas à l'origine de cette demande, ignorez ce message.`,
+      };
     case "family_acceptance_notification":
       return {
         subject: "Un compagnon a accepté votre demande",
