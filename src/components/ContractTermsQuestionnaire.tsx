@@ -326,11 +326,44 @@ export function ContractTermsQuestionnaire({
           <Title>Repos et jours fériés</Title>
           {progress}
           <div>
-            <label htmlFor="ct-rest" className="block text-base font-bold mb-1">Jour de repos hebdomadaire</label>
-            <select id="ct-rest" className={inputCls} value={terms.weeklyRestDay ?? ""} onChange={(e) => set({ weeklyRestDay: Number(e.target.value) as Weekday })}>
-              {WEEKDAYS.map((l, i) => <option key={l} value={i + 1}>{l}</option>)}
-            </select>
-            <ErrorText f="weeklyRestDay" />
+            <p className="text-base font-bold mb-1">Jours de repos hebdomadaire</p>
+            <button
+              type="button"
+              aria-expanded={restOpen}
+              onClick={() => setRestOpen((o) => !o)}
+              className={`${inputCls} text-left font-semibold${err("weeklyRestDays") ? " border-destructive" : ""}`}
+            >
+              {terms.weeklyRestDays.length
+                ? [...terms.weeklyRestDays].sort((a, b) => a - b).map((d) => WEEKDAYS[d - 1]).join(", ")
+                : "Choisir un ou plusieurs jours"}
+            </button>
+            {restOpen && (
+              <div className="flex flex-col gap-2 mt-2" role="group" aria-label="Jours de repos hebdomadaire">
+                {WEEKDAYS.map((l, i) => {
+                  const wd = (i + 1) as Weekday;
+                  const checked = terms.weeklyRestDays.includes(wd);
+                  return (
+                    <label key={l} className="flex items-center gap-3 rounded-2xl border-2 border-border bg-card p-3 text-sm font-semibold">
+                      <input
+                        type="checkbox"
+                        className="h-5 w-5 accent-primary"
+                        checked={checked}
+                        onChange={() =>
+                          set({
+                            weeklyRestDays: checked
+                              ? terms.weeklyRestDays.filter((d) => d !== wd)
+                              : [...terms.weeklyRestDays, wd].sort((a, b) => a - b),
+                          })
+                        }
+                      />
+                      {l}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+            <p className="text-sm text-muted-foreground mt-1">Aucune mission ne pourra être réservée avec ce compagnon ces jours-là.</p>
+            <ErrorText f="weeklyRestDays" />
           </div>
           <p className="text-base font-bold">1er mai</p>
           <div role="radiogroup" aria-label="1er mai" className="flex flex-col gap-3">
@@ -372,6 +405,9 @@ export function ContractTermsQuestionnaire({
             <input id="ct-leave" type="number" min={MIN_LEAVE_NOTICE_MONTHS} className={`${inputCls}${err("leaveNoticeMonths") ? " border-destructive" : ""}`}
               value={Number.isNaN(terms.leaveNoticeMonths) ? "" : terms.leaveNoticeMonths} onChange={(e) => set({ leaveNoticeMonths: Number(e.target.value) })} />
             <ErrorText f="leaveNoticeMonths" />
+            <p className="text-sm text-muted-foreground mt-2">
+              Au-delà de 40 heures de travail par semaine, les heures sont majorées de 25 % (de la 41e à la 48e heure) puis de 50 %. Indiquez à la réservation un salaire horaire net qui tient compte de cette majoration.
+            </p>
           </div>
         </>
       )}
@@ -399,7 +435,7 @@ export function ContractTermsQuestionnaire({
               {fixedDays.map((d) => <p key={d.weekday}>{WEEKDAYS[d.weekday - 1]} : {d.start} – {d.end}</p>)}
             </div><Edit to={2} /></div>
             <div className="flex justify-between gap-2"><div>
-              <p><b>Jour de repos :</b> {terms.weeklyRestDay ? WEEKDAYS[terms.weeklyRestDay - 1] : ""}</p>
+              <p><b>Jours de repos :</b> {[...terms.weeklyRestDays].sort((a, b) => a - b).map((d) => WEEKDAYS[d - 1]).join(", ")}</p>
               <p><b>1er mai :</b> {terms.mayFirst === "worked" ? "Travaillé" : "Chômé"}</p>
               <p><b>Jours fériés travaillés :</b> {terms.workedHolidays.length ? PUBLIC_HOLIDAYS.filter((h) => terms.workedHolidays.includes(h.key)).map((h) => h.label).join(", ") : "Aucun"}</p>
             </div><Edit to={3} /></div>
