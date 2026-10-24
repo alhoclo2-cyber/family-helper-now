@@ -4,7 +4,7 @@ import { fr } from "date-fns/locale";
 import { ContractQuestionnaire } from "@/components/ContractQuestionnaire";
 import { ContractTermsQuestionnaire } from "@/components/ContractTermsQuestionnaire";
 import { ContractReview, type ContractMission, type SignedContract } from "@/components/ContractReview";
-import { earliestContractMissionTs, meetsContractNotice } from "@/lib/contractTerms";
+import { CONTRACT_NOTICE_SENTENCE, earliestContractMissionTs, meetsContractNotice } from "@/lib/contractTerms";
 import type { ContractAnswers, ContractKind } from "@/lib/contractDecision";
 import type { EditTarget } from "@/lib/contractDocument";
 import { COMPANIONS } from "@/lib/store";
@@ -24,7 +24,7 @@ export function ContractNoticeBlock({
     <div className="rounded-2xl border-2 border-destructive bg-card p-4 flex flex-col gap-3" role="alert">
       <h2 className="text-lg font-black">Délai de 5 jours minimum</h2>
       <p className="text-sm font-bold text-destructive">
-        Avec ce compagnon, un contrat de travail s'applique : la mission doit être réservée au moins 5 jours avant son début.
+        {CONTRACT_NOTICE_SENTENCE}
       </p>
       <p className="text-sm">
         Date et heure au plus tôt : {format(earliest, "EEEE d MMMM yyyy", { locale: fr })} à {format(earliest, "HH:mm")}
