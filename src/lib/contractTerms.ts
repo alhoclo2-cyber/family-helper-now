@@ -151,14 +151,25 @@ export function validateTerms(terms: ContractTerms, ctx: TermsContext): TermsErr
     if (days.length === 0) errors.push({ field: "days", message: "Choisissez au moins un jour travaillé." });
     else if (days.some((d) => !(toMin(d.end) > toMin(d.start)))) {
       errors.push({ field: "days", message: "Pour chaque jour travaillé, l'heure de fin doit être après l'heure de début." });
+    } else if (days.some((d) => toMin(d.start) < MISSION_START_LIMIT_MIN || toMin(d.end) > MISSION_END_LIMIT_MIN)) {
+      errors.push({ field: "days", message: "Les missions ont lieu entre 6 h et 21 h." });
     } else if (fixedWeeklyMinutes(days) > WEEKLY_HOURS.max * 60) {
       errors.push({ field: "days", message: "La durée hebdomadaire ne peut pas dépasser 48 heures." });
     }
-    if (terms.weeklyRestDay && days.some((d) => d.weekday === terms.weeklyRestDay)) {
-      errors.push({ field: "weeklyRestDay", message: "Le jour de repos ne peut pas être un jour travaillé de votre planning." });
+    if (days.some((d) => terms.weeklyRestDays.includes(d.weekday))) {
+      errors.push({ field: "weeklyRestDays", message: "Un jour de repos ne peut pas être un jour travaillé de votre planning." });
     }
   }
-  if (!terms.weeklyRestDay) errors.push({ field: "weeklyRestDay", message: "Choisissez le jour de repos hebdomadaire." });
+  if (terms.weeklyRestDays.length === 0) {
+    errors.push({ field: "weeklyRestDays", message: "Choisissez le ou les jours de repos hebdomadaire." });
+  } else if (terms.weeklyRestDays.length > 6) {
+    errors.push({ field: "weeklyRestDays", message: "Choisissez au maximum 6 jours de repos." });
+  }
+  const startJsDay = parseDay(terms.startDate).getDay();
+  const startWeekday = (startJsDay === 0 ? 7 : startJsDay) as Weekday;
+  if (terms.weeklyRestDays.includes(startWeekday)) {
+    errors.push({ field: "weeklyRestDays", message: "Votre première mission tombe un jour de repos : changez les jours de repos ou la date de la mission." });
+  }
   if (!terms.mayFirst) errors.push({ field: "mayFirst", message: "Indiquez si le 1er mai est chômé ou travaillé." });
   if (!Number.isInteger(terms.leaveNoticeMonths) || terms.leaveNoticeMonths < MIN_LEAVE_NOTICE_MONTHS) {
     errors.push({ field: "leaveNoticeMonths", message: "Le minimum est de 2 mois." });
