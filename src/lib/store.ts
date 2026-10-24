@@ -94,6 +94,7 @@ export type Request = {
   familyNotifiedAt?: number; // notification simulée unique pour l'acceptation actuelle
   contractId?: string; // contrat de travail signé par l'employeur, lié à cette mission
   contractAnswerDeadline?: number; // échéance de réponse du compagnon au contrat
+  contractEndedNotice?: "refused" | "expired"; // le compagnon n'a pas donné suite au contrat
   thumbsGiven?: boolean; // pouce levé attribué en fin de prestation
   declinedBy?: string[]; // compagnons ayant refusé
   durationHours?: number; // durée demandée
@@ -308,6 +309,35 @@ export const store = {
                 ...(r.refusedNotices ?? []),
                 { companionId: companion.id, companionName: companion.firstName, reason, createdAt: Date.now() },
               ],
+            }
+          : r,
+      ),
+    };
+    emit();
+  },
+  // Le compagnon a refusé le contrat ou laissé passer le délai : la demande repart
+  // en recherche (compagnon exclu), le binôme est libéré côté contrat.
+  releaseContractRequest: (id: string, companionId: string, outcome: "refused" | "expired") => {
+    const req = findReq(id);
+    if (!req || !req.contractId) return;
+    sendSimulatedEmail(outcome === "refused" ? "contract_refused" : "contract_expired", undefined, { need: req.need, role: "family" });
+    sendSimulatedEmail(outcome === "refused" ? "contract_refused" : "contract_expired", undefined, { need: req.need, role: "companion" });
+    state = {
+      ...state,
+      requests: state.requests.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              status: "searching" as const,
+              student: undefined,
+              acceptedAt: undefined,
+              arrivalAt: undefined,
+              travelMinutes: undefined,
+              familyNotifiedAt: undefined,
+              contractId: undefined,
+              contractAnswerDeadline: undefined,
+              contractEndedNotice: outcome,
+              declinedBy: [...(r.declinedBy ?? []), companionId],
             }
           : r,
       ),
