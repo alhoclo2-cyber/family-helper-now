@@ -59,6 +59,42 @@ export function stripTerms(answers: Record<string, unknown>): Record<string, unk
   return rest;
 }
 
+/** Suivi du statut d'un contrat lié à une mission (écran d'attente du particulier). */
+export function useContractStatus(contractId: string | undefined) {
+  return useQuery({
+    queryKey: ["contract-status", contractId],
+    enabled: !!contractId,
+    refetchInterval: 10_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("work_contracts")
+        .select("id, status, companion_ref, companion_user_id, companion_answer_deadline")
+        .eq("id", contractId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+/** Contrats adressés au compagnon connecté (visibilité des missions sous contrat). */
+export function useMyContractLinks(userId: string | undefined) {
+  return useQuery({
+    queryKey: ["my-contract-links", userId],
+    enabled: !!userId,
+    refetchInterval: 15_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("work_contracts")
+        .select("id, first_mission_id, status, companion_answer_deadline, contract_kind")
+        .eq("companion_user_id", userId!)
+        .in("status", ["awaiting_companion", "in_force"]);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
 export async function fetchContractTerms(draftId: string): Promise<Partial<ContractTerms> | null> {
   const { data, error } = await supabase.from("work_contracts").select("answers").eq("id", draftId).maybeSingle();
   if (error) throw error;

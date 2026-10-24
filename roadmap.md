@@ -22,7 +22,12 @@
 - [ ] Prompt 7 : bloquer toute mission réservée un jour de repos du contrat en vigueur ; page Mes contrats ; envoi du planning par e-mail.
 - [x] Prompt 5 : relecture et signature employeur
 - [x] Prompt 5 bis : délai de 5 jours
-- [ ] Prompt 6 : réponse du compagnon (lecture, signature, refus, délai)
+- [x] Prompt 6 : réponse du compagnon (lecture, signature, refus, délai), contrat final en clair et e-mail simulé
+- [ ] Tâche planifiée d'expiration des contrats (aujourd'hui : vérification au chargement des écrans)
+- [ ] Retrait de la demande par le particulier pendant l'attente de la réponse du compagnon
+- [ ] Envoi réel des e-mails (nom de domaine + Resend) au lieu des e-mails simulés
+- [ ] Correction du cesuActive du compagnon réel dans le texte de l'étape 4 du questionnaire 2
+- [ ] Prompt 6 : vérification navigateur complète avec le réglage activé (non faite dans cette session)
 - [ ] Prompt 7 : contrat signé en clair, PDF horodaté, Mes contrats, planning par e-mail, jours de repos et fériés à bloquer
 - [ ] Ensuite : bouton compagnon « J'ai obtenu mon numéro CESU » (information du particulier et de Solélia, validation par le Mandataire avant de passer cesuActive à vrai)
 - [ ] Prompt 5 : vérification navigateur complète de la signature avec le réglage activé (non faite dans cette session)

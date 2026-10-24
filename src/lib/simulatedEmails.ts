@@ -22,7 +22,11 @@ export type EmailKind =
   | "companion_refused"
   | "family_acceptance_notification"
   | "mission_auto_cancelled"
-  | "contract_signature_code";
+  | "contract_signature_code"
+  | "contract_proposal_companion"
+  | "contract_refused"
+  | "contract_expired"
+  | "contract_signed_both";
 
 export type SimulatedEmail = {
   id: string;
@@ -65,6 +69,9 @@ type Params = {
   detail?: string;
   companionName?: string;
   need?: string;
+  contractId?: string;
+  hash?: string;
+  contractText?: string;
 };
 
 const OPEN = { linkLabel: "Ouvrir mon espace", linkTo: "/" };
@@ -79,6 +86,29 @@ export function build(kind: EmailKind, p: Params): { subject: string; body: stri
       return {
         subject: "Votre code de signature du contrat",
         body: `Votre code de signature est ${p.code}. Il est valable 10 minutes (3 essais). Ne le communiquez à personne. Si vous n'êtes pas à l'origine de cette demande, ignorez ce message.`,
+      };
+    case "contract_proposal_companion":
+      return {
+        subject: "Un contrat de travail vous est proposé",
+        body: `Un particulier vous propose un contrat de travail (CDI ou CDD) pour la mission « ${p.need ?? ""} ». Répondez avant le ${d} : lisez le contrat dans votre espace, puis signez-le ou refusez-le (librement, sans justification ni pénalité).`,
+        ...OPEN,
+      };
+    case "contract_refused":
+      return {
+        subject: "Le compagnon n'a pas donné suite à votre contrat",
+        body: `Le compagnon n'a pas donné suite à votre proposition de contrat pour la mission « ${p.need ?? ""} ». Vous pouvez choisir un autre compagnon ou modifier votre demande.`,
+        ...OPEN,
+      };
+    case "contract_expired":
+      return {
+        subject: "Le délai de réponse au contrat est dépassé",
+        body: `Le compagnon n'a pas répondu dans le délai imparti pour la mission « ${p.need ?? ""} ». Le contrat est expiré : vous pouvez choisir un autre compagnon ou modifier votre demande.`,
+        ...OPEN,
+      };
+    case "contract_signed_both":
+      return {
+        subject: "Votre contrat de travail est signé",
+        body: `Contrat ${p.contractId ?? ""}\nEmpreinte du contrat final : ${p.hash ?? ""}\n\n${p.contractText ?? ""}\n\nConservez ce message. Le PDF et la consultation dans votre espace arriveront prochainement.`,
       };
     case "family_acceptance_notification":
       return {

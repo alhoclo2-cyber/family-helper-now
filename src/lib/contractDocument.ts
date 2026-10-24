@@ -47,6 +47,8 @@ export type ContractDocument = {
   sections: ContractSection[];
   /** Vrai tant qu'un emploi-repère vaut « à confirmer ». */
   emploiPending: boolean;
+  /** Mention de signature électronique, ajoutée uniquement au contrat final. */
+  signatureLine?: string;
 };
 
 export type BuildContractInput = {

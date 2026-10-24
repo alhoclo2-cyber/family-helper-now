@@ -15,6 +15,10 @@ import { store, useStore, randomStudent, COMPANIONS, experienceBadge, FAMILY_RES
 import { CguAcceptBlock, CguPanel } from "@/components/Cgu";
 import { CesuRecurrenceModal } from "@/components/CesuRecurrence";
 import { ContractFlow, ContractNoticeBlock } from "@/components/ContractFlow";
+import { ContractCompanionView } from "@/components/ContractCompanionView";
+import { useContractStatus, useMyContractLinks } from "@/lib/contractDraft";
+import { expireOverdueContracts, simulateCompanionAnswer } from "@/lib/contract.functions";
+import { sendSimulatedEmail } from "@/lib/simulatedEmails";
 import { meetsContractNotice } from "@/lib/contractTerms";
 import { format, startOfWeek, subWeeks } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -647,6 +651,8 @@ function FamilyFlow() {
     if (step !== "wait" || !currentId || current?.status !== "searching") return;
     if (current?.contractChoiceRequired) return;
     if (simulateNoAnswer) return;
+    // Mission sous contrat : aucune acceptation automatique, seul le compagnon répond.
+    if (current?.contractId) return;
     const preferredId = current?.preferredCompanionId;
     const delay = preferredId ? 6000 : current?.scheduledAt ? 5000 : 3500;
     const t = setTimeout(() => {
@@ -2640,6 +2646,45 @@ function FamilyWait({
     return () => window.removeEventListener("popstate", onPop);
   }, [paid]);
 
+  // Suivi du contrat lié : statut relu régulièrement, expiration des contrats dépassés.
+  const contractStatus = useContractStatus(request?.contractId).data;
+  const expireContracts = useServerFn(expireOverdueContracts);
+  const simulateAnswer = useServerFn(simulateCompanionAnswer);
+  const waitQc = useQueryClient();
+  useEffect(() => {
+    void expireContracts().catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const contractStatusValue = contractStatus?.status;
+  useEffect(() => {
+    if (!request?.contractId || !contractStatus) return;
+    if (contractStatusValue === "refused" || contractStatusValue === "expired") {
+      store.releaseContractRequest(request.id, contractStatus.companion_ref, contractStatusValue);
+      void waitQc.invalidateQueries({ queryKey: ["contract-status", request.contractId] });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [request?.contractId, contractStatusValue]);
+  // Tant que le compagnon n'a pas répondu, seule l'attente est possible côté famille.
+  const awaitingCompanion = !!request?.contractId && contractStatusValue === "awaiting_companion";
+  const demoContractCompanion =
+    awaitingCompanion && contractFlow && !!contractStatus && !/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(contractStatus.companion_ref);
+
+  const simulateCompanion = async (action: "accept" | "refuse" | "timeout") => {
+    if (!request?.contractId || !contractStatus) return;
+    const r = await simulateAnswer({ data: { contractId: request.contractId, action } });
+    if (!r.ok) return;
+    if (action === "accept") {
+      if (r.emailText) {
+        for (const to of [r.employerEmail, "demo@example.fr"]) {
+          sendSimulatedEmail("contract_signed_both", to, { contractId: request.contractId, hash: r.finalHash, contractText: r.emailText });
+        }
+      }
+      store.acceptRequestBy(request.id, contractStatus.companion_ref);
+    } else {
+      store.releaseContractRequest(request.id, contractStatus.companion_ref, action === "refuse" ? "refused" : "expired");
+    }
+    void waitQc.invalidateQueries({ queryKey: ["contract-status", request.contractId] });
+  };
 
   if (!request) return null;
   if (request.status === "cancelled" && request.cancelledBy === "system") {
@@ -2839,6 +2884,14 @@ function FamilyWait({
               <p className="text-sm font-black">🔄 Nous recherchons un autre compagnon.</p>
             </div>
           )}
+          {request.contractEndedNotice && (
+            <div className="w-full rounded-2xl border-2 border-warning bg-warning/10 p-4 text-left">
+              <p className="text-sm font-black">Ce compagnon n'a pas donné suite.</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Vous pouvez choisir un autre compagnon ou modifier votre demande.
+              </p>
+            </div>
+          )}
           {request.contractId && request.contractAnswerDeadline && (
             <div role="status" className="w-full rounded-2xl border-2 border-primary bg-card p-4 text-left">
               <p className="text-base font-bold">
@@ -3021,7 +3074,21 @@ function FamilyWait({
             <ScheduleManageBlock request={request} paid={false} />
           )}
 
-          {!timedOut && (
+          {demoContractCompanion && (
+            <div className="w-full rounded-2xl border-2 border-dashed border-border bg-card p-4 text-left flex flex-col gap-2">
+              <p className="text-sm font-bold">🧪 Test : réponse du compagnon</p>
+              <button type="button" onClick={() => void simulateCompanion("accept")} className="py-3 rounded-2xl bg-success text-success-foreground font-bold text-sm">
+                Il accepte et signe
+              </button>
+              <button type="button" onClick={() => void simulateCompanion("refuse")} className="py-3 rounded-2xl border-2 border-border bg-background font-bold text-sm">
+                Il refuse
+              </button>
+              <button type="button" onClick={() => void simulateCompanion("timeout")} className="py-3 rounded-2xl border-2 border-border bg-background font-bold text-sm">
+                Il ne répond pas (délai dépassé)
+              </button>
+            </div>
+          )}
+          {!timedOut && !awaitingCompanion && (
             <button
               type="button"
               onClick={() => onSimulateNoAnswer(true)}
@@ -3030,13 +3097,15 @@ function FamilyWait({
               🧪 Simuler l'absence de réponse ({limitLabel})
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => onEditRequest()}
-            className="py-4 rounded-2xl border-2 border-primary text-primary font-bold text-sm w-full"
-          >
-            ← Modifier ma demande
-          </button>
+          {!awaitingCompanion && (
+            <button
+              type="button"
+              onClick={() => onEditRequest()}
+              className="py-4 rounded-2xl border-2 border-primary text-primary font-bold text-sm w-full"
+            >
+              ← Modifier ma demande
+            </button>
+          )}
           <button onClick={onDone} className="text-base text-muted-foreground underline">
             Retour à l'accueil
           </button>
@@ -3591,8 +3660,15 @@ function StudentFlow() {
   const pendingConfirmation = mine.some(
     (r) => !r.demo && !r.scheduledAt && r.status === "accepted" && !r.acknowledged,
   );
+  // Contrats adressés au compagnon connecté : une mission sous contrat n'est visible que de lui.
+  const contractLinks = useMyContractLinks(session?.user.id).data ?? [];
+  const [contractViewId, setContractViewId] = useState<string | null>(null);
 
   const available = allSearching.filter((r) => {
+    if (r.contractId) {
+      const link = contractLinks.find((l) => l.id === r.contractId);
+      if (!link || link.status !== "awaiting_companion") return false;
+    }
     if (r.demo && !demo && !testOn) return false;
     if (r.declinedBy?.includes(me.id)) return false;
     if (companionDistance(r) > settings.radiusKm) return false;
@@ -3630,7 +3706,29 @@ function StudentFlow() {
   }
 
 
-  if (active) return <StudentDetail request={active} onBack={() => setOpenId(null)} blocked={pendingConfirmation} />;
+  if (contractViewId && session) {
+    const contractReq = allRequestsForContract(store.getState().requests, contractViewId);
+    return (
+      <ContractCompanionView
+        contractId={contractViewId}
+        userId={session.user.id}
+        onBack={() => setContractViewId(null)}
+        onOpenAccount={() => { setContractViewId(null); setView("home"); }}
+        onSigned={() => {
+          // La mission est acceptée pour ce compagnon (toujours sur rendez-vous : pas d'heure d'arrivée).
+          if (contractReq) store.acceptRequest(contractReq.id, 0, me);
+          setContractViewId(null);
+          if (contractReq) setOpenId(contractReq.id);
+        }}
+        onRefused={() => {
+          if (contractReq) store.releaseContractRequest(contractReq.id, session.user.id, "refused");
+          setContractViewId(null);
+        }}
+      />
+    );
+  }
+
+  if (active) return <StudentDetail request={active} onBack={() => setOpenId(null)} blocked={pendingConfirmation} onOpenContract={active.contractId ? () => setContractViewId(active.contractId!) : undefined} />;
 
   const acceptedList = mine.filter((r) => !r.demo || demo || testOn);
   const upcomingCount = splitAccepted(acceptedList).upcoming.length;
@@ -3663,6 +3761,7 @@ function StudentFlow() {
         setTab={setMissionsTab}
         onBack={() => setView("home")}
         onAccepted={(id) => setOpenId(id)}
+        onOpenContract={(cid) => setContractViewId(cid)}
         blocked={pendingConfirmation}
       />
     );
@@ -3723,6 +3822,11 @@ function StudentFlow() {
 }
 
 const ALL_COMPANION_NEEDS: NeedType[] = ALL_NEEDS;
+
+// Mission liée à un contrat (first_mission_id côté base, contractId côté store).
+function allRequestsForContract(requests: Request[], contractId: string) {
+  return requests.find((r) => r.contractId === contractId);
+}
 
 // Distance simulée stable par demande (démo) ; les missions de test portent leur distance réelle.
 function companionDistance(r: Request) {
@@ -3905,6 +4009,7 @@ function CompanionMissions({
   setTab,
   onBack,
   onAccepted,
+  onOpenContract,
   onTestToggle,
   menu,
 }: {
@@ -3917,6 +4022,7 @@ function CompanionMissions({
   setTab: (tab: "today" | "rdv") => void;
   onBack: () => void;
   onAccepted: (id: string) => void;
+  onOpenContract: (contractId: string) => void;
   blocked?: boolean;
 }) {
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -3961,7 +4067,7 @@ function CompanionMissions({
           ← Retour
         </button>
         <MissionInfo r={detail} full />
-        <MissionActions key={detail.id} request={detail} blocked={blocked} onAccept={(arrival) => accept(detail, arrival)} onDecline={() => decline(detail)} />
+        <MissionActions key={detail.id} request={detail} blocked={blocked} onAccept={(arrival) => accept(detail, arrival)} onDecline={() => decline(detail)} onOpenContract={detail.contractId ? () => onOpenContract(detail.contractId!) : undefined} />
       </div>
     );
 
@@ -3992,14 +4098,14 @@ function CompanionMissions({
       {list.length === 0 && <p className="py-10 text-center text-muted-foreground">Aucune mission pour le moment.</p>}
       {tab === "today"
         ? list.map((r) => (
-            <MissionCard key={r.id} r={r} blocked={blocked} onOpen={() => setDetailId(r.id)} onAccept={(arrival) => accept(r, arrival)} onDecline={() => decline(r)} />
+            <MissionCard key={r.id} r={r} blocked={blocked} onOpen={() => setDetailId(r.id)} onAccept={(arrival) => accept(r, arrival)} onDecline={() => decline(r)} onOpenContract={r.contractId ? () => onOpenContract(r.contractId!) : undefined} />
           ))
         : list.map((r, i) => {
             const showHead = i === 0 || dayKey(list[i - 1].scheduledAt ?? 0) !== dayKey(r.scheduledAt ?? 0);
             return (
               <div key={r.id} className="flex flex-col gap-2">
                 {showHead && <h3 className="mt-2 text-lg font-black">{dayHeading(r.scheduledAt ?? Date.now())}</h3>}
-                <MissionCard r={r} blocked={blocked} onOpen={() => setDetailId(r.id)} onAccept={(arrival) => accept(r, arrival)} onDecline={() => decline(r)} />
+                <MissionCard r={r} blocked={blocked} onOpen={() => setDetailId(r.id)} onAccept={(arrival) => accept(r, arrival)} onDecline={() => decline(r)} onOpenContract={r.contractId ? () => onOpenContract(r.contractId!) : undefined} />
               </div>
             );
           })}
@@ -4037,6 +4143,14 @@ function MissionInfo({ r, full }: { r: Request; full?: boolean }) {
       <p className="text-muted-foreground">🧭 {companionDistance(r)} km de chez vous</p>
       <p>⏱️ {hours} h</p>
       <p><span className="text-lg font-black">💶 Total net : {formatPrice(rate * hours)} €</span><span className="text-base font-normal">, soit {formatPrice(rate)} € net/h</span></p>
+      {r.contractId && (
+        <p className="rounded-xl bg-mission-violet/10 text-mission-violet text-sm font-bold px-3 py-2 mt-1">
+          📄 Mission avec contrat de travail (CDI ou CDD)
+          {r.contractAnswerDeadline != null && (
+            <span className="block mt-1">Répondez avant le {format(new Date(r.contractAnswerDeadline), "EEEE d MMMM 'à' HH:mm", { locale: fr })}.</span>
+          )}
+        </p>
+      )}
       {full && (
         <div className="mt-2 flex flex-col gap-1">
           {r.childAge && <p>🎂 Enfant : {r.childAge} ans</p>}
@@ -4054,10 +4168,17 @@ function MissionInfo({ r, full }: { r: Request; full?: boolean }) {
   );
 }
 
-function MissionActions({ request, onAccept, onDecline, blocked }: { request: Request; onAccept: (arrival?: Arrival) => void; onDecline: () => void; blocked?: boolean }) {
+function MissionActions({ request, onAccept, onDecline, onOpenContract, blocked }: { request: Request; onAccept: (arrival?: Arrival) => void; onDecline: () => void; onOpenContract?: () => void; blocked?: boolean }) {
   const [confirm, setConfirm] = useState<"accept" | "decline" | null>(null);
   const input = useArrivalInput(request.durationHours ?? 1);
   const rapid = !request.scheduledAt;
+  // Mission sous contrat : aucune acceptation rapide, la lecture du contrat est obligatoire.
+  if (request.contractId && request.status === "searching")
+    return (
+      <Button onClick={onOpenContract} className="min-h-14 rounded-2xl bg-mission-violet text-lg font-bold text-background">
+        📄 Lire le contrat
+      </Button>
+    );
   if (blocked)
     return (
       <div className="flex flex-col gap-2">
@@ -4095,14 +4216,14 @@ function MissionActions({ request, onAccept, onDecline, blocked }: { request: Re
   );
 }
 
-function MissionCard({ r, onOpen, onAccept, onDecline, blocked }: { r: Request; onOpen: () => void; onAccept: (arrival?: Arrival) => void; onDecline: () => void; blocked?: boolean }) {
+function MissionCard({ r, onOpen, onAccept, onDecline, onOpenContract, blocked }: { r: Request; onOpen: () => void; onAccept: (arrival?: Arrival) => void; onDecline: () => void; onOpenContract?: () => void; blocked?: boolean }) {
   return (
     <div className="flex flex-col gap-3 rounded-2xl border-2 border-border bg-card p-4">
       <button type="button" onClick={onOpen} className="text-left" aria-label="Voir le détail de la mission">
         <MissionInfo r={r} />
         <p className="mt-1 font-semibold text-primary underline">Voir le détail</p>
       </button>
-      <MissionActions request={r} onAccept={onAccept} onDecline={onDecline} blocked={blocked} />
+      <MissionActions request={r} onAccept={onAccept} onDecline={onDecline} onOpenContract={onOpenContract} blocked={blocked} />
     </div>
   );
 }
@@ -4253,12 +4374,13 @@ function CompanionCancelBlockInner({ request }: { request: Request }) {
 }
 
 
-function StudentDetail({ request, onBack, blocked }: { request: Request; onBack: () => void; blocked?: boolean }) {
+function StudentDetail({ request, onBack, blocked, onOpenContract }: { request: Request; onBack: () => void; blocked?: boolean; onOpenContract?: () => void }) {
   const accepted = request.status === "accepted";
   const [taken, setTaken] = useState(false);
   const input = useArrivalInput(request.durationHours ?? 1);
   const accept = () => {
     if (blocked) return;
+    if (request.contractId) return; // mission sous contrat : passage obligé par la lecture du contrat
     if (!request.scheduledAt && !input.valid) return;
     const ok = store.acceptRequest(request.id, 0, undefined, request.scheduledAt ? undefined : input.arrival);
     if (!ok) setTaken(true);
@@ -4398,10 +4520,18 @@ function StudentDetail({ request, onBack, blocked }: { request: Request; onBack:
             </p>
           </div>
           <div className="flex-1" />
-          {!request.scheduledAt && <ArrivalFields input={input} />}
-          <Button disabled={blocked || (!request.scheduledAt && !input.valid)} onClick={accept} className="btn-huge bg-success text-success-foreground whitespace-normal">
-            ✅ Accepter la mission
-          </Button>
+          {request.contractId ? (
+            <Button onClick={onOpenContract} className="btn-huge bg-mission-violet text-background whitespace-normal">
+              📄 Lire le contrat
+            </Button>
+          ) : (
+            <>
+              {!request.scheduledAt && <ArrivalFields input={input} />}
+              <Button disabled={blocked || (!request.scheduledAt && !input.valid)} onClick={accept} className="btn-huge bg-success text-success-foreground whitespace-normal">
+                ✅ Accepter la mission
+              </Button>
+            </>
+          )}
           {blocked && (
             <p className="text-center text-sm font-semibold text-muted-foreground">
               Vous avez une mission en attente de confirmation du particulier.

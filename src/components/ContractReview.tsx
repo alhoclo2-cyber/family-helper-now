@@ -97,6 +97,8 @@ export function ContractReview({
         setError(r.message);
         return;
       }
+      // Le compagnon est prévenu (e-mail simulé) qu'un contrat l'attend, avec l'échéance.
+      sendSimulatedEmail("contract_proposal_companion", undefined, { need: mission.need, date: r.deadline });
       onSigned({ contractId: r.contractId, deadline: r.deadline });
     } catch {
       setError("La signature n'a pas pu être enregistrée. Rien n'a été modifié, réessayez.");
