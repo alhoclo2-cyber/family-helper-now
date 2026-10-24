@@ -191,7 +191,7 @@ export function buildContractDocument(input: BuildContractInput): ContractDocume
       paragraphs: [
         ...(terms.specialConditions?.trim() ? [terms.specialConditions.trim()] : []),
         "a) Le salarié peut refuser ce contrat à tout moment avant de l'avoir accepté, sans justification ni pénalité.",
-        "b) Toute mission est réservée et validée au moins 5 jours avant son début.",
+        "b) Toute mission est réservée au moins 5 jours avant son début.",
         "c) Le salarié s'engage à informer sans délai l'employeur et Solélia Accompagnement dès qu'il obtient son numéro Cesu.",
       ],
       edit: { q: 2, step: 5 },

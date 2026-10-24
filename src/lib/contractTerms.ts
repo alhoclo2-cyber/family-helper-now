@@ -12,12 +12,10 @@ export const MIN_LEAVE_NOTICE_MONTHS = 2;
 export const SPECIAL_CONDITIONS_MAX = 500;
 export const WEEKLY_HOURS = { min: 0, max: 48 } as const;
 export const CONTRACT_MIN_NOTICE_DAYS = 5;
-/** Délai maximal de réponse du compagnon (aligné sur le délai de 8 h des rendez-vous lointains). */
-export const CONTRACT_RESPONSE_MARGIN_HOURS = 8;
 export const MISSIONS_FREE_TO_REFUSE = true;
 export const CONTRACT_REFUSAL_FREE = true;
 
-export const CONTRACT_NOTICE_SENTENCE = "La mission doit être réservée et validée par le compagnon au moins 5 jours avant son début.";
+export const CONTRACT_NOTICE_SENTENCE = "La mission doit être réservée au moins 5 jours avant son début.";
 
 export const PUBLIC_HOLIDAYS = [
   { key: "jan1", label: "1er janvier" },
@@ -115,7 +113,7 @@ export function maxTrialDaysCdd({ startDate, endDate, minDuration }: { startDate
 }
 
 export function earliestContractMissionTs(nowTs: number): number {
-  return nowTs + CONTRACT_MIN_NOTICE_DAYS * DAY_MS + CONTRACT_RESPONSE_MARGIN_HOURS * 3_600_000;
+  return nowTs + CONTRACT_MIN_NOTICE_DAYS * DAY_MS;
 }
 
 export function meetsContractNotice(missionTs: number, nowTs: number): boolean {

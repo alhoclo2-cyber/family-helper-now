@@ -20,7 +20,7 @@ export const SIGNATURE_MESSAGES: Record<SignatureRefusal, string> = {
   decision_invalid: "Les réponses sur le type de contrat sont incomplètes : reprenez le premier questionnaire.",
   terms_invalid: "Certains choix du contrat sont incomplets ou invalides : vérifiez le questionnaire.",
   no_cesu: "Votre numéro CESU est nécessaire pour signer un contrat de travail.",
-  notice: "La mission doit être réservée et validée par le compagnon au moins 5 jours avant son début.",
+  notice: "La mission doit être réservée au moins 5 jours avant son début.",
   pair_active: "Un contrat est déjà actif ou en attente avec ce compagnon.",
   salary: "Le salaire horaire net est invalide.",
 };
@@ -65,9 +65,9 @@ export function checkEmployerSignature(i: SignatureCheckInput): SignatureCheck {
   return { ok: true, kind, answers, terms };
 }
 
-/** Échéance de réponse du compagnon : 8 h après la signature, 4 h si la mission est dans moins de 48 h. */
-export function companionAnswerDeadline(signedTs: number, missionTs: number): number {
-  return signedTs + (missionTs - signedTs < 48 * HOUR ? 4 : 8) * HOUR;
+/** Échéance de réponse du compagnon : toujours 8 h après la signature de l'employeur. */
+export function companionAnswerDeadline(signedTs: number, _missionTs?: number): number {
+  return signedTs + 8 * HOUR;
 }
 
 export function maskValue(v: string | null | undefined): string {

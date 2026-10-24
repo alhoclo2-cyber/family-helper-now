@@ -30,9 +30,9 @@ describe("checkEmployerSignature", () => {
     assert.equal(code({ cesu: { has_cesu_number: false, cesu_number: "123" } }), "no_cesu");
     assert.equal(code({ cesu: { has_cesu_number: true, cesu_number: " " } }), "no_cesu");
   });
-  test("refus à moins de 5 jours (+ 8 h)", () => {
-    assert.equal(code({ missionTs: now + 5 * DAY }), "notice");
-    assert.equal(code({ missionTs: now + 5 * DAY + 8 * 3_600_000 }), "ok");
+  test("5 jours exactement acceptés, 1 min de moins refusée", () => {
+    assert.equal(code({ missionTs: now + 5 * DAY - 60_000 }), "notice");
+    assert.equal(code({ missionTs: now + 5 * DAY }), "ok");
   });
   test("refus d'un brouillon qui n'est pas au particulier connecté", () => assert.equal(code({ callerId: "u2" }), "not_owner"));
   test("refus d'un contrat déjà signé", () => assert.equal(code({ draft: { ...base.draft!, status: "awaiting_companion" } }), "not_draft"));
@@ -46,5 +46,5 @@ describe("checkEmployerSignature", () => {
 
 describe("companionAnswerDeadline", () => {
   test("8 h après la signature", () => assert.equal(companionAnswerDeadline(now, now + 10 * DAY), now + 8 * 3_600_000));
-  test("4 h si la mission est dans moins de 48 h", () => assert.equal(companionAnswerDeadline(now, now + DAY), now + 4 * 3_600_000));
+  test("toujours 8 h, même mission dans moins de 48 h", () => assert.equal(companionAnswerDeadline(now, now + DAY), now + 8 * 3_600_000));
 });
