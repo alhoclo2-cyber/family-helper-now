@@ -551,5 +551,5 @@ export const simulateCompanionAnswer = createServerFn({ method: "POST" })
         metadata: { recipients: [employerEmail, "demo@example.fr"], simulated: true },
       });
     }
-    return { ok: true as const, action: data.action, emailText, employerEmail };
+    return { ok: true as const, action: data.action, emailText, employerEmail, finalHash };
   });

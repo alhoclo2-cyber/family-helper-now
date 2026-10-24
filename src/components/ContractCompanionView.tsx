@@ -64,7 +64,7 @@ export function ContractCompanionView({
 
   // Expire les contrats dont l'échéance est dépassée (en attendant une tâche planifiée).
   useEffect(() => {
-    void expire({ data: {} as never }).catch(() => undefined);
+    void expire().catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
