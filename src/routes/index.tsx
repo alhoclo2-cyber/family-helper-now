@@ -38,7 +38,6 @@ import { missingCompanionItems } from "@/lib/companionDossier";
 import { BirthFields, EMPTY_BIRTH, isBirthComplete, type BirthValue } from "@/components/BirthFields";
 import { IdentityNames } from "@/components/IdentityNames";
 import { contractIdentityKey } from "@/lib/contractIdentity";
-import { grossHourlyFromNet } from "@/lib/salary";
 import { CompanionAvailabilityPanel } from "@/components/CompanionAvailabilityPanel";
 import { ReservationSummaryPanel } from "@/components/ReservationSummaryPanel";
 import { AudienceMedallion } from "@/components/AudienceIllustrations";
@@ -246,7 +245,7 @@ function splitBookingAddress(address: string) {
 
 // Estimation indicative du coût employeur, avant/après crédit d'impôt de 50 %.
 function estimateMissionCost(salaireNetHoraire: number, durationHours: number, sapActive: boolean = sapDeclarationActive) {
-  const brut1h = grossHourlyFromNet(salaireNetHoraire);
+  const brut1h = salaireNetHoraire / 0.78; // même rapport que grossHourlyFromNet (src/lib/salary.ts)
   const charges1h = brut1h * 0.45 - 2.0 + brut1h * 0.22;
   const cout1h = salaireNetHoraire + charges1h;
   const salaireEtCotisations = cout1h * durationHours;
