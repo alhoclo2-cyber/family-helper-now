@@ -3911,6 +3911,7 @@ function CompanionMissions({
   setTab,
   onBack,
   onAccepted,
+  onOpenContract,
   onTestToggle,
   menu,
 }: {
@@ -3923,6 +3924,7 @@ function CompanionMissions({
   setTab: (tab: "today" | "rdv") => void;
   onBack: () => void;
   onAccepted: (id: string) => void;
+  onOpenContract: (contractId: string) => void;
   blocked?: boolean;
 }) {
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -3967,7 +3969,7 @@ function CompanionMissions({
           ← Retour
         </button>
         <MissionInfo r={detail} full />
-        <MissionActions key={detail.id} request={detail} blocked={blocked} onAccept={(arrival) => accept(detail, arrival)} onDecline={() => decline(detail)} />
+        <MissionActions key={detail.id} request={detail} blocked={blocked} onAccept={(arrival) => accept(detail, arrival)} onDecline={() => decline(detail)} onOpenContract={detail.contractId ? () => onOpenContract(detail.contractId!) : undefined} />
       </div>
     );
 
@@ -3998,14 +4000,14 @@ function CompanionMissions({
       {list.length === 0 && <p className="py-10 text-center text-muted-foreground">Aucune mission pour le moment.</p>}
       {tab === "today"
         ? list.map((r) => (
-            <MissionCard key={r.id} r={r} blocked={blocked} onOpen={() => setDetailId(r.id)} onAccept={(arrival) => accept(r, arrival)} onDecline={() => decline(r)} />
+            <MissionCard key={r.id} r={r} blocked={blocked} onOpen={() => setDetailId(r.id)} onAccept={(arrival) => accept(r, arrival)} onDecline={() => decline(r)} onOpenContract={r.contractId ? () => onOpenContract(r.contractId!) : undefined} />
           ))
         : list.map((r, i) => {
             const showHead = i === 0 || dayKey(list[i - 1].scheduledAt ?? 0) !== dayKey(r.scheduledAt ?? 0);
             return (
               <div key={r.id} className="flex flex-col gap-2">
                 {showHead && <h3 className="mt-2 text-lg font-black">{dayHeading(r.scheduledAt ?? Date.now())}</h3>}
-                <MissionCard r={r} blocked={blocked} onOpen={() => setDetailId(r.id)} onAccept={(arrival) => accept(r, arrival)} onDecline={() => decline(r)} />
+                <MissionCard r={r} blocked={blocked} onOpen={() => setDetailId(r.id)} onAccept={(arrival) => accept(r, arrival)} onDecline={() => decline(r)} onOpenContract={r.contractId ? () => onOpenContract(r.contractId!) : undefined} />
               </div>
             );
           })}
