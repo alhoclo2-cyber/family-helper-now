@@ -2884,6 +2884,14 @@ function FamilyWait({
               <p className="text-sm font-black">🔄 Nous recherchons un autre compagnon.</p>
             </div>
           )}
+          {request.contractEndedNotice && (
+            <div className="w-full rounded-2xl border-2 border-warning bg-warning/10 p-4 text-left">
+              <p className="text-sm font-black">Ce compagnon n'a pas donné suite.</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Vous pouvez choisir un autre compagnon ou modifier votre demande.
+              </p>
+            </div>
+          )}
           {request.contractId && request.contractAnswerDeadline && (
             <div role="status" className="w-full rounded-2xl border-2 border-primary bg-card p-4 text-left">
               <p className="text-base font-bold">
@@ -3066,7 +3074,21 @@ function FamilyWait({
             <ScheduleManageBlock request={request} paid={false} />
           )}
 
-          {!timedOut && (
+          {demoContractCompanion && (
+            <div className="w-full rounded-2xl border-2 border-dashed border-border bg-card p-4 text-left flex flex-col gap-2">
+              <p className="text-sm font-bold">🧪 Test : réponse du compagnon</p>
+              <button type="button" onClick={() => void simulateCompanion("accept")} className="py-3 rounded-2xl bg-success text-success-foreground font-bold text-sm">
+                Il accepte et signe
+              </button>
+              <button type="button" onClick={() => void simulateCompanion("refuse")} className="py-3 rounded-2xl border-2 border-border bg-background font-bold text-sm">
+                Il refuse
+              </button>
+              <button type="button" onClick={() => void simulateCompanion("timeout")} className="py-3 rounded-2xl border-2 border-border bg-background font-bold text-sm">
+                Il ne répond pas (délai dépassé)
+              </button>
+            </div>
+          )}
+          {!timedOut && !awaitingCompanion && (
             <button
               type="button"
               onClick={() => onSimulateNoAnswer(true)}
@@ -3075,13 +3097,15 @@ function FamilyWait({
               🧪 Simuler l'absence de réponse ({limitLabel})
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => onEditRequest()}
-            className="py-4 rounded-2xl border-2 border-primary text-primary font-bold text-sm w-full"
-          >
-            ← Modifier ma demande
-          </button>
+          {!awaitingCompanion && (
+            <button
+              type="button"
+              onClick={() => onEditRequest()}
+              className="py-4 rounded-2xl border-2 border-primary text-primary font-bold text-sm w-full"
+            >
+              ← Modifier ma demande
+            </button>
+          )}
           <button onClick={onDone} className="text-base text-muted-foreground underline">
             Retour à l'accueil
           </button>
