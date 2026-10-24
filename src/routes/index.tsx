@@ -1298,7 +1298,7 @@ function FamilyForm({
     injectSimulations();
     if (mode === "scheduled" && autoSearch === false && pickedCompanion) {
       const { state, check } = evaluatePair(pickedCompanion);
-      // Contrat applicable : délai minimum de 5 jours (+ marge de réponse), avant la modale et le raccourci « in_force ».
+      // Contrat applicable : délai minimum de 5 jours, avant la modale et le raccourci « in_force ».
       if (contractFlow && (state === "threshold_reached" || state === "in_force") && !meetsContractNotice(new Date(when).getTime(), Date.now())) {
         setNoticeBlocked(true);
         return;

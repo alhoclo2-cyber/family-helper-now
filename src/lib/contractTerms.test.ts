@@ -103,11 +103,11 @@ describe("validateTerms", () => {
 
 describe("meetsContractNotice", () => {
   const now = new Date("2026-10-23T12:00:00").getTime();
-  test("exactement 5 jours et 8 heures : valide", () => {
-    assert.equal(earliestContractMissionTs(now), now + (5 * 24 + 8) * 3_600_000);
-    assert.equal(meetsContractNotice(now + (5 * 24 + 8) * 3_600_000, now), true);
+  test("exactement 5 jours : valide", () => {
+    assert.equal(earliestContractMissionTs(now), now + 5 * 24 * 3_600_000);
+    assert.equal(meetsContractNotice(now + 5 * 24 * 3_600_000, now), true);
   });
-  test("une minute de moins : invalide", () => assert.equal(meetsContractNotice(now + (5 * 24 + 8) * 3_600_000 - 60_000, now), false));
+  test("une minute de moins : invalide", () => assert.equal(meetsContractNotice(now + 5 * 24 * 3_600_000 - 60_000, now), false));
 });
 
 describe("normalizeStoredTerms", () => {
