@@ -3,7 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/auth";
-import { contractIdentityKey, useContractIdentity } from "@/lib/contractIdentity";
+import { contractIdentityKey, useContractIdentity, useCesuStatus } from "@/lib/contractIdentity";
+import { CesuNumberField } from "@/components/CesuNumberField";
 import { fetchContractTerms, saveContractTerms } from "@/lib/contractDraft";
 import type { ContractAnswers, ContractKind } from "@/lib/contractDecision";
 import {
@@ -22,9 +23,9 @@ type Step = 0 | 1 | 2 | 3 | 4 | 5;
 const STEP_FIELDS: Record<number, TermsField[]> = {
   1: ["trialDays", "minDuration"],
   2: ["days"],
-  3: ["weeklyRestDay", "mayFirst"],
+  3: ["weeklyRestDays", "mayFirst"],
   4: ["salaryPayDay", "leaveNoticeMonths"],
-  5: ["trialDays", "minDuration", "days", "weeklyRestDay", "mayFirst", "salaryPayDay", "leaveNoticeMonths", "specialConditions"],
+  5: ["trialDays", "minDuration", "days", "weeklyRestDays", "mayFirst", "salaryPayDay", "leaveNoticeMonths", "specialConditions"],
 };
 const SAVE_ERROR = "Impossible d'enregistrer vos réponses, réessayez.";
 const fmtDay = (v?: string) => (v ? format(new Date(`${v}T00:00:00`), "dd/MM/yyyy") : "");
@@ -57,6 +58,7 @@ export function ContractTermsQuestionnaire({
   const userId = session?.user.id;
   const qc = useQueryClient();
   const identity = useContractIdentity(userId);
+  const cesu = useCesuStatus(userId);
   const names = useQuery({
     queryKey: ["profile-last-name", userId],
     enabled: !!userId,
@@ -74,17 +76,18 @@ export function ContractTermsQuestionnaire({
   const [saveError, setSaveError] = useState(false);
   const [idForm, setIdForm] = useState({ birth_name: "", address_line: "", postal_code: "", city: "" });
   const [sameName, setSameName] = useState(false);
+  const [restOpen, setRestOpen] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
 
   // Initialisation : choix déjà enregistrés pour ce brouillon, sinon valeurs par défaut.
   useEffect(() => {
-    if (terms || stored.isLoading || identity.isLoading) return;
+    if (terms || stored.isLoading || identity.isLoading || cesu.isLoading) return;
     const base = defaultTerms(ctx);
     const prev = stored.data ?? {};
     setTerms({ ...base, ...prev, startDate: base.startDate });
-    setStep((identity.data?.missing.length ?? 0) > 0 ? 0 : 1);
+    setStep((identity.data?.missing.length ?? 0) > 0 || cesu.data?.hasCesu === false ? 0 : 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stored.isLoading, identity.isLoading, terms]);
+  }, [stored.isLoading, identity.isLoading, cesu.isLoading, terms]);
 
   useEffect(() => { titleRef.current?.focus(); }, [step]);
 
