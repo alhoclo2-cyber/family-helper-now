@@ -15,6 +15,10 @@ import { store, useStore, randomStudent, COMPANIONS, experienceBadge, FAMILY_RES
 import { CguAcceptBlock, CguPanel } from "@/components/Cgu";
 import { CesuRecurrenceModal } from "@/components/CesuRecurrence";
 import { ContractFlow, ContractNoticeBlock } from "@/components/ContractFlow";
+import { ContractCompanionView } from "@/components/ContractCompanionView";
+import { useContractStatus, useMyContractLinks } from "@/lib/contractDraft";
+import { expireOverdueContracts, simulateCompanionAnswer } from "@/lib/contract.functions";
+import { sendSimulatedEmail } from "@/lib/simulatedEmails";
 import { meetsContractNotice } from "@/lib/contractTerms";
 import { format, startOfWeek, subWeeks } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -647,6 +651,8 @@ function FamilyFlow() {
     if (step !== "wait" || !currentId || current?.status !== "searching") return;
     if (current?.contractChoiceRequired) return;
     if (simulateNoAnswer) return;
+    // Mission sous contrat : aucune acceptation automatique, seul le compagnon répond.
+    if (current?.contractId) return;
     const preferredId = current?.preferredCompanionId;
     const delay = preferredId ? 6000 : current?.scheduledAt ? 5000 : 3500;
     const t = setTimeout(() => {
