@@ -47,8 +47,6 @@ export type ContractTerms = {
   weeklyRestDays: Weekday[];
   mayFirst: "off" | "worked" | null;
   workedHolidays: HolidayKey[];
-  /** Obligatoire, sans valeur par défaut : choisi par le Particulier. */
-  salaryPayDay: number | null;
   leaveNoticeMonths: number;
   specialConditions?: string;
 };
@@ -57,7 +55,7 @@ export type TermsContext = { kind: ContractKind; missionTs: number; answers: Con
 
 export type TermsField =
   | "trialDays" | "minDuration" | "days" | "weeklyRestDays" | "mayFirst"
-  | "salaryPayDay" | "leaveNoticeMonths" | "specialConditions";
+  | "leaveNoticeMonths" | "specialConditions";
 export type TermsError = { field: TermsField; message: string };
 
 const DAY_MS = 86_400_000;
@@ -75,7 +73,6 @@ export function defaultTerms({ kind, missionTs, answers }: TermsContext): Contra
     weeklyRestDays: [7],
     mayFirst: "off",
     workedHolidays: [],
-    salaryPayDay: null,
     leaveNoticeMonths: MIN_LEAVE_NOTICE_MONTHS,
     specialConditions: "",
   };
@@ -174,14 +171,27 @@ export function validateTerms(terms: ContractTerms, ctx: TermsContext): TermsErr
   if (!Number.isInteger(terms.leaveNoticeMonths) || terms.leaveNoticeMonths < MIN_LEAVE_NOTICE_MONTHS) {
     errors.push({ field: "leaveNoticeMonths", message: "Le minimum est de 2 mois." });
   }
-  const p = terms.salaryPayDay;
-  if (p === null || !Number.isInteger(p) || p < 1 || p > 28) {
-    errors.push({ field: "salaryPayDay", message: "Choisissez le jour de versement du salaire." });
-  }
   if ((terms.specialConditions ?? "").length > SPECIAL_CONDITIONS_MAX) {
     errors.push({ field: "specialConditions", message: "500 caractères au maximum." });
   }
   return errors;
+}
+
+export const TERMS_VERSION = 3;
+
+/**
+ * Lit les choix enregistrés dans work_contracts.answers, quelle que soit leur version :
+ * v1 -> weeklyRestDay unique devient weeklyRestDays ; v1/v2 -> salaryPayDay est ignoré.
+ */
+export function normalizeStoredTerms(answers: Record<string, unknown> | null | undefined): Partial<ContractTerms> | null {
+  const raw = (answers?.terms as Record<string, unknown> | undefined) ?? null;
+  if (!raw) return null;
+  const { salaryPayDay: _p, weeklyRestDay, ...rest } = raw;
+  const out = { ...rest } as Partial<ContractTerms>;
+  if (!Array.isArray(out.weeklyRestDays)) {
+    out.weeklyRestDays = typeof weeklyRestDay === "number" ? [weeklyRestDay as Weekday] : [];
+  }
+  return out;
 }
 
 export function formatWeekly(minutes: number): string {
