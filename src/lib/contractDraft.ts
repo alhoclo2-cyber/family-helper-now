@@ -63,13 +63,20 @@ export async function fetchContractTerms(draftId: string): Promise<Partial<Contr
   const { data, error } = await supabase.from("work_contracts").select("answers").eq("id", draftId).maybeSingle();
   if (error) throw error;
   const a = data?.answers as Record<string, unknown> | null;
-  return (a?.terms as Partial<ContractTerms>) ?? null;
+  const terms = (a?.terms as Record<string, unknown> | undefined) ?? null;
+  if (!terms) return null;
+  // Version 1 -> 2 : weeklyRestDay (un seul jour) devient weeklyRestDays (liste).
+  if ((a?.terms_version ?? 1) === 1 && "weeklyRestDay" in terms) {
+    const { weeklyRestDay, ...rest } = terms;
+    return { ...rest, weeklyRestDays: typeof weeklyRestDay === "number" ? [weeklyRestDay as ContractTerms["weeklyRestDays"][number]] : [] };
+  }
+  return terms as Partial<ContractTerms>;
 }
 
 export async function saveContractTerms({ draftId, terms, effectiveUntil }: { draftId: string; terms: ContractTerms; effectiveUntil: string | null }) {
   const { data, error: readError } = await supabase.from("work_contracts").select("answers").eq("id", draftId).eq("status", "draft").single();
   if (readError) throw readError;
-  const answers = { ...((data.answers as Record<string, unknown>) ?? {}), terms, terms_version: 1 };
+  const answers = { ...((data.answers as Record<string, unknown>) ?? {}), terms, terms_version: 2 };
   const { error } = await supabase
     .from("work_contracts")
     .update({ answers: answers as unknown as Json, effective_from: terms.startDate, effective_until: effectiveUntil })
