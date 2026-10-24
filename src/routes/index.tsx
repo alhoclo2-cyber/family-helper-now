@@ -3760,6 +3760,11 @@ function StudentFlow() {
 
 const ALL_COMPANION_NEEDS: NeedType[] = ALL_NEEDS;
 
+// Mission liée à un contrat (first_mission_id côté base, contractId côté store).
+function allRequestsForContract(requests: Request[], contractId: string) {
+  return requests.find((r) => r.contractId === contractId);
+}
+
 // Distance simulée stable par demande (démo) ; les missions de test portent leur distance réelle.
 function companionDistance(r: Request) {
   if (r.distanceKm != null) return r.distanceKm;
@@ -4306,12 +4311,13 @@ function CompanionCancelBlockInner({ request }: { request: Request }) {
 }
 
 
-function StudentDetail({ request, onBack, blocked }: { request: Request; onBack: () => void; blocked?: boolean }) {
+function StudentDetail({ request, onBack, blocked, onOpenContract }: { request: Request; onBack: () => void; blocked?: boolean; onOpenContract?: () => void }) {
   const accepted = request.status === "accepted";
   const [taken, setTaken] = useState(false);
   const input = useArrivalInput(request.durationHours ?? 1);
   const accept = () => {
     if (blocked) return;
+    if (request.contractId) return; // mission sous contrat : passage obligé par la lecture du contrat
     if (!request.scheduledAt && !input.valid) return;
     const ok = store.acceptRequest(request.id, 0, undefined, request.scheduledAt ? undefined : input.arrival);
     if (!ok) setTaken(true);
@@ -4451,10 +4457,18 @@ function StudentDetail({ request, onBack, blocked }: { request: Request; onBack:
             </p>
           </div>
           <div className="flex-1" />
-          {!request.scheduledAt && <ArrivalFields input={input} />}
-          <Button disabled={blocked || (!request.scheduledAt && !input.valid)} onClick={accept} className="btn-huge bg-success text-success-foreground whitespace-normal">
-            ✅ Accepter la mission
-          </Button>
+          {request.contractId ? (
+            <Button onClick={onOpenContract} className="btn-huge bg-mission-violet text-background whitespace-normal">
+              📄 Lire le contrat
+            </Button>
+          ) : (
+            <>
+              {!request.scheduledAt && <ArrivalFields input={input} />}
+              <Button disabled={blocked || (!request.scheduledAt && !input.valid)} onClick={accept} className="btn-huge bg-success text-success-foreground whitespace-normal">
+                ✅ Accepter la mission
+              </Button>
+            </>
+          )}
           {blocked && (
             <p className="text-center text-sm font-semibold text-muted-foreground">
               Vous avez une mission en attente de confirmation du particulier.
