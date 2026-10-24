@@ -195,7 +195,7 @@ export function ContractCompanionView({
         </details>
       ))}
 
-      <p className="text-sm font-bold text-destructive">{ContractNoticeSentence}</p>
+      <ContractNoticeSentence />
       <p className="text-sm font-semibold">Vous pouvez refuser ce contrat sans justification ni pénalité.</p>
 
       <label className="flex items-start gap-3 rounded-2xl border-2 border-border bg-card p-4 font-semibold">
