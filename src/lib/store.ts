@@ -337,6 +337,8 @@ export const store = {
               contractId: undefined,
               contractAnswerDeadline: undefined,
               contractEndedNotice: outcome,
+              preferredCompanionId: undefined, // le compagnon qui n'a pas donné suite n'est pas re-sollicité
+              autoSearch: true,
               declinedBy: [...(r.declinedBy ?? []), companionId],
             }
           : r,
