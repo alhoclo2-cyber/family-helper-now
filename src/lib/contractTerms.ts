@@ -1,5 +1,6 @@
 import { addDays, addMonths, addWeeks, differenceInCalendarDays, format, startOfDay } from "date-fns";
 import type { ContractAnswers, ContractKind } from "./contractDecision";
+import { MISSION_START_LIMIT_MIN, MISSION_END_LIMIT_MIN } from "./missionHours";
 
 /* ------------------------------------------------------------------
    Questionnaire 2 du contrat : choix du Particulier (fonctions pures,
@@ -42,7 +43,8 @@ export type ContractTerms = {
   trialDays: number; // 0 = sans période d'essai
   minDuration?: MinDuration;
   organization: { mode: "irregular" } | { mode: "fixed"; days: FixedDay[] };
-  weeklyRestDay: Weekday | null;
+  /** 1 à 6 jours de repos hebdomadaire. */
+  weeklyRestDays: Weekday[];
   mayFirst: "off" | "worked" | null;
   workedHolidays: HolidayKey[];
   /** Obligatoire, sans valeur par défaut : choisi par le Particulier. */
@@ -54,7 +56,7 @@ export type ContractTerms = {
 export type TermsContext = { kind: ContractKind; missionTs: number; answers: ContractAnswers };
 
 export type TermsField =
-  | "trialDays" | "minDuration" | "days" | "weeklyRestDay" | "mayFirst"
+  | "trialDays" | "minDuration" | "days" | "weeklyRestDays" | "mayFirst"
   | "salaryPayDay" | "leaveNoticeMonths" | "specialConditions";
 export type TermsError = { field: TermsField; message: string };
 
@@ -70,7 +72,7 @@ export function defaultTerms({ kind, missionTs, answers }: TermsContext): Contra
     trialDays: 0,
     ...(isReturn ? { minDuration: { value: 1, unit: "weeks" as const } } : {}),
     organization: { mode: "irregular" },
-    weeklyRestDay: 7,
+    weeklyRestDays: [7],
     mayFirst: "off",
     workedHolidays: [],
     salaryPayDay: null,
