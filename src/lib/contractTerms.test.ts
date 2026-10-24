@@ -2,7 +2,7 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { addDays, addMonths, format } from "date-fns";
 import {
-  defaultTerms, maxTrialDaysCdd, meetsContractNotice, earliestContractMissionTs, validateTerms,
+  normalizeStoredTerms, defaultTerms, maxTrialDaysCdd, meetsContractNotice, earliestContractMissionTs, validateTerms,
   type ContractTerms, type TermsContext,
 } from "./contractTerms";
 
@@ -12,7 +12,7 @@ const d = (n: number) => format(addDays(new Date(`${start}T00:00:00`), n), "yyyy
 const m = (n: number, extra = 0) => format(addDays(addMonths(new Date(`${start}T00:00:00`), n), extra), "yyyy-MM-dd");
 const cdi: TermsContext = { kind: "cdi", missionTs, answers: { hasEnd: "no" } };
 const cddReturn: TermsContext = { kind: "cdd", missionTs, answers: { hasEnd: "yes", replacesAbsentEmployee: true, endMode: "return" } };
-const valid = (ctx: TermsContext): ContractTerms => ({ ...defaultTerms(ctx), salaryPayDay: 5 });
+const valid = (ctx: TermsContext): ContractTerms => ({ ...defaultTerms(ctx) });
 const fields = (t: ContractTerms, ctx: TermsContext) => validateTerms(t, ctx).map((e) => e.field);
 
 describe("defaultTerms", () => {
@@ -24,7 +24,7 @@ describe("defaultTerms", () => {
     assert.deepEqual(t.weeklyRestDays, [7]);
     assert.equal(t.mayFirst, "off");
     assert.deepEqual(t.workedHolidays, []);
-    assert.equal(t.salaryPayDay, null);
+    assert.equal("salaryPayDay" in t, false);
     assert.equal(t.leaveNoticeMonths, 2);
     assert.equal(t.minDuration, undefined);
   });
@@ -46,8 +46,7 @@ describe("maxTrialDaysCdd", () => {
 
 describe("validateTerms", () => {
   test("valeurs valides", () => assert.deepEqual(validateTerms(valid(cdi), cdi), []));
-  test("jour de versement absent invalide", () => assert.ok(fields(defaultTerms(cdi), cdi).includes("salaryPayDay")));
-  test("jour de versement 29 invalide", () => assert.ok(fields({ ...valid(cdi), salaryPayDay: 29 }, cdi).includes("salaryPayDay")));
+  test("valeurs par défaut valides sans jour de versement", () => assert.deepEqual(fields(defaultTerms(cdi), cdi), []));
   test("essai CDI 30 ok, 31 invalide", () => {
     assert.deepEqual(fields({ ...valid(cdi), trialDays: 30 }, cdi), []);
     assert.ok(fields({ ...valid(cdi), trialDays: 31 }, cdi).includes("trialDays"));
@@ -109,4 +108,15 @@ describe("meetsContractNotice", () => {
     assert.equal(meetsContractNotice(now + (5 * 24 + 8) * 3_600_000, now), true);
   });
   test("une minute de moins : invalide", () => assert.equal(meetsContractNotice(now + (5 * 24 + 8) * 3_600_000 - 60_000, now), false));
+});
+
+describe("normalizeStoredTerms", () => {
+  test("ignore le jour de paiement des anciens brouillons", () => {
+    const t = normalizeStoredTerms({ terms_version: 2, terms: { salaryPayDay: 5, weeklyRestDays: [7] } });
+    assert.equal(t && "salaryPayDay" in t, false);
+    assert.deepEqual(t?.weeklyRestDays, [7]);
+  });
+  test("convertit le jour de repos unique de la version 1", () => {
+    assert.deepEqual(normalizeStoredTerms({ terms: { weeklyRestDay: 6 } })?.weeklyRestDays, [6]);
+  });
 });
