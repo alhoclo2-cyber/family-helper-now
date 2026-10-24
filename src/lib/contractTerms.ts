@@ -1,5 +1,6 @@
 import { addDays, addMonths, addWeeks, differenceInCalendarDays, format, startOfDay } from "date-fns";
 import type { ContractAnswers, ContractKind } from "./contractDecision";
+import { MISSION_START_LIMIT_MIN, MISSION_END_LIMIT_MIN } from "./missionHours";
 
 /* ------------------------------------------------------------------
    Questionnaire 2 du contrat : choix du Particulier (fonctions pures,
@@ -42,7 +43,8 @@ export type ContractTerms = {
   trialDays: number; // 0 = sans période d'essai
   minDuration?: MinDuration;
   organization: { mode: "irregular" } | { mode: "fixed"; days: FixedDay[] };
-  weeklyRestDay: Weekday | null;
+  /** 1 à 6 jours de repos hebdomadaire. */
+  weeklyRestDays: Weekday[];
   mayFirst: "off" | "worked" | null;
   workedHolidays: HolidayKey[];
   /** Obligatoire, sans valeur par défaut : choisi par le Particulier. */
@@ -54,7 +56,7 @@ export type ContractTerms = {
 export type TermsContext = { kind: ContractKind; missionTs: number; answers: ContractAnswers };
 
 export type TermsField =
-  | "trialDays" | "minDuration" | "days" | "weeklyRestDay" | "mayFirst"
+  | "trialDays" | "minDuration" | "days" | "weeklyRestDays" | "mayFirst"
   | "salaryPayDay" | "leaveNoticeMonths" | "specialConditions";
 export type TermsError = { field: TermsField; message: string };
 
@@ -70,7 +72,7 @@ export function defaultTerms({ kind, missionTs, answers }: TermsContext): Contra
     trialDays: 0,
     ...(isReturn ? { minDuration: { value: 1, unit: "weeks" as const } } : {}),
     organization: { mode: "irregular" },
-    weeklyRestDay: 7,
+    weeklyRestDays: [7],
     mayFirst: "off",
     workedHolidays: [],
     salaryPayDay: null,
@@ -149,14 +151,25 @@ export function validateTerms(terms: ContractTerms, ctx: TermsContext): TermsErr
     if (days.length === 0) errors.push({ field: "days", message: "Choisissez au moins un jour travaillé." });
     else if (days.some((d) => !(toMin(d.end) > toMin(d.start)))) {
       errors.push({ field: "days", message: "Pour chaque jour travaillé, l'heure de fin doit être après l'heure de début." });
+    } else if (days.some((d) => toMin(d.start) < MISSION_START_LIMIT_MIN || toMin(d.end) > MISSION_END_LIMIT_MIN)) {
+      errors.push({ field: "days", message: "Les missions ont lieu entre 6 h et 21 h." });
     } else if (fixedWeeklyMinutes(days) > WEEKLY_HOURS.max * 60) {
       errors.push({ field: "days", message: "La durée hebdomadaire ne peut pas dépasser 48 heures." });
     }
-    if (terms.weeklyRestDay && days.some((d) => d.weekday === terms.weeklyRestDay)) {
-      errors.push({ field: "weeklyRestDay", message: "Le jour de repos ne peut pas être un jour travaillé de votre planning." });
+    if (days.some((d) => terms.weeklyRestDays.includes(d.weekday))) {
+      errors.push({ field: "weeklyRestDays", message: "Un jour de repos ne peut pas être un jour travaillé de votre planning." });
     }
   }
-  if (!terms.weeklyRestDay) errors.push({ field: "weeklyRestDay", message: "Choisissez le jour de repos hebdomadaire." });
+  if (terms.weeklyRestDays.length === 0) {
+    errors.push({ field: "weeklyRestDays", message: "Choisissez le ou les jours de repos hebdomadaire." });
+  } else if (terms.weeklyRestDays.length > 6) {
+    errors.push({ field: "weeklyRestDays", message: "Choisissez au maximum 6 jours de repos." });
+  }
+  const startJsDay = parseDay(terms.startDate).getDay();
+  const startWeekday = (startJsDay === 0 ? 7 : startJsDay) as Weekday;
+  if (terms.weeklyRestDays.includes(startWeekday)) {
+    errors.push({ field: "weeklyRestDays", message: "Votre première mission tombe un jour de repos : changez les jours de repos ou la date de la mission." });
+  }
   if (!terms.mayFirst) errors.push({ field: "mayFirst", message: "Indiquez si le 1er mai est chômé ou travaillé." });
   if (!Number.isInteger(terms.leaveNoticeMonths) || terms.leaveNoticeMonths < MIN_LEAVE_NOTICE_MONTHS) {
     errors.push({ field: "leaveNoticeMonths", message: "Le minimum est de 2 mois." });

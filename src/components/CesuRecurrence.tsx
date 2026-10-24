@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { COMPANIONS } from "@/lib/store";
 import { companionFullLabel } from "@/lib/companionLabel";
+import { useSession } from "@/lib/auth";
+import { useCesuStatus } from "@/lib/contractIdentity";
+import { CesuNumberField } from "@/components/CesuNumberField";
 import type { ContractCheckResult } from "@/lib/contractCompliance";
 
 /* ------------------------------------------------------------------
@@ -45,6 +48,10 @@ export function CesuRecurrenceModal({
   dismissible?: boolean;
 }) {
   const [view, setView] = useState<"alert" | "companions">("alert");
+  const { session } = useSession();
+  const userId = session?.user.id;
+  const cesu = useCesuStatus(userId);
+  const cesuMissing = !!userId && cesu.data?.hasCesu === false;
 
   if (view === "companions")
     return (
@@ -126,10 +133,23 @@ export function CesuRecurrenceModal({
       <button
         type="button"
         onClick={onContinue}
-        className="w-full mt-2 py-4 rounded-2xl border-2 border-border font-bold"
+        disabled={cesuMissing}
+        aria-disabled={cesuMissing}
+        className="w-full mt-2 py-4 rounded-2xl border-2 border-border font-bold disabled:opacity-50"
       >
         Continuer avec {companionName}
       </button>
+      {cesuMissing && (
+        <>
+          <p className="text-sm mt-3 leading-relaxed">
+            Pour établir un contrat de travail avec ce compagnon, votre numéro CESU est nécessaire. Tant qu'il n'est
+            pas renseigné dans votre compte, nous ne pouvons pas créer ce contrat. Vous pouvez demander votre numéro
+            CESU sur cesu.urssaf.fr. Dès que vous l'avez obtenu, renseignez-le ci-dessous, choisissez un autre
+            compagnon ou modifiez votre demande.
+          </p>
+          <CesuNumberField userId={userId!} />
+        </>
+      )}
     </Modal>
   );
 }

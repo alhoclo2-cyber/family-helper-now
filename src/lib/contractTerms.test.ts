@@ -21,7 +21,7 @@ describe("defaultTerms", () => {
     assert.equal(t.startDate, start);
     assert.equal(t.trialDays, 0);
     assert.deepEqual(t.organization, { mode: "irregular" });
-    assert.equal(t.weeklyRestDay, 7);
+    assert.deepEqual(t.weeklyRestDays, [7]);
     assert.equal(t.mayFirst, "off");
     assert.deepEqual(t.workedHolidays, []);
     assert.equal(t.salaryPayDay, null);
@@ -70,12 +70,33 @@ describe("validateTerms", () => {
     assert.ok(fields({ ...valid(cdi), organization: { mode: "fixed", days: [{ weekday: 1, start: "10:00", end: "09:00" }] } }, cdi).includes("days"));
   });
   test("jour de repos travaillé invalide", () => {
-    const t: ContractTerms = { ...valid(cdi), weeklyRestDay: 1, organization: { mode: "fixed", days: [{ weekday: 1, start: "09:00", end: "12:00" }] } };
-    assert.ok(fields(t, cdi).includes("weeklyRestDay"));
+    const t: ContractTerms = { ...valid(cdi), weeklyRestDays: [1], organization: { mode: "fixed", days: [{ weekday: 1, start: "09:00", end: "12:00" }] } };
+    assert.ok(fields(t, cdi).includes("weeklyRestDays"));
   });
   test("repos et 1er mai obligatoires", () => {
-    const f = fields({ ...valid(cdi), weeklyRestDay: null, mayFirst: null }, cdi);
-    assert.ok(f.includes("weeklyRestDay") && f.includes("mayFirst"));
+    const f = fields({ ...valid(cdi), weeklyRestDays: [], mayFirst: null }, cdi);
+    assert.ok(f.includes("weeklyRestDays") && f.includes("mayFirst"));
+  });
+  test("plus de 6 jours de repos invalide", () => {
+    assert.ok(fields({ ...valid(cdi), weeklyRestDays: [1, 2, 3, 4, 5, 6, 7] }, cdi).includes("weeklyRestDays"));
+  });
+  test("plusieurs jours de repos valides", () => {
+    assert.deepEqual(fields({ ...valid(cdi), weeklyRestDays: [6, 7] }, cdi), []);
+  });
+  test("première mission un jour de repos invalide", () => {
+    // start = lundi 2026-11-02
+    const f = fields({ ...valid(cdi), weeklyRestDays: [1] }, cdi);
+    assert.ok(f.includes("weeklyRestDays"));
+  });
+  test("planning hors 6 h - 21 h refusé", () => {
+    const early = { ...valid(cdi), organization: { mode: "fixed" as const, days: [{ weekday: 2 as const, start: "05:59", end: "12:00" }] } };
+    assert.ok(fields(early, cdi).includes("days"));
+    const late = { ...valid(cdi), organization: { mode: "fixed" as const, days: [{ weekday: 2 as const, start: "12:00", end: "21:01" }] } };
+    assert.ok(fields(late, cdi).includes("days"));
+  });
+  test("planning 6 h 00 - 21 h 00 accepté", () => {
+    const t = { ...valid(cdi), organization: { mode: "fixed" as const, days: [{ weekday: 2 as const, start: "06:00", end: "21:00" }] } };
+    assert.deepEqual(fields(t, cdi), []);
   });
   test("délai de congés < 2 mois invalide", () => assert.ok(fields({ ...valid(cdi), leaveNoticeMonths: 1 }, cdi).includes("leaveNoticeMonths")));
   test("texte > 500 invalide", () => assert.ok(fields({ ...valid(cdi), specialConditions: "a".repeat(501) }, cdi).includes("specialConditions")));

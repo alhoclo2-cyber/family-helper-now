@@ -3,7 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/auth";
-import { contractIdentityKey, useContractIdentity } from "@/lib/contractIdentity";
+import { contractIdentityKey, useContractIdentity, useCesuStatus } from "@/lib/contractIdentity";
+import { CesuNumberField } from "@/components/CesuNumberField";
 import { fetchContractTerms, saveContractTerms } from "@/lib/contractDraft";
 import type { ContractAnswers, ContractKind } from "@/lib/contractDecision";
 import {
@@ -22,9 +23,9 @@ type Step = 0 | 1 | 2 | 3 | 4 | 5;
 const STEP_FIELDS: Record<number, TermsField[]> = {
   1: ["trialDays", "minDuration"],
   2: ["days"],
-  3: ["weeklyRestDay", "mayFirst"],
+  3: ["weeklyRestDays", "mayFirst"],
   4: ["salaryPayDay", "leaveNoticeMonths"],
-  5: ["trialDays", "minDuration", "days", "weeklyRestDay", "mayFirst", "salaryPayDay", "leaveNoticeMonths", "specialConditions"],
+  5: ["trialDays", "minDuration", "days", "weeklyRestDays", "mayFirst", "salaryPayDay", "leaveNoticeMonths", "specialConditions"],
 };
 const SAVE_ERROR = "Impossible d'enregistrer vos réponses, réessayez.";
 const fmtDay = (v?: string) => (v ? format(new Date(`${v}T00:00:00`), "dd/MM/yyyy") : "");
@@ -57,6 +58,7 @@ export function ContractTermsQuestionnaire({
   const userId = session?.user.id;
   const qc = useQueryClient();
   const identity = useContractIdentity(userId);
+  const cesu = useCesuStatus(userId);
   const names = useQuery({
     queryKey: ["profile-last-name", userId],
     enabled: !!userId,
@@ -74,17 +76,18 @@ export function ContractTermsQuestionnaire({
   const [saveError, setSaveError] = useState(false);
   const [idForm, setIdForm] = useState({ birth_name: "", address_line: "", postal_code: "", city: "" });
   const [sameName, setSameName] = useState(false);
+  const [restOpen, setRestOpen] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
 
   // Initialisation : choix déjà enregistrés pour ce brouillon, sinon valeurs par défaut.
   useEffect(() => {
-    if (terms || stored.isLoading || identity.isLoading) return;
+    if (terms || stored.isLoading || identity.isLoading || cesu.isLoading) return;
     const base = defaultTerms(ctx);
     const prev = stored.data ?? {};
     setTerms({ ...base, ...prev, startDate: base.startDate });
-    setStep((identity.data?.missing.length ?? 0) > 0 ? 0 : 1);
+    setStep((identity.data?.missing.length ?? 0) > 0 || cesu.data?.hasCesu === false ? 0 : 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stored.isLoading, identity.isLoading, terms]);
+  }, [stored.isLoading, identity.isLoading, cesu.isLoading, terms]);
 
   useEffect(() => { titleRef.current?.focus(); }, [step]);
 
@@ -145,7 +148,8 @@ export function ContractTermsQuestionnaire({
     setStep((step - 1) as Step);
   };
 
-  const idComplete = (Object.keys(need) as (keyof typeof need)[]).every((k) => !need[k] || !!idForm[k].trim());
+  const cesuMissing = !!userId && cesu.data?.hasCesu === false;
+  const idComplete = !cesuMissing && (Object.keys(need) as (keyof typeof need)[]).every((k) => !need[k] || !!idForm[k].trim());
 
   const setDay = (weekday: Weekday, patch: Partial<FixedDay> | null) => {
     const others = fixedDays.filter((d) => d.weekday !== weekday);
@@ -196,6 +200,15 @@ export function ContractTermsQuestionnaire({
           {need.city && (
             <div><label htmlFor="ct-city" className="block text-sm font-bold mb-1">Ville</label>
               <input id="ct-city" className={inputCls} value={idForm.city} onChange={(e) => setIdForm((f) => ({ ...f, city: e.target.value }))} /></div>
+          )}
+          {cesuMissing && userId && (
+            <>
+              <p className="text-sm leading-relaxed">
+                Pour établir un contrat de travail, votre numéro CESU est nécessaire. Vous pouvez le demander sur
+                cesu.urssaf.fr puis le renseigner ci-dessous.
+              </p>
+              <CesuNumberField userId={userId} />
+            </>
           )}
         </>
       )}
@@ -274,7 +287,7 @@ export function ContractTermsQuestionnaire({
             <Choice label="Planning défini" selected={terms.organization.mode === "fixed"} onSelect={() => terms.organization.mode !== "fixed" && set({ organization: { mode: "fixed", days: [] } })} />
           </div>
           {terms.organization.mode === "irregular" ? (
-            <p className="text-sm">Les missions varient selon vos demandes, de {WEEKLY_HOURS.min} à {WEEKLY_HOURS.max} heures par semaine. Elles sont communiquées au compagnon par la plateforme Solélia dès leur réservation, au moins 5 jours avant leur début. Le compagnon est libre d'accepter ou de refuser chaque mission.</p>
+            <p className="text-sm">Les missions varient selon vos demandes, de {WEEKLY_HOURS.min} à {WEEKLY_HOURS.max} heures par semaine. Le planning est généré par la plateforme Solélia à partir des missions réservées. Il est envoyé par e-mail au compagnon et chacun peut le consulter dans son compte, dans Mes contrats, au moins 5 jours avant chaque mission. Le compagnon est libre d'accepter ou de refuser chaque mission.</p>
           ) : (
             <>
               <p className="text-sm">Mêmes jours et mêmes horaires chaque semaine.</p>
@@ -292,9 +305,9 @@ export function ContractTermsQuestionnaire({
                     {day && (
                       <div className="grid grid-cols-2 gap-2">
                         <label className="text-xs font-bold">Heure de début
-                          <input type="time" className={inputCls} value={day.start} onChange={(e) => setDay(wd, { start: e.target.value })} /></label>
+                          <input type="time" min="06:00" max="21:00" className={inputCls} value={day.start} onChange={(e) => setDay(wd, { start: e.target.value })} /></label>
                         <label className="text-xs font-bold">Heure de fin
-                          <input type="time" className={inputCls} value={day.end} onChange={(e) => setDay(wd, { end: e.target.value })} /></label>
+                          <input type="time" min="06:00" max="21:00" className={inputCls} value={day.end} onChange={(e) => setDay(wd, { end: e.target.value })} /></label>
                       </div>
                     )}
                   </div>
@@ -313,11 +326,44 @@ export function ContractTermsQuestionnaire({
           <Title>Repos et jours fériés</Title>
           {progress}
           <div>
-            <label htmlFor="ct-rest" className="block text-base font-bold mb-1">Jour de repos hebdomadaire</label>
-            <select id="ct-rest" className={inputCls} value={terms.weeklyRestDay ?? ""} onChange={(e) => set({ weeklyRestDay: Number(e.target.value) as Weekday })}>
-              {WEEKDAYS.map((l, i) => <option key={l} value={i + 1}>{l}</option>)}
-            </select>
-            <ErrorText f="weeklyRestDay" />
+            <p className="text-base font-bold mb-1">Jours de repos hebdomadaire</p>
+            <button
+              type="button"
+              aria-expanded={restOpen}
+              onClick={() => setRestOpen((o) => !o)}
+              className={`${inputCls} text-left font-semibold${err("weeklyRestDays") ? " border-destructive" : ""}`}
+            >
+              {terms.weeklyRestDays.length
+                ? [...terms.weeklyRestDays].sort((a, b) => a - b).map((d) => WEEKDAYS[d - 1]).join(", ")
+                : "Choisir un ou plusieurs jours"}
+            </button>
+            {restOpen && (
+              <div className="flex flex-col gap-2 mt-2" role="group" aria-label="Jours de repos hebdomadaire">
+                {WEEKDAYS.map((l, i) => {
+                  const wd = (i + 1) as Weekday;
+                  const checked = terms.weeklyRestDays.includes(wd);
+                  return (
+                    <label key={l} className="flex items-center gap-3 rounded-2xl border-2 border-border bg-card p-3 text-sm font-semibold">
+                      <input
+                        type="checkbox"
+                        className="h-5 w-5 accent-primary"
+                        checked={checked}
+                        onChange={() =>
+                          set({
+                            weeklyRestDays: checked
+                              ? terms.weeklyRestDays.filter((d) => d !== wd)
+                              : [...terms.weeklyRestDays, wd].sort((a, b) => a - b),
+                          })
+                        }
+                      />
+                      {l}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+            <p className="text-sm text-muted-foreground mt-1">Aucune mission ne pourra être réservée avec ce compagnon ces jours-là.</p>
+            <ErrorText f="weeklyRestDays" />
           </div>
           <p className="text-base font-bold">1er mai</p>
           <div role="radiogroup" aria-label="1er mai" className="flex flex-col gap-3">
@@ -359,6 +405,9 @@ export function ContractTermsQuestionnaire({
             <input id="ct-leave" type="number" min={MIN_LEAVE_NOTICE_MONTHS} className={`${inputCls}${err("leaveNoticeMonths") ? " border-destructive" : ""}`}
               value={Number.isNaN(terms.leaveNoticeMonths) ? "" : terms.leaveNoticeMonths} onChange={(e) => set({ leaveNoticeMonths: Number(e.target.value) })} />
             <ErrorText f="leaveNoticeMonths" />
+            <p className="text-sm text-muted-foreground mt-2">
+              Au-delà de 40 heures de travail par semaine, les heures sont majorées de 25 % (de la 41e à la 48e heure) puis de 50 %. Indiquez à la réservation un salaire horaire net qui tient compte de cette majoration.
+            </p>
           </div>
         </>
       )}
@@ -386,7 +435,7 @@ export function ContractTermsQuestionnaire({
               {fixedDays.map((d) => <p key={d.weekday}>{WEEKDAYS[d.weekday - 1]} : {d.start} – {d.end}</p>)}
             </div><Edit to={2} /></div>
             <div className="flex justify-between gap-2"><div>
-              <p><b>Jour de repos :</b> {terms.weeklyRestDay ? WEEKDAYS[terms.weeklyRestDay - 1] : ""}</p>
+              <p><b>Jours de repos :</b> {[...terms.weeklyRestDays].sort((a, b) => a - b).map((d) => WEEKDAYS[d - 1]).join(", ")}</p>
               <p><b>1er mai :</b> {terms.mayFirst === "worked" ? "Travaillé" : "Chômé"}</p>
               <p><b>Jours fériés travaillés :</b> {terms.workedHolidays.length ? PUBLIC_HOLIDAYS.filter((h) => terms.workedHolidays.includes(h.key)).map((h) => h.label).join(", ") : "Aucun"}</p>
             </div><Edit to={3} /></div>

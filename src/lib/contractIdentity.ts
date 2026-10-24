@@ -33,3 +33,20 @@ export function useContractIdentity(userId: string | undefined) {
     },
   });
 }
+
+export const cesuStatusKey = (userId: string | undefined) => ["cesu-status", userId] as const;
+
+/** « CESU renseigné » = has_cesu_number vrai ET cesu_number non vide. */
+export function useCesuStatus(userId: string | undefined) {
+  return useQuery({
+    queryKey: cesuStatusKey(userId),
+    enabled: !!userId,
+    queryFn: async () => {
+      if (!userId) throw new Error("Connexion requise.");
+      const { data, error } = await supabase.from("profiles")
+        .select("has_cesu_number,cesu_number").eq("id", userId).maybeSingle();
+      if (error) throw error;
+      return { hasCesu: data?.has_cesu_number === true && !!data.cesu_number?.trim() };
+    },
+  });
+}
