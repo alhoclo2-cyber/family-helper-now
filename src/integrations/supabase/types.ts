@@ -441,6 +441,9 @@ export type Database = {
           effective_from: string | null
           effective_until: string | null
           employer_signed_at: string | null
+          final_document: Json | null
+          final_document_hash: string | null
+          finalized_at: string | null
           first_mission_id: string | null
           id: string
           pdf_path: string | null
@@ -462,6 +465,9 @@ export type Database = {
           effective_from?: string | null
           effective_until?: string | null
           employer_signed_at?: string | null
+          final_document?: Json | null
+          final_document_hash?: string | null
+          finalized_at?: string | null
           first_mission_id?: string | null
           id?: string
           pdf_path?: string | null
@@ -483,6 +489,9 @@ export type Database = {
           effective_from?: string | null
           effective_until?: string | null
           employer_signed_at?: string | null
+          final_document?: Json | null
+          final_document_hash?: string | null
+          finalized_at?: string | null
           first_mission_id?: string | null
           id?: string
           pdf_path?: string | null
@@ -497,12 +506,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      expire_overdue_contracts: { Args: never; Returns: string[] }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      refuse_contract_companion: {
+        Args: { _companion_user_id: string; _contract_id: string }
+        Returns: undefined
+      }
+      sign_contract_companion: {
+        Args: {
+          _companion_user_id: string
+          _contract_id: string
+          _final_document: Json
+          _final_hash: string
+          _recomputed_hash: string
+        }
+        Returns: undefined
       }
       sign_contract_employer: {
         Args: {
@@ -516,6 +540,16 @@ export type Database = {
           _first_mission_id: string
           _hash: string
           _snapshot: Json
+        }
+        Returns: undefined
+      }
+      simulate_companion_answer: {
+        Args: {
+          _action: string
+          _client_id: string
+          _contract_id: string
+          _final_document: Json
+          _final_hash: string
         }
         Returns: undefined
       }
