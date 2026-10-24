@@ -18,3 +18,5 @@
 - [x] Contrat prompt 3 : questionnaire 1 CDI/CDD (fonction pure + tests), brouillon work_contracts, branchement FamilyForm/FamilyWait, réglage convalescence supprimé
 - [x] Prompt 4 : questionnaire 2 du contrat, délai minimum de 5 jours, enregistrement des choix.
 - [ ] Prompt 4 : vérification navigateur complète avec le réglage activé (non faite dans cette session).
+- [x] Prompt 4 : rectifications (horaires 6h–21h, contrôle CESU dans la modale, jours de repos multiples).
+- [ ] Prompt 7 : bloquer toute mission réservée un jour de repos du contrat en vigueur ; page Mes contrats ; envoi du planning par e-mail.

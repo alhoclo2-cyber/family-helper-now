@@ -33,3 +33,4 @@
 - Le questionnaire du contrat ne demande aucune donnée du Compagnon : elles sont reprises côté serveur.
 - Solélia n'impose aucun choix d'employeur : planning défini ou durée irrégulière, jour de paiement du salaire, jours fériés sont choisis par le Particulier, sans valeur imposée pour le jour de paiement.
 - Dès qu'un contrat s'applique (seuil atteint ou contrat en vigueur), la mission doit être réservée et validée par le compagnon au moins 5 jours avant son début (marge de 8 h pour la réponse du compagnon) ; phrase explicative en rouge dans le parcours. Le compagnon peut refuser le contrat à tout moment avant de l'accepter, sans justification ni pénalité.
+- Sans numéro CESU renseigné, aucun contrat n'est possible : la modale du seuil grise "Continuer" et la signature (prompt à venir) re-vérifiera côté serveur que le particulier a un numéro CESU.
