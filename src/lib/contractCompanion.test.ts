@@ -2,6 +2,7 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import {
   buildFinalContractDocument,
+  buildCompanionContractResponse,
   checkCompanionAnswer,
   formatContractAsText,
   maskEmployerForCompanion,
@@ -89,6 +90,27 @@ describe("maskEmployerForCompanion", () => {
     assert.equal(get("Nom de naissance"), "Dupont");
     assert.equal(m.sections[0].paragraphs[0], "Adresse : rue des Lilas, 75014 Paris.");
     assert.equal(m.sections[1].paragraphs[0], "Salaire horaire net de base : 11,50 €.");
+  });
+});
+
+describe("getContractForCompanion response", () => {
+  test("renvoie uniquement le document employeur masqué sans modifier le snapshot signé", () => {
+    const before = JSON.stringify(doc);
+    const response = buildCompanionContractResponse({
+      document: doc,
+      deadline: "2026-11-02T17:00:00.000Z",
+      kind: "cdi",
+      firstMissionId: "mission-1",
+      companion: { birthName: "Nguyen", lastName: "Nguyen", firstName: "Léa", address: "5 rue de la Paix", phone: "0698765432", email: "lea@example.fr", nir: "123456789012345" },
+    });
+    const fields = Object.fromEntries(response.document.employer.map((f) => [f.label, f.value]));
+    assert.equal(fields.Adresse, "rue des Lilas, 75014 Paris");
+    assert.equal(fields.Téléphone, "••••");
+    assert.equal(fields["E-mail"], "••••");
+    assert.equal(fields["N° CESU"], "••••");
+    assert.doesNotMatch(JSON.stringify(response.document), /12 rue des Lilas|0612345678|famille@example.fr|1234567/);
+    assert.deepEqual(Object.keys(response).sort(), ["companion", "deadline", "document", "firstMissionId", "kind"]);
+    assert.equal(JSON.stringify(doc), before);
   });
 });
 

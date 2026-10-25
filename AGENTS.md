@@ -9,8 +9,8 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
-- Keep the client booking recap in a single reusable ReservationSummaryPanel fed by the current Request; persist the selected hourly salary when payment confirms so the final recap reflects the actual choice.
-- Keep the five home-only audience illustrations together in AudienceIllustrations with semantic palette tokens, so their visual language stays consistent and each medallion can later accept a photo.
+- Use ReservationSummaryPanel with the current Request; persist the chosen hourly salary at payment confirmation.
+- Keep the five home illustrations in AudienceIllustrations with semantic tokens and photo-ready medallions.
 - Keep the proposed-missions tab state in StudentFlow above mission detail/list switching so returning from a mission preserves the selection.
 - Share mission hour limits through missionHours and rapid-arrival validation through arrival; use ArrivalFields for companion inputs so booking, simulations and mission timing remain consistent.
 - Mount rapid-request expiry and the family acceptance banner in the root layout so account-page navigation cannot pause checks or hide notifications; route search selects the existing family response screen.
@@ -36,5 +36,7 @@
 - Dès qu'un contrat s'applique (seuil atteint ou contrat en vigueur), la mission doit être réservée au moins 5 jours avant son début (comptés à la signature de l'employeur) ; le compagnon dispose de 8 h pour répondre ; phrase explicative en rouge dans le parcours. Le compagnon peut refuser le contrat à tout moment avant de l'accepter, sans justification ni pénalité.
 - Sans numéro CESU renseigné, aucun contrat n'est possible : la modale du seuil grise "Continuer" et la signature (prompt à venir) re-vérifiera côté serveur que le particulier a un numéro CESU.
 - La signature de l'employeur est faite par une fonction serveur qui revérifie tout ; le navigateur ne fait jamais foi. Les données personnelles du compagnon ne sont jamais envoyées en clair au particulier avant la signature des deux parties.
-- The contract document is built by the pure buildContractDocument (contractDocument.ts) on both review and server signature; the stored snapshot holds masked companion data so its SHA-256 matches what the employer signed.
+- Use pure buildContractDocument for review/signature; retain the masked-companion snapshot and employer hash.
+- work_contracts.contract_snapshot is server-only: read via supabaseAdmin after checking the caller; explicitly add every new column to GRANT SELECT.
+- getContractForCompanion returns the allowlisted, masked buildCompanionContractResponse DTO, never the raw snapshot.
 - Le compagnon ne voit jamais les coordonnées exactes de la famille avant la signature des deux parties ; le refus du contrat est libre, sans motif ni pénalité ; aucune acceptation automatique pour une mission sous contrat ; en cas d'erreur sur ses informations, le compagnon les corrige dans son compte, et le contrat final utilise les informations du compte au moment de sa signature.
