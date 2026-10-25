@@ -19,7 +19,7 @@
 - [x] Prompt 4 : questionnaire 2 du contrat, délai minimum de 5 jours, enregistrement des choix.
 - [ ] Prompt 4 : vérification navigateur complète avec le réglage activé (non faite dans cette session).
 - [x] Prompt 4 : rectifications (horaires 6h–21h, contrôle CESU dans la modale, jours de repos multiples).
-- [ ] Prompt 7 : bloquer toute mission réservée un jour de repos du contrat en vigueur ; page Mes contrats ; envoi du planning par e-mail.
+- [x] Prompt 7 : bloquer toute mission réservée un jour de repos du contrat en vigueur ; page Mes contrats ; envoi du planning par e-mail simulé.
 - [x] Prompt 5 : relecture et signature employeur
 - [x] Prompt 5 bis : délai de 5 jours
 - [x] Prompt 6 : réponse du compagnon (lecture, signature, refus, délai), contrat final en clair et e-mail simulé
@@ -28,10 +28,11 @@
 - [ ] Envoi réel des e-mails (nom de domaine + Resend) au lieu des e-mails simulés
 - [ ] Correction du cesuActive du compagnon réel dans le texte de l'étape 4 du questionnaire 2
 - [ ] Prompt 6 : vérification navigateur complète avec le réglage activé (non faite dans cette session)
-- [ ] Prompt 7 : contrat signé en clair, PDF horodaté, Mes contrats, planning par e-mail, jours de repos et fériés à bloquer
+- [x] Prompt 7 : contrat signé en clair, PDF avec certificat daté en heure de Paris, Mes contrats, planning simulé, jours de repos et fériés bloqués.
 - [ ] Ensuite : bouton compagnon « J'ai obtenu mon numéro CESU » (information du particulier et de Solélia, validation par le Mandataire avant de passer cesuActive à vrai)
 - [ ] Prompt 5 : vérification navigateur complète de la signature avec le réglage activé (non faite dans cette session)
 - [x] Prompt 6 bis : confidentialité du contrat ; colonne privée interdite au compagnon connecté, métadonnées et contrat final lisibles, 117 tests réussis, lisibilité corrigée.
 - [ ] Prompt 6 bis : vérifier à l'écran relecture/signatures/refus et mode test ; aucun contrat lié au compte Compagnon autorisé, compte Particulier de test nécessaire.
-- [ ] Prompt 7 : jours bloqués, Mes contrats, PDF privé et planning simulé ; tests et vérifications.
+- [x] Prompt 7 : jours bloqués, Mes contrats, PDF privé et planning simulé ; tests et vérifications. Compte autorisé : signature employeur via UI, réponse fictive via appel autorisé, planning automatique, lecture complète, PDF de 3 pages et dimanche bloqué vérifiés. Reprise UI de l'attente non vérifiée de bout en bout après rechargement (missions en mémoire).
+- [ ] Prompt 7 : vérifier les boutons côté compagnon réel et les changements/annulations de planning à l'écran ; compte compagnon partie à un contrat en vigueur nécessaire.
 - [ ] Horodatage qualifié du PDF (service tiers).

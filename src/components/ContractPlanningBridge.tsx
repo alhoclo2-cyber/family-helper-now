@@ -14,6 +14,7 @@ export function ContractPlanningBridge() {
   const qc = useQueryClient();
   const queue = useRef(Promise.resolve());
   const statuses = useRef(new Map<string, string>());
+  useEffect(() => { statuses.current.clear(); }, [userId]);
   useEffect(() => { setCalendarContracts(userId ?? "", contracts.data ?? []); }, [userId, contracts.data]);
   useEffect(() => {
     for (const c of contracts.data ?? []) {

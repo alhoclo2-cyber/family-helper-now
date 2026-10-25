@@ -1,6 +1,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { publicHolidayDates, restDayConflict, contractRestConflict, parisDay } from "./contractCalendar";
+import { publicHolidayDates, restDayConflict, contractRestConflict, parisDay, setCalendarContracts } from "./contractCalendar";
+import { store } from "./store";
 const ts = (day: string) => new Date(`${day}T10:00:00+02:00`).getTime();
 describe("contract calendar", () => {
   test("2026 movable holidays", () => { const d = publicHolidayDates(2026); assert.equal(d.easter_monday, "2026-04-06"); assert.equal(d.ascension, "2026-05-14"); assert.equal(d.pentecost_monday, "2026-05-25"); });
@@ -17,4 +18,13 @@ describe("contract calendar", () => {
   test("not in force is unaffected", () => assert.equal(contractRestConflict([{ ...c, status: "awaiting_companion" }], "family", "lea", ts("2026-07-12")), null));
   test("outside effective period is unaffected", () => { assert.equal(contractRestConflict([c], "family", "lea", ts("2026-06-28")), null); assert.equal(contractRestConflict([c], "family", "lea", ts("2026-08-02")), null); });
   test("uses Paris day at UTC midnight boundary", () => assert.equal(parisDay(Date.parse("2026-07-13T23:30:00Z")), "2026-07-14"));
+  test("store refuses acceptance and rescheduling on contracted Sunday", () => {
+    setCalendarContracts("family", [{ ...c, companion_ref: "c1" }]);
+    const id = store.createRequest({ id: "calendar-store-test", need: "Présence et Compagnie", address: "Test", phone: "", scheduledAt: ts("2026-07-12"), preferredCompanionId: "c1", contractId: c.id });
+    assert.equal(store.acceptRequestBy(id, "c1"), false);
+    store.updateRequest(id, { scheduledAt: ts("2026-07-13") });
+    store.updateRequest(id, { scheduledAt: ts("2026-07-12") });
+    assert.equal(store.getState().requests.find(r => r.id === id)?.scheduledAt, ts("2026-07-13"));
+    setCalendarContracts("", []);
+  });
 });
