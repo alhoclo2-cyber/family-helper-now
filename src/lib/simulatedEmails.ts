@@ -26,7 +26,8 @@ export type EmailKind =
   | "contract_proposal_companion"
   | "contract_refused"
   | "contract_expired"
-  | "contract_signed_both";
+  | "contract_signed_both"
+  | "contract_planning";
 
 export type SimulatedEmail = {
   id: string;
@@ -72,6 +73,7 @@ type Params = {
   contractId?: string;
   hash?: string;
   contractText?: string;
+  planningText?: string;
 };
 
 const OPEN = { linkLabel: "Ouvrir mon espace", linkTo: "/" };
@@ -82,6 +84,8 @@ export function build(kind: EmailKind, p: Params): { subject: string; body: stri
   const h = fmtHours(p.hours);
   const md = p.missionDate ?? "";
   switch (kind) {
+    case "contract_planning":
+      return { subject: "Votre planning Solélia", body: p.planningText ?? "", linkLabel: "Mes contrats", linkTo: "/compte/contrats" };
     case "contract_signature_code":
       return {
         subject: "Votre code de signature du contrat",
@@ -108,7 +112,7 @@ export function build(kind: EmailKind, p: Params): { subject: string; body: stri
     case "contract_signed_both":
       return {
         subject: "Votre contrat de travail est signé",
-        body: `Contrat ${p.contractId ?? ""}\nEmpreinte du contrat final : ${p.hash ?? ""}\n\n${p.contractText ?? ""}\n\nConservez ce message. Le PDF et la consultation dans votre espace arriveront prochainement.`,
+        body: `Contrat ${p.contractId ?? ""}\n${p.hash ? `Empreinte du contrat final : ${p.hash}\n` : ""}\n${p.contractText ?? ""}\n\nConservez ce message. Votre contrat et son PDF sont disponibles dans Mes contrats.`,
       };
     case "family_acceptance_notification":
       return {

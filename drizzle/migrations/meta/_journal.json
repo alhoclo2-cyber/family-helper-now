@@ -106,6 +106,13 @@
       "when": 1792909886514,
       "tag": "0014_contract_snapshot_privacy",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1792915584724,
+      "tag": "0015_contract_pdf_private_storage",
+      "breakpoints": true
     }
   ]
 }

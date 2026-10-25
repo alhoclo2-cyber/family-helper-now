@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useSyncExternalStore } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { setCalendarContracts } from "./contractCalendar";
 
 /** Contrats en vigueur (work_contracts.status = 'in_force') du particulier, par companion_ref. */
 export function useContractsInForce(userId?: string) {
@@ -8,14 +9,17 @@ export function useContractsInForce(userId?: string) {
     queryKey: ["contracts-in-force", userId],
     enabled: !!userId,
     queryFn: async () => {
+      if (!userId) return new Set<string>();
       const { data, error } = await supabase
         .from("work_contracts")
-        .select("companion_ref")
-        .eq("client_id", userId!)
+        .select("id,client_id,companion_ref,status,answers,effective_from,effective_until")
+        .eq("client_id", userId)
         .eq("status", "in_force");
       if (error) throw error;
+      setCalendarContracts(userId, data ?? []);
       return new Set((data ?? []).map((r) => r.companion_ref));
     },
+    refetchInterval: 5000,
   });
 }
 

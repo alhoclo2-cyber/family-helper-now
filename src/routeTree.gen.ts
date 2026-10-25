@@ -18,6 +18,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedMandataireRouteImport } from './routes/_authenticated/mandataire'
 import { Route as ComptePauseRouteImport } from './routes/compte.pause'
 import { Route as CompteSuppressionRouteImport } from './routes/compte.suppression'
+import { Route as AuthenticatedCompteContratsRouteImport } from './routes/_authenticated/compte.contrats'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -63,6 +64,12 @@ const CompteSuppressionRoute = CompteSuppressionRouteImport.update({
   path: '/compte/suppression',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedCompteContratsRoute =
+  AuthenticatedCompteContratsRouteImport.update({
+    id: '/compte/contrats',
+    path: '/compte/contrats',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -73,6 +80,7 @@ export interface FileRoutesByFullPath {
   '/mandataire': typeof AuthenticatedMandataireRoute
   '/compte/pause': typeof ComptePauseRoute
   '/compte/suppression': typeof CompteSuppressionRoute
+  '/compte/contrats': typeof AuthenticatedCompteContratsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -83,6 +91,7 @@ export interface FileRoutesByTo {
   '/mandataire': typeof AuthenticatedMandataireRoute
   '/compte/pause': typeof ComptePauseRoute
   '/compte/suppression': typeof CompteSuppressionRoute
+  '/compte/contrats': typeof AuthenticatedCompteContratsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -95,6 +104,7 @@ export interface FileRoutesById {
   '/_authenticated/mandataire': typeof AuthenticatedMandataireRoute
   '/compte/pause': typeof ComptePauseRoute
   '/compte/suppression': typeof CompteSuppressionRoute
+  '/_authenticated/compte/contrats': typeof AuthenticatedCompteContratsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -107,6 +117,7 @@ export interface FileRouteTypes {
     | '/mandataire'
     | '/compte/pause'
     | '/compte/suppression'
+    | '/compte/contrats'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -117,6 +128,7 @@ export interface FileRouteTypes {
     | '/mandataire'
     | '/compte/pause'
     | '/compte/suppression'
+    | '/compte/contrats'
   id:
     | '__root__'
     | '/'
@@ -128,6 +140,7 @@ export interface FileRouteTypes {
     | '/_authenticated/mandataire'
     | '/compte/pause'
     | '/compte/suppression'
+    | '/_authenticated/compte/contrats'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -206,15 +219,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CompteSuppressionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/compte/contrats': {
+      id: '/_authenticated/compte/contrats'
+      path: '/compte/contrats'
+      fullPath: '/compte/contrats'
+      preLoaderRoute: typeof AuthenticatedCompteContratsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedMandataireRoute: typeof AuthenticatedMandataireRoute
+  AuthenticatedCompteContratsRoute: typeof AuthenticatedCompteContratsRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMandataireRoute: AuthenticatedMandataireRoute,
+  AuthenticatedCompteContratsRoute: AuthenticatedCompteContratsRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

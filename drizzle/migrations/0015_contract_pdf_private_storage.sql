@@ -1,0 +1,1 @@
+COMMENT ON COLUMN public.work_contracts.pdf_path IS 'Private contract-pdfs bucket object path. Created only server-side for in_force contracts after final_document_hash verification. No browser storage policies.';

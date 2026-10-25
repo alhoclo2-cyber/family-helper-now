@@ -34,9 +34,9 @@
 - Solélia n'impose aucun choix d'employeur : planning défini ou durée irrégulière et jours fériés sont choisis par le Particulier.
 - Le paiement du salaire suit le circuit de la plateforme : acomptes possibles, solde au plus tard le 5 du mois suivant ; aucune question n'est posée au particulier sur ce point.
 - Dès qu'un contrat s'applique (seuil atteint ou contrat en vigueur), la mission doit être réservée au moins 5 jours avant son début (comptés à la signature de l'employeur) ; le compagnon dispose de 8 h pour répondre ; phrase explicative en rouge dans le parcours. Le compagnon peut refuser le contrat à tout moment avant de l'accepter, sans justification ni pénalité.
-- Sans numéro CESU renseigné, aucun contrat n'est possible : la modale du seuil grise "Continuer" et la signature (prompt à venir) re-vérifiera côté serveur que le particulier a un numéro CESU.
+- Require employer CESU in the threshold modal and reverify it server-side at signature.
 - La signature de l'employeur est faite par une fonction serveur qui revérifie tout ; le navigateur ne fait jamais foi. Les données personnelles du compagnon ne sont jamais envoyées en clair au particulier avant la signature des deux parties.
-- Use pure buildContractDocument for review/signature; retain the masked-companion snapshot and employer hash.
+- Preserve signed documents/hashes; show only final_document after both signatures. Contract PDFs are generated only in force, in private server-only storage, verified by final hash and reused.
 - work_contracts.contract_snapshot is server-only: read via supabaseAdmin after checking the caller; explicitly add every new column to GRANT SELECT.
-- getContractForCompanion returns the allowlisted, masked buildCompanionContractResponse DTO, never the raw snapshot.
+- getContractForCompanion returns only the masked DTO. Use the shared Paris calendar scoped to pair/effective dates, and root planning observer with complete simulated emails and duplicate suppression.
 - Le compagnon ne voit jamais les coordonnées exactes de la famille avant la signature des deux parties ; le refus du contrat est libre, sans motif ni pénalité ; aucune acceptation automatique pour une mission sous contrat ; en cas d'erreur sur ses informations, le compagnon les corrige dans son compte, et le contrat final utilise les informations du compte au moment de sa signature.

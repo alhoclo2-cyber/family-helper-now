@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from "@/integrations/supabase/client";
 import { FamilyAcceptanceBanner } from "@/components/FamilyAcceptanceBanner";
 import { useUnconfirmedExpiry } from "@/lib/unconfirmedExpiry";
+import { ContractPlanningBridge } from "@/components/ContractPlanningBridge";
 
 function NotFoundComponent() {
   return (
@@ -141,6 +142,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <FamilyAcceptanceBanner />
+      <ContractPlanningBridge />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
     </QueryClientProvider>
