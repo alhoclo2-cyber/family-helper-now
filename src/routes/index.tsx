@@ -3693,7 +3693,7 @@ function StudentFlow() {
   const available = allSearching.filter((r) => {
     if (r.contractId) {
       const link = contractLinks.find((l) => l.id === r.contractId);
-      if (!link || link.status !== "awaiting_companion") return false;
+      if (!link || !["awaiting_companion", "in_force"].includes(link.status)) return false;
     }
     if (r.demo && !demo && !testOn) return false;
     if (r.declinedBy?.includes(me.id)) return false;
@@ -4199,7 +4199,7 @@ function MissionActions({ request, onAccept, onDecline, onOpenContract, blocked 
   const input = useArrivalInput(request.durationHours ?? 1);
   const rapid = !request.scheduledAt;
   // Mission sous contrat : aucune acceptation rapide, la lecture du contrat est obligatoire.
-  if (request.contractId && request.status === "searching")
+  if (request.contractId && request.contractAnswerDeadline && request.status === "searching")
     return (
       <Button onClick={onOpenContract} className="min-h-14 rounded-2xl bg-mission-violet text-lg font-bold text-background">
         📄 Lire le contrat
@@ -4406,7 +4406,7 @@ function StudentDetail({ request, onBack, blocked, onOpenContract }: { request: 
   const input = useArrivalInput(request.durationHours ?? 1);
   const accept = () => {
     if (blocked) return;
-    if (request.contractId) return; // mission sous contrat : passage obligé par la lecture du contrat
+    if (request.contractId && request.contractAnswerDeadline) return; // new contract still requires signature
     if (!request.scheduledAt && !input.valid) return;
     const ok = store.acceptRequest(request.id, 0, undefined, request.scheduledAt ? undefined : input.arrival);
     if (!ok) setTaken(true);
@@ -4546,7 +4546,7 @@ function StudentDetail({ request, onBack, blocked, onOpenContract }: { request: 
             </p>
           </div>
           <div className="flex-1" />
-          {request.contractId ? (
+          {request.contractId && request.contractAnswerDeadline ? (
             <Button onClick={onOpenContract} className="btn-huge bg-mission-violet text-background whitespace-normal">
               📄 Lire le contrat
             </Button>

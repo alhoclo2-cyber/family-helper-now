@@ -40,7 +40,7 @@ export function sendContractPlanning(c: PlanningContract, requests: readonly Req
   if (!to) return false;
   // Compare only the planning, not the introduction: successive identical contents never send twice.
   const last = [...readEmails()].reverse().find(e => e.kind === "contract_planning" && e.to === to && e.body.includes(`Contrat ${c.id}\n`));
-  if (event !== "requested" && last?.body.includes(content)) return false;
+  if (event !== "requested" && planningIsDuplicate(last?.body.includes(content) ? content : null, content)) return false;
   sendSimulatedEmail("contract_planning", to, { planningText: `${introductions[event]}.\n\n${content}` });
   return true;
 }
