@@ -33,3 +33,5 @@
 - [ ] Prompt 5 : vérification navigateur complète de la signature avec le réglage activé (non faite dans cette session)
 - [x] Prompt 6 bis : confidentialité du contrat ; colonne privée interdite au compagnon connecté, métadonnées et contrat final lisibles, 117 tests réussis, lisibilité corrigée.
 - [ ] Prompt 6 bis : vérifier à l'écran relecture/signatures/refus et mode test ; aucun contrat lié au compte Compagnon autorisé, compte Particulier de test nécessaire.
+- [ ] Prompt 7 : jours bloqués, Mes contrats, PDF privé et planning simulé ; tests et vérifications.
+- [ ] Horodatage qualifié du PDF (service tiers).
