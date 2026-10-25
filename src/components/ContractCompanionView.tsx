@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
@@ -77,7 +78,7 @@ export function ContractCompanionView({
         <p role="alert" className="text-base font-semibold text-destructive">
           {contract.error instanceof Error ? contract.error.message : "Impossible d'afficher le contrat. Réessayez."}
         </p>
-        <button type="button" onClick={onBack} className="w-full py-4 rounded-2xl border-2 border-border font-bold">← Retour</button>
+        <Button variant="ghost" type="button" onClick={onBack} className="h-auto whitespace-normal w-full py-4 rounded-2xl border-2 border-border font-bold">← Retour</Button>
       </div>
     );
   }
@@ -157,12 +158,12 @@ export function ContractCompanionView({
     <div className="flex-1 flex flex-col px-5 py-6 gap-4 text-base">
       <h2 className="text-xl font-black">Contrat de travail à lire</h2>
       <p className="font-bold">{doc.title}</p>
-      <p className="text-sm font-bold text-destructive">
+      <p className="text-base font-bold text-destructive">
         Répondez avant le {format(new Date(contract.data.deadline), "EEEE d MMMM 'à' HH:mm", { locale: fr })}.
       </p>
       <Fields title="L'employeur" fields={doc.employer} />
-      <p className="text-sm text-muted-foreground">
-        Les coordonnées exactes de la famille (numéro de rue, téléphone, e-mail) vous seront révélées si vous acceptez la mission.
+      <p className="text-base text-muted-foreground">
+        Les coordonnées complètes de la famille (numéro de rue, téléphone, e-mail) figureront dans le contrat final, que vous recevrez par e-mail après la signature des deux parties.
       </p>
 
       <div className="rounded-2xl border-2 border-primary bg-accent p-4">
@@ -170,20 +171,20 @@ export function ContractCompanionView({
         {myFields.map((f) => (
           <p key={f.label} className="text-base"><b>{f.label} :</b> {f.value || "—"}</p>
         ))}
-        <p className="text-sm text-muted-foreground mt-2">
+        <p className="text-base text-muted-foreground mt-2">
           Une information est erronée ? Corrigez-la dans Mon compte, puis revenez ici. Votre délai de réponse continue de courir.
         </p>
-        <button
+        <Button variant="ghost"
           type="button"
           onClick={() => {
             void qc.invalidateQueries({ queryKey: contractIdentityKey(userId) });
             void qc.invalidateQueries({ queryKey: ["contract-for-companion", contractId] });
             onOpenAccount();
           }}
-          className="mt-2 text-sm font-bold text-primary underline"
+          className="mt-2 text-base font-bold text-primary underline"
         >
           Mon compte
-        </button>
+        </Button>
       </div>
 
       {doc.sections.map((s) => (
@@ -196,7 +197,7 @@ export function ContractCompanionView({
       ))}
 
       <ContractNoticeSentence />
-      <p className="text-sm font-semibold">Vous pouvez refuser ce contrat sans justification ni pénalité.</p>
+      <p className="text-base font-semibold">Vous pouvez refuser ce contrat sans justification ni pénalité.</p>
 
       <label className="flex items-start gap-3 rounded-2xl border-2 border-border bg-card p-4 font-semibold">
         <input type="checkbox" checked={read} onChange={(e) => setRead(e.target.checked)} className="mt-1 h-5 w-5 accent-primary" disabled={codeSent} />
@@ -206,43 +207,43 @@ export function ContractCompanionView({
       {error && <p role="alert" className="font-semibold text-destructive">{error}</p>}
 
       {!codeSent ? (
-        <button type="button" onClick={sendCode} disabled={!read || busy}
-          className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold disabled:opacity-50">
+        <Button variant="ghost" type="button" onClick={sendCode} disabled={!read || busy}
+          className="h-auto whitespace-normal w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold disabled:opacity-50">
           Signer et accepter la mission
-        </button>
+        </Button>
       ) : (
         <div className="rounded-2xl border-2 border-primary bg-card p-4 flex flex-col gap-3">
           <label htmlFor="companion-sign-code" className="font-bold">Code reçu par e-mail (6 chiffres)</label>
           <input id="companion-sign-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6}
             className="w-full p-3 rounded-2xl border-2 border-border bg-card text-xl tracking-widest text-center"
             value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} />
-          <p className="text-sm text-muted-foreground">Le code est valable 10 minutes, 3 essais au maximum.</p>
-          <button type="button" onClick={confirmCode} disabled={code.length !== 6 || busy}
-            className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold disabled:opacity-50">
+          <p className="text-base text-muted-foreground">Le code est valable 10 minutes, 3 essais au maximum.</p>
+          <Button variant="ghost" type="button" onClick={confirmCode} disabled={code.length !== 6 || busy}
+            className="h-auto whitespace-normal w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold disabled:opacity-50">
             Valider ma signature
-          </button>
-          <button type="button" onClick={sendCode} disabled={busy} className="text-sm font-bold text-primary underline">Recevoir un nouveau code</button>
+          </Button>
+          <Button variant="ghost" type="button" onClick={sendCode} disabled={busy} className="text-base font-bold text-primary underline">Recevoir un nouveau code</Button>
           <SimulatedEmailsDialog />
         </div>
       )}
 
       {!confirmRefuse ? (
-        <button type="button" onClick={() => setConfirmRefuse(true)} disabled={busy}
-          className="w-full py-4 rounded-2xl border-2 border-border font-bold">
+        <Button variant="ghost" type="button" onClick={() => setConfirmRefuse(true)} disabled={busy}
+          className="h-auto whitespace-normal w-full py-4 rounded-2xl border-2 border-border font-bold">
           Refuser le contrat
-        </button>
+        </Button>
       ) : (
         <div className="rounded-2xl border-2 border-destructive bg-card p-4 flex flex-col gap-3">
           <p className="font-bold">Confirmer le refus ?</p>
-          <p className="text-sm text-muted-foreground">Aucun motif ne vous sera demandé, aucune pénalité ne s'applique.</p>
+          <p className="text-base text-muted-foreground">Aucun motif ne vous sera demandé, aucune pénalité ne s'applique.</p>
           <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => setConfirmRefuse(false)} disabled={busy} className="py-3 rounded-2xl border-2 border-border font-bold text-sm">Annuler</button>
-            <button type="button" onClick={confirmRefusal} disabled={busy} className="py-3 rounded-2xl bg-destructive text-destructive-foreground font-bold text-sm disabled:opacity-50">Confirmer le refus</button>
+            <Button variant="ghost" type="button" onClick={() => setConfirmRefuse(false)} disabled={busy} className="py-3 rounded-2xl border-2 border-border font-bold text-base">Annuler</Button>
+            <Button variant="ghost" type="button" onClick={confirmRefusal} disabled={busy} className="py-3 rounded-2xl bg-destructive text-destructive-foreground font-bold text-base disabled:opacity-50">Confirmer le refus</Button>
           </div>
         </div>
       )}
 
-      <button type="button" onClick={onBack} disabled={busy} className="w-full py-3 rounded-2xl border-2 border-border font-bold text-sm">← Retour</button>
+      <Button variant="ghost" type="button" onClick={onBack} disabled={busy} className="h-auto whitespace-normal w-full py-3 rounded-2xl border-2 border-border font-bold text-base">← Retour</Button>
     </div>
   );
 }

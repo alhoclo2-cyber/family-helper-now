@@ -64,6 +64,23 @@ export function maskEmployerForCompanion(doc: ContractDocument): ContractDocumen
   return { ...doc, employer, sections };
 }
 
+/** Exact public response returned by getContractForCompanion; never expose the raw snapshot. */
+export function buildCompanionContractResponse(input: {
+  document: ContractDocument;
+  deadline: string;
+  kind: string | null;
+  firstMissionId: string | null;
+  companion: FinalCompanionIdentity;
+}) {
+  return {
+    document: maskEmployerForCompanion(input.document),
+    deadline: new Date(input.deadline).getTime(),
+    kind: input.kind,
+    firstMissionId: input.firstMissionId,
+    companion: input.companion,
+  };
+}
+
 /** Identité complète d'une partie pour le contrat final (aucune donnée masquée). */
 export type FinalPartyIdentity = PartyIdentity & {
   birthDate?: string; // AAAA-MM-JJ

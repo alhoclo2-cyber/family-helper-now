@@ -255,10 +255,14 @@ export const signContractAsEmployer = createServerFn({ method: "POST" })
 
 async function readOwnCompanionContract(ctx: Ctx, contractId: string) {
   if (!UUID.test(contractId)) return null;
-  const { data } = await ctx.supabase
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  // Privileged read is scoped to the authenticated recipient before loading the snapshot.
+  const { data } = await supabaseAdmin
     .from("work_contracts")
     .select("id, client_id, companion_user_id, companion_ref, status, companion_answer_deadline, document_hash, contract_snapshot, first_mission_id, contract_kind")
     .eq("id", contractId)
+    .eq("companion_user_id", ctx.userId)
+    .neq("status", "draft")
     .maybeSingle();
   return data && data.companion_user_id === ctx.userId ? data : null;
 }
@@ -323,7 +327,7 @@ export const getContractForCompanion = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     const ctx = context as Ctx;
-    const { maskEmployerForCompanion, COMPANION_ANSWER_MESSAGES } = await import("./contractCompanion");
+    const { buildCompanionContractResponse, COMPANION_ANSWER_MESSAGES } = await import("./contractCompanion");
     const c = await readOwnCompanionContract(ctx, data.contractId);
     if (!c) throw new Error(COMPANION_ANSWER_MESSAGES.not_companion);
     if (c.status !== "awaiting_companion") throw new Error(COMPANION_ANSWER_MESSAGES.not_awaiting);
@@ -332,13 +336,13 @@ export const getContractForCompanion = createServerFn({ method: "POST" })
     const snapshot = c.contract_snapshot as { document: import("./contractDocument").ContractDocument } | null;
     if (!snapshot?.document) throw new Error("Contrat indisponible.");
     const companion = await loadCompanionFinal(ctx.userId, ctx.claims.email);
-    return {
-      document: maskEmployerForCompanion(snapshot.document),
-      deadline: new Date(c.companion_answer_deadline).getTime(),
+    return buildCompanionContractResponse({
+      document: snapshot.document,
+      deadline: c.companion_answer_deadline,
       kind: c.contract_kind,
       firstMissionId: c.first_mission_id,
       companion,
-    };
+    });
   });
 
 /** Code à usage unique pour la signature du compagnon (simulation : renvoyé au navigateur). */
@@ -391,6 +395,7 @@ export const signContractAsCompanion = createServerFn({ method: "POST" })
     const recomputedHash = snapshot ? await sha256Hex(stableStringify(snapshot)) : "";
     const check = cc.checkCompanionAnswer({ callerId: ctx.userId, contract: c, nowTs: Date.now(), recomputedHash });
     if (!check.ok) return fail(check.code);
+    if (!c || !snapshot) return fail("not_companion");
 
     // Code à usage unique.
     const { data: otp } = await supabaseAdmin.from("contract_signature_codes").select("*").eq("contract_id", c!.id).maybeSingle();
@@ -488,10 +493,11 @@ export const simulateCompanionAnswer = createServerFn({ method: "POST" })
     const { stableStringify } = await import("./contractDocument");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: c } = await ctx.supabase
+    const { data: c } = await supabaseAdmin
       .from("work_contracts")
       .select("id, client_id, companion_ref, status, contract_snapshot")
       .eq("id", data.contractId)
+      .eq("client_id", ctx.userId)
       .maybeSingle();
     if (!c || c.client_id !== ctx.userId) return { ok: false as const, message: "Ce contrat ne vous appartient pas." };
     if (UUID.test(c.companion_ref)) return { ok: false as const, message: "La simulation est réservée aux compagnons de démonstration." };
