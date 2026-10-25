@@ -19,12 +19,14 @@ describe("contract calendar", () => {
   test("outside effective period is unaffected", () => { assert.equal(contractRestConflict([c], "family", "lea", ts("2026-06-28")), null); assert.equal(contractRestConflict([c], "family", "lea", ts("2026-08-02")), null); });
   test("uses Paris day at UTC midnight boundary", () => assert.equal(parisDay(Date.parse("2026-07-13T23:30:00Z")), "2026-07-14"));
   test("store refuses acceptance and rescheduling on contracted Sunday", () => {
-    setCalendarContracts("family", [{ ...c, companion_ref: "c1" }]);
-    const id = store.createRequest({ id: "calendar-store-test", need: "Présence et Compagnie", address: "Test", phone: "", scheduledAt: ts("2026-07-12"), preferredCompanionId: "c1", contractId: c.id });
+    const futureSunday = (() => { const d = new Date(Date.now() + 30 * 86_400_000); while (d.getUTCDay() !== 0) d.setUTCDate(d.getUTCDate() + 1); d.setUTCHours(10, 0, 0, 0); return d.getTime(); })();
+    const monday = futureSunday + 86_400_000;
+    setCalendarContracts("family", [{ ...c, companion_ref: "c1", effective_from: null, effective_until: null }]);
+    const id = store.createRequest({ id: "calendar-store-test", need: "Présence et Compagnie", address: "Test", phone: "", scheduledAt: futureSunday, preferredCompanionId: "c1", contractId: c.id });
     assert.equal(store.acceptRequestBy(id, "c1"), false);
-    store.updateRequest(id, { scheduledAt: ts("2026-07-13") });
-    store.updateRequest(id, { scheduledAt: ts("2026-07-12") });
-    assert.equal(store.getState().requests.find(r => r.id === id)?.scheduledAt, ts("2026-07-13"));
+    store.updateRequest(id, { scheduledAt: monday });
+    store.updateRequest(id, { scheduledAt: futureSunday });
+    assert.equal(store.getState().requests.find(r => r.id === id)?.scheduledAt, monday);
     setCalendarContracts("", []);
   });
 });
