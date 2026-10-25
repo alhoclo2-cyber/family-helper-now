@@ -13,7 +13,7 @@ export function checkContractPdf(c: { client_id: string; companion_user_id: stri
   return null;
 }
 export function pdfText(text: string): string {
-  return text.replace(/[\u00a0\u202f]/g, " ").replace(/[→⇒]/g, "->").replace(/[←⇐]/g, "<-").replace(/[‐‑‒–—]/g, "-").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/…/g, "...").replace(/[^\x20-\x7e\xa0-\xff\n\r€]/g, "?");
+  return text.replace(/[\u00a0\u202f]/g, " ").replace(/[→⇒]/g, "->").replace(/[←⇐]/g, "<-").replace(/[‐‑‒–—]/g, "-").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/…/g, "...").replace(/[^\x20-\x7e\xa0-\xff\n\r€]/gu, "?");
 }
 export type SignatureEvent = { event: string; occurred_at: string; auth_method: string | null };
 export async function generateContractPdf(input: { contractId: string; document: ContractDocument; employerHash: string; finalHash: string; events: SignatureEvent[]; generatedAt: string }) {

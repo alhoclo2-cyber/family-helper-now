@@ -38,7 +38,7 @@ export function ContractPlanningBridge() {
         if (c) sendContractPlanning(c, event.requests, event.event);
       }).catch(() => undefined);
     });
-    return unsubscribe;
+    return () => { unsubscribe(); };
   }, [userId, qc]);
   return null;
 }
