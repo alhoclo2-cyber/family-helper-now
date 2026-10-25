@@ -1983,7 +1983,7 @@ function FamilyForm({
                         {c.distanceKm} km
                       </span>
                     ) : (
-                      <span className="block text-xs font-bold text-destructive mt-0.5">
+                      <span className="block text-base font-bold text-destructive mt-0.5">
                         {cachedRestConflict(c.id, whenTs) ? "Jour de repos prévu à votre contrat" : "Indisponible à cette date/heure"}
                       </span>
                     )}

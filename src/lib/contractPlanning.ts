@@ -13,7 +13,7 @@ export function buildContractPlanning(c: PlanningContract, requests: readonly Re
   const missions = requests.filter(r => {
     const start = r.scheduledAt ?? r.arrivalAt ?? 0;
     const day = start ? parisDay(start) : "";
-    return r.contractId === c.id && r.student?.id === c.companion_ref && r.status === "accepted" && start > now && (!c.effective_from || day >= c.effective_from) && (!c.effective_until || day <= c.effective_until);
+    return r.contractId === c.id && r.status === "accepted" && start > now && (!c.effective_from || day >= c.effective_from) && (!c.effective_until || day <= c.effective_until);
   }).sort((a, b) => (a.scheduledAt ?? a.arrivalAt ?? 0) - (b.scheduledAt ?? b.arrivalAt ?? 0));
   const fixed = terms?.organization?.mode === "fixed" ? terms.organization.days : [];
   if (!missions.length && !fixed.length) return null;

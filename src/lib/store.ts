@@ -2,7 +2,7 @@
 import { useRef, useSyncExternalStore } from "react";
 import { checkArrival, type Arrival } from "./arrival";
 import { sendSimulatedEmail } from "./simulatedEmails";
-import { cachedRestConflict } from "./contractCalendar";
+import { cachedRequestRestConflict } from "./contractCalendar";
 
 // Délai laissé au particulier pour confirmer ou refuser un compagnon (Besoin rapidement).
 export const FAMILY_RESPONSE_DELAY_MS = 5 * 60_000;
@@ -231,7 +231,7 @@ export const store = {
     }
     const target = patch.scheduledAt ?? patch.arrivalAt ?? cur?.scheduledAt ?? cur?.arrivalAt;
     const companionRef = cur?.student?.id ?? cur?.preferredCompanionId;
-    if (target && companionRef && cachedRestConflict(companionRef, target)) return;
+    if (target && companionRef && cachedRequestRestConflict(companionRef, target, cur?.contractId)) return;
     state = {
       ...state,
       requests: state.requests.map((r) => (r.id === id ? { ...r, ...patch } : r)),
@@ -245,7 +245,7 @@ export const store = {
     const acceptedAt = Date.now();
     if (!req.scheduledAt && arrival && !checkArrival({ ...arrival, durationHours: req.durationHours ?? 1, now: acceptedAt }).ok) return false;
     const companion = as ?? seedStudents[studentIdx % seedStudents.length];
-    if (cachedRestConflict(companion.id, req.scheduledAt ?? arrival?.arrivalAt ?? acceptedAt)) return false;
+    if (cachedRequestRestConflict(companion.id, req.scheduledAt ?? arrival?.arrivalAt ?? acceptedAt, req.contractId)) return false;
     state = {
       ...state,
       requests: state.requests.map((r) =>
@@ -260,7 +260,7 @@ export const store = {
     const req = state.requests.find((r) => r.id === id);
     if (!req || req.status !== "searching") return false;
     const companion = COMPANIONS.find((c) => c.id === companionId) ?? COMPANIONS[0];
-    if (cachedRestConflict(companion.id, req.scheduledAt ?? arrival?.arrivalAt ?? Date.now())) return false;
+    if (cachedRequestRestConflict(companion.id, req.scheduledAt ?? arrival?.arrivalAt ?? Date.now(), req.contractId)) return false;
     const acceptedAt = Date.now();
     if (!req.scheduledAt && arrival && !checkArrival({ ...arrival, durationHours: req.durationHours ?? 1, now: acceptedAt }).ok) return false;
     state = {

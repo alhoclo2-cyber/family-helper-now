@@ -58,6 +58,10 @@ let ownContracts: readonly CalendarContract[] = [];
 let owner = "";
 export function setCalendarContracts(userId: string, contracts: readonly CalendarContract[]) { owner = userId; ownContracts = contracts; }
 export function cachedRestConflict(companionRef: string, dayTs: number) { return contractRestConflict(ownContracts, owner, companionRef, dayTs); }
+export function cachedRequestRestConflict(companionRef: string, dayTs: number, contractId?: string) {
+  const c = contractId ? ownContracts.find(c => c.id === contractId) : undefined;
+  return c ? contractRestConflict([c], c.client_id, c.companion_ref, dayTs) : cachedRestConflict(companionRef, dayTs);
+}
 export function cachedInForceContract(companionRef: string, dayTs: number) {
   const day = parisDay(dayTs);
   return ownContracts.find(c => c.client_id === owner && c.companion_ref === companionRef && c.status === "in_force" && (!c.effective_from || day >= c.effective_from) && (!c.effective_until || day <= c.effective_until));
