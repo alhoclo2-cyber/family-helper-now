@@ -1,0 +1,20 @@
+import { describe, test } from "node:test";
+import assert from "node:assert/strict";
+import { publicHolidayDates, restDayConflict, contractRestConflict, parisDay } from "./contractCalendar";
+const ts = (day: string) => new Date(`${day}T10:00:00+02:00`).getTime();
+describe("contract calendar", () => {
+  test("2026 movable holidays", () => { const d = publicHolidayDates(2026); assert.equal(d.easter_monday, "2026-04-06"); assert.equal(d.ascension, "2026-05-14"); assert.equal(d.pentecost_monday, "2026-05-25"); });
+  test("2027 movable holidays", () => { const d = publicHolidayDates(2027); assert.equal(d.easter_monday, "2027-03-29"); assert.equal(d.ascension, "2027-05-06"); assert.equal(d.pentecost_monday, "2027-05-17"); });
+  test("Sunday is weekly rest", () => assert.deepEqual(restDayConflict({ weeklyRestDays: [7] }, ts("2026-07-12")), { kind: "weekly_rest", label: "dimanche" }));
+  test("May first off is blocked", () => assert.equal(restDayConflict({ mayFirst: "off" }, ts("2026-05-01"))?.kind, "may_first"));
+  test("May first worked is allowed", () => assert.equal(restDayConflict({ mayFirst: "worked" }, ts("2026-05-01")), null));
+  test("July 14 off is blocked", () => assert.equal(restDayConflict({ workedHolidays: [] }, ts("2026-07-14"))?.label, "14 juillet"));
+  test("July 14 worked is allowed", () => assert.equal(restDayConflict({ workedHolidays: ["jul14"] }, ts("2026-07-14")), null));
+  const c = { id: "c", client_id: "family", companion_ref: "lea", status: "in_force", answers: { terms: { weeklyRestDays: [7] } }, effective_from: "2026-07-01", effective_until: "2026-07-31" };
+  test("same pair in force is blocked", () => assert.equal(contractRestConflict([c], "family", "lea", ts("2026-07-12"))?.kind, "weekly_rest"));
+  test("wrong companion is unaffected", () => assert.equal(contractRestConflict([c], "family", "other", ts("2026-07-12")), null));
+  test("wrong employer is unaffected", () => assert.equal(contractRestConflict([c], "other", "lea", ts("2026-07-12")), null));
+  test("not in force is unaffected", () => assert.equal(contractRestConflict([{ ...c, status: "awaiting_companion" }], "family", "lea", ts("2026-07-12")), null));
+  test("outside effective period is unaffected", () => { assert.equal(contractRestConflict([c], "family", "lea", ts("2026-06-28")), null); assert.equal(contractRestConflict([c], "family", "lea", ts("2026-08-02")), null); });
+  test("uses Paris day at UTC midnight boundary", () => assert.equal(parisDay(Date.parse("2026-07-13T23:30:00Z")), "2026-07-14"));
+});
