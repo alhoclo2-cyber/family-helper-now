@@ -78,7 +78,7 @@ export function ContractCompanionView({
         <p role="alert" className="text-base font-semibold text-destructive">
           {contract.error instanceof Error ? contract.error.message : "Impossible d'afficher le contrat. Réessayez."}
         </p>
-        <Button variant="ghost" type="button" onClick={onBack} className="h-auto whitespace-normal w-full py-4 rounded-2xl border-2 border-border font-bold">← Retour</Button>
+        <Button variant="ghost" type="button" onClick={onBack} className="text-base h-auto whitespace-normal w-full py-4 rounded-2xl border-2 border-border font-bold">← Retour</Button>
       </div>
     );
   }
@@ -208,7 +208,7 @@ export function ContractCompanionView({
 
       {!codeSent ? (
         <Button variant="ghost" type="button" onClick={sendCode} disabled={!read || busy}
-          className="h-auto whitespace-normal w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold disabled:opacity-50">
+          className="text-base h-auto whitespace-normal w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold disabled:opacity-50">
           Signer et accepter la mission
         </Button>
       ) : (
@@ -219,7 +219,7 @@ export function ContractCompanionView({
             value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} />
           <p className="text-base text-muted-foreground">Le code est valable 10 minutes, 3 essais au maximum.</p>
           <Button variant="ghost" type="button" onClick={confirmCode} disabled={code.length !== 6 || busy}
-            className="h-auto whitespace-normal w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold disabled:opacity-50">
+            className="text-base h-auto whitespace-normal w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold disabled:opacity-50">
             Valider ma signature
           </Button>
           <Button variant="ghost" type="button" onClick={sendCode} disabled={busy} className="text-base font-bold text-primary underline">Recevoir un nouveau code</Button>
@@ -229,7 +229,7 @@ export function ContractCompanionView({
 
       {!confirmRefuse ? (
         <Button variant="ghost" type="button" onClick={() => setConfirmRefuse(true)} disabled={busy}
-          className="h-auto whitespace-normal w-full py-4 rounded-2xl border-2 border-border font-bold">
+          className="text-base h-auto whitespace-normal w-full py-4 rounded-2xl border-2 border-border font-bold">
           Refuser le contrat
         </Button>
       ) : (
@@ -237,13 +237,13 @@ export function ContractCompanionView({
           <p className="font-bold">Confirmer le refus ?</p>
           <p className="text-base text-muted-foreground">Aucun motif ne vous sera demandé, aucune pénalité ne s'applique.</p>
           <div className="grid grid-cols-2 gap-2">
-            <Button variant="ghost" type="button" onClick={() => setConfirmRefuse(false)} disabled={busy} className="py-3 rounded-2xl border-2 border-border font-bold text-base">Annuler</Button>
-            <Button variant="ghost" type="button" onClick={confirmRefusal} disabled={busy} className="py-3 rounded-2xl bg-destructive text-destructive-foreground font-bold text-base disabled:opacity-50">Confirmer le refus</Button>
+            <Button variant="ghost" type="button" onClick={() => setConfirmRefuse(false)} disabled={busy} className="h-auto whitespace-normal py-3 rounded-2xl border-2 border-border font-bold text-base">Annuler</Button>
+            <Button variant="ghost" type="button" onClick={confirmRefusal} disabled={busy} className="h-auto whitespace-normal py-3 rounded-2xl bg-destructive text-destructive-foreground font-bold text-base disabled:opacity-50">Confirmer le refus</Button>
           </div>
         </div>
       )}
 
-      <Button variant="ghost" type="button" onClick={onBack} disabled={busy} className="h-auto whitespace-normal w-full py-3 rounded-2xl border-2 border-border font-bold text-base">← Retour</Button>
+      <Button variant="ghost" type="button" onClick={onBack} disabled={busy} className="text-base h-auto whitespace-normal w-full py-3 rounded-2xl border-2 border-border font-bold text-base">← Retour</Button>
     </div>
   );
 }
