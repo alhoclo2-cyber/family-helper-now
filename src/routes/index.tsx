@@ -58,6 +58,8 @@ import { MissionClosureBlock } from "@/components/MissionClosureBlock";
 import { checkArrival, simulatedArrival, formatArrivalTime, type Arrival } from "@/lib/arrival";
 import { MISSION_START_LIMIT_MIN, MISSION_END_LIMIT_MIN } from "@/lib/missionHours";
 import { ArrivalFields, useArrivalInput } from "@/components/ArrivalFields";
+import { cachedRestConflict, cachedInForceContract, contractRestConflict, restConflictMessage, setCalendarContracts } from "@/lib/contractCalendar";
+import { myContractsOptions } from "@/lib/myContracts";
 
 
 export const Route = createFileRoute("/")({
@@ -642,7 +644,7 @@ function FamilyFlow() {
 
   const [editPick, setEditPick] = useState(false);
   const contractFlowSetting = useAppSetting("contract_flow_enabled", false).data === true;
-  const flowInForce = useContractsInForce(contractFlowSetting ? session?.user.id : undefined).data;
+  const flowInForce = useContractsInForce(session?.user.id).data;
   const contractRef = useRef({ enabled: contractFlowSetting, inForce: flowInForce });
   contractRef.current = { enabled: contractFlowSetting, inForce: flowInForce };
 
@@ -1024,7 +1026,10 @@ function FamilyForm({
   const [showAllCompanions, setShowAllCompanions] = useState(false);
   const { session: contractSession } = useSession();
   const contractFlow = useAppSetting("contract_flow_enabled", false).data === true;
-  const dbInForce = useContractsInForce(contractFlow ? contractSession?.user.id : undefined).data;
+  const dbInForce = useContractsInForce(contractSession?.user.id).data;
+  const formQc = useQueryClient();
+  const [restError, setRestError] = useState<string | null>(null);
+  const selectedRestConflict = mode === "scheduled" && autoSearch === false && pickedCompanion ? cachedRestConflict(pickedCompanion, new Date(when).getTime()) : null;
   // Commissions extérieures rattachées à une présence à domicile (conformité SAP)
   const [commissions, setCommissions] = useState<string[]>(parsed.commissions);
   const [commissionCertified, setCommissionCertified] = useState(parsed.commissions.length > 0);
@@ -1133,7 +1138,7 @@ function FamilyForm({
   const okAcknowledgement = !(requiresLimitsAcknowledgement || requiresFiscalAcknowledgement) || !!acknowledgedLimits[need];
   const setAcknowledged = (checked: boolean) => setAcknowledgedLimits((prev) => ({ ...prev, [need]: checked }));
 
-  const createAndGo = (companionOverride?: string, contract?: { contractId: string; deadline: number }) => {
+  const createAndGo = async (companionOverride?: string, contract?: { contractId: string; deadline: number }) => {
     if (!isValidHourlyNet(salaireNetHoraire)) {
       setShowErrors(true);
       showSubmitError("salary");
@@ -1141,10 +1146,20 @@ function FamilyForm({
     }
     const companion = companionOverride ?? pickedCompanion;
     const scheduledAt = mode === "scheduled" ? new Date(when).getTime() : null;
+    if (scheduledAt && companion && autoSearch === false && contractSession) {
+      try {
+        const fresh = await formQc.fetchQuery({ ...myContractsOptions(contractSession.user.id), staleTime: 0 });
+        setCalendarContracts(contractSession.user.id, fresh);
+        const conflict = contractRestConflict(fresh, contractSession.user.id, companion, scheduledAt);
+        if (conflict) { setRestError(restConflictMessage(conflict)); return; }
+      } catch { setRestError("Impossible de vérifier les jours de repos du contrat. Réessayez."); return; }
+    }
+    const existingContract = scheduledAt && companion && autoSearch === false ? cachedInForceContract(companion, scheduledAt) : undefined;
     const dh = durationHours;
     const isParcel = need === "Retrait ou dépôt d'un colis";
     const data: Parameters<typeof store.createRequest>[0] = {
       ...(contract ? { id: contractMissionId, contractId: contract.contractId, contractAnswerDeadline: contract.deadline } : {}),
+      ...(!contract && existingContract ? { contractId: existingContract.id } : {}),
       need,
       address,
       phone,
@@ -1252,8 +1267,17 @@ function FamilyForm({
   const Missing = ({ ok, text }: { ok: boolean; text: string }) =>
     bad(ok) ? <p className="text-xs font-semibold text-destructive mt-1">{text}</p> : null;
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setRestError(null);
+    if (mode === "scheduled" && autoSearch === false && pickedCompanion && contractSession) {
+      try {
+        const fresh = await formQc.fetchQuery({ ...myContractsOptions(contractSession.user.id), staleTime: 0 });
+        setCalendarContracts(contractSession.user.id, fresh);
+        const conflict = contractRestConflict(fresh, contractSession.user.id, pickedCompanion, new Date(when).getTime());
+        if (conflict) { setRestError(restConflictMessage(conflict)); return; }
+      } catch { setRestError("Impossible de vérifier les jours de repos du contrat. Réessayez."); return; }
+    }
     if (!isValidHourlyNet(salaireNetHoraire)) {
       setShowErrors(true);
       showSubmitError("salary");
@@ -1340,6 +1364,7 @@ function FamilyForm({
   return (
     <form onSubmit={submit} className="flex-1 flex flex-col px-5 py-6 gap-6">
       <button type="button" onClick={onBack} className="text-base text-muted-foreground text-left">← Retour</button>
+      {(restError || selectedRestConflict) && <p role="alert" className="text-base font-semibold text-destructive">{restError ?? (selectedRestConflict ? restConflictMessage(selectedRestConflict) : "")}</p>}
       <div className={`rounded-2xl p-3 text-sm font-semibold text-center ${mode === "asap" ? "bg-primary/10 text-primary" : "bg-accent text-foreground"}`}>
         {mode === "asap" ? "Besoin rapidement" : "📅 Prendre un rendez-vous"}
       </div>
@@ -1959,7 +1984,7 @@ function FamilyForm({
                       </span>
                     ) : (
                       <span className="block text-xs font-bold text-destructive mt-0.5">
-                        Indisponible à cette date/heure
+                        {cachedRestConflict(c.id, whenTs) ? "Jour de repos prévu à votre contrat" : "Indisponible à cette date/heure"}
                       </span>
                     )}
                   </span>
@@ -2158,6 +2183,7 @@ function isCompanionAvailableFor(
   startTs: number,
   durationMinutes: number = DEFAULT_DURATION_MIN,
 ): boolean {
+  if (cachedRestConflict(companion.id, startTs)) return false;
   const d = new Date(startTs);
   const day = d.getDay();
   const startMin = d.getHours() * 60 + d.getMinutes();
