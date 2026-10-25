@@ -3,6 +3,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/auth";
 import { useAccountState } from "@/lib/accountState";
+import { useAppSetting } from "@/lib/appSettings";
+import { useMyContracts } from "@/lib/myContracts";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +21,8 @@ export function AccountMenu({ missions, accepted, reserved }: { missions?: MenuE
   const { session } = useSession();
   const qc = useQueryClient();
   const { state } = useAccountState(session?.user.id);
+  const contractEnabled = useAppSetting("contract_flow_enabled", false).data === true;
+  const contracts = useMyContracts(session?.user.id);
   const paused = state.status === "paused";
   const pending = state.status === "deletion_pending";
   return (
@@ -57,6 +61,9 @@ export function AccountMenu({ missions, accepted, reserved }: { missions?: MenuE
         )}
         {session ? (
           <>
+            {(contractEnabled || !!contracts.data?.length) && <DropdownMenuItem asChild className={itemCls}>
+              <Link to="/compte/contrats">Mes contrats</Link>
+            </DropdownMenuItem>}
             {reserved && (
               <>
                 <DropdownMenuItem className={`${itemCls} font-bold`} onSelect={reserved.onOpen}>

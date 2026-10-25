@@ -13,5 +13,4 @@ export const myContractsOptions = (userId: string) => queryOptions({
   },
   refetchInterval: 5000,
 });
-export type MyContract = Awaited<ReturnType<ReturnType<typeof myContractsOptions>["queryFn"] & (() => Promise<never>)>>;
 export function useMyContracts(userId?: string) { return useQuery({ ...myContractsOptions(userId ?? ""), enabled: !!userId }); }
