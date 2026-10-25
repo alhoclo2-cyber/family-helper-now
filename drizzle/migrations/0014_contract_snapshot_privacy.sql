@@ -1,0 +1,2 @@
+REVOKE SELECT ON public.work_contracts FROM authenticated;
+GRANT SELECT (id, client_id, companion_user_id, companion_ref, status, contract_kind, answers, document_hash, pdf_path, employer_signed_at, companion_signed_at, companion_answer_deadline, refused_at, effective_from, effective_until, first_mission_id, created_at, updated_at, final_document, final_document_hash, finalized_at) ON public.work_contracts TO authenticated;
