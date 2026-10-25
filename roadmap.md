@@ -31,3 +31,4 @@
 - [ ] Prompt 7 : contrat signé en clair, PDF horodaté, Mes contrats, planning par e-mail, jours de repos et fériés à bloquer
 - [ ] Ensuite : bouton compagnon « J'ai obtenu mon numéro CESU » (information du particulier et de Solélia, validation par le Mandataire avant de passer cesuActive à vrai)
 - [ ] Prompt 5 : vérification navigateur complète de la signature avec le réglage activé (non faite dans cette session)
+- [ ] Prompt 6 bis : confidentialité du contrat et lisibilité du compagnon ; vérifier les accès et les régressions.
