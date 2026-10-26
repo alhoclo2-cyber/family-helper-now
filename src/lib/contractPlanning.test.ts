@@ -15,6 +15,7 @@ test("complete mission planning is sorted by date", () => {
 test("cancelled and other contract missions are omitted", () => assert.equal(buildContractPlanning(c, [{ ...req("a", "2026-11-02T10:00:00Z"), status: "cancelled" }, { ...req("b", "2026-11-02T10:00:00Z"), contractId: "other" }], 0), null));
 test("successive identical planning is suppressed", () => { assert.equal(planningIsDuplicate("same", "same"), true); assert.equal(planningIsDuplicate("old", "new"), false); assert.equal(planningIsDuplicate("old", null), true); });
 test("last cancellation sends an empty notice once; other events with no planning send nothing", () => {
+  if (!c.final_document) throw new Error("Missing test final document");
   const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
   const previousStorage = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
   const values = new Map<string, string>();
