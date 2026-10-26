@@ -36,3 +36,4 @@
 - [x] Prompt 7 : jours bloqués, Mes contrats, PDF privé et planning simulé ; tests et vérifications. Compte autorisé : signature employeur via UI, réponse fictive via appel autorisé, planning automatique, lecture complète, PDF de 3 pages et dimanche bloqué vérifiés. Reprise UI de l'attente non vérifiée de bout en bout après rechargement (missions en mémoire).
 - [ ] Prompt 7 : vérifier les boutons côté compagnon réel et les changements/annulations de planning à l'écran ; compte compagnon partie à un contrat en vigueur nécessaire.
 - [ ] Horodatage qualifié du PDF (service tiers).
+- [ ] Prompt 7 bis : rattachement à l'acceptation, annulation du dernier planning, lecture/PDF des contrats terminés, caractères PDF et vérifications.
