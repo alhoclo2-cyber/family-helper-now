@@ -31,7 +31,7 @@ export const getContractPdf = createServerFn({ method: "POST" })
       file = await storage.download(path);
       if (file.error) throw new Error(uploaded.error ? "Le PDF n'a pas pu être enregistré. Réessayez." : "Le PDF n'a pas pu être téléchargé.");
     }
-    const { error: updateError } = await supabaseAdmin.from("work_contracts").update({ pdf_path: path }).eq("id", c.id).eq("status", "in_force");
+    const { error: updateError } = await supabaseAdmin.from("work_contracts").update({ pdf_path: path }).eq("id", c.id).eq("status", c.status);
     if (updateError || !file.data) throw new Error("Impossible de finaliser le téléchargement.");
     // File bytes avoid exposing a sandbox-only storage URL and remain usable after publishing.
     return { filename: "contrat-final.pdf", bytes: Array.from(new Uint8Array(await file.data.arrayBuffer())) };

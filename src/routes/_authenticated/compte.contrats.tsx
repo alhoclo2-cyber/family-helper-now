@@ -40,7 +40,7 @@ function ContractsPage() {
     const doc = c.final_document;
     const isEmployer = c.client_id === user.id;
     const otherFields = isEmployer ? doc?.companion : doc?.employer;
-    const other = c.status === "in_force" && otherFields
+    const other = doc && otherFields
       ? ["Prénom", "Nom d'usage"].map(label => otherFields.find(f => f.label === label)?.value).filter(Boolean).join(" ")
       : COMPANIONS.find(p => p.id === c.companion_ref)?.firstName ?? "Compagnon";
     return <article key={c.id} className="border-2 border-border bg-card rounded-lg p-4 space-y-3 text-base">
@@ -49,7 +49,7 @@ function ContractsPage() {
       <p>Signature de l'employeur : {date(c.employer_signed_at)}</p>
       <p>Signature du compagnon : {date(c.companion_signed_at)}</p>
       <p>Début : {c.effective_from ? new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", dateStyle: "long" }).format(new Date(`${c.effective_from}T12:00:00Z`)) : "—"}</p>
-      {c.status === "in_force" && doc && <>
+      {doc && <>
         <Button variant="outline" className="w-full text-base" onClick={() => setOpened(opened === c.id ? null : c.id)}>{opened === c.id ? "Fermer le contrat" : "Lire le contrat"}</Button>
         {opened === c.id && <FinalContractDocument document={doc} />}
         <Button className="w-full text-base" disabled={busy === c.id} onClick={async () => {
@@ -62,12 +62,12 @@ function ContractsPage() {
           } catch (e) { setNotice(e instanceof Error ? e.message : "Impossible de télécharger le PDF."); }
           finally { setBusy(null); }
         }}>{busy === c.id ? "Préparation du PDF…" : "Télécharger le PDF"}</Button>
-        <Button variant="outline" className="w-full h-auto py-3 whitespace-normal text-base" onClick={() => {
+        {c.status === "in_force" && <><Button variant="outline" className="w-full h-auto py-3 whitespace-normal text-base" onClick={() => {
           const fields = isEmployer ? doc.employer : doc.companion;
           sendSimulatedEmail("contract_signed_both", fields.find(f => f.label === "E-mail")?.value, { contractId: c.id, contractText: formatContractAsText(doc) });
           setNotice("Le contrat figure dans vos e-mails simulés.");
         }}>Recevoir le contrat par e-mail</Button>
-        <Button variant="outline" className="w-full h-auto py-3 whitespace-normal text-base" onClick={() => setNotice(sendContractPlanning(c, store.getState().requests, "requested", isEmployer ? "employer" : "companion") ? "Le planning figure dans vos e-mails simulés." : "Aucun planning n'est établi pour ce contrat.")}>Renvoyer le planning par e-mail</Button>
+        <Button variant="outline" className="w-full h-auto py-3 whitespace-normal text-base" onClick={() => setNotice(sendContractPlanning(c, store.getState().requests, "requested", isEmployer ? "employer" : "companion") ? "Le planning figure dans vos e-mails simulés." : "Aucun planning n'est établi pour ce contrat.")}>Renvoyer le planning par e-mail</Button></>}
       </>}
     </article>;
   });
