@@ -2,7 +2,7 @@
 import { useRef, useSyncExternalStore } from "react";
 import { checkArrival, type Arrival } from "./arrival";
 import { sendSimulatedEmail } from "./simulatedEmails";
-import { cachedRequestRestConflict } from "./contractCalendar";
+import { cachedInForceContract, cachedRequestRestConflict } from "./contractCalendar";
 
 // Délai laissé au particulier pour confirmer ou refuser un compagnon (Besoin rapidement).
 export const FAMILY_RESPONSE_DELAY_MS = 5 * 60_000;
@@ -246,10 +246,12 @@ export const store = {
     if (!req.scheduledAt && arrival && !checkArrival({ ...arrival, durationHours: req.durationHours ?? 1, now: acceptedAt }).ok) return false;
     const companion = as ?? seedStudents[studentIdx % seedStudents.length];
     if (cachedRequestRestConflict(companion.id, req.scheduledAt ?? arrival?.arrivalAt ?? acceptedAt, req.contractId)) return false;
+    const start = req.scheduledAt ?? arrival?.arrivalAt ?? req.arrivalAt;
+    const contractId = start != null ? cachedInForceContract(companion.id, start)?.id ?? req.contractId : req.contractId;
     state = {
       ...state,
       requests: state.requests.map((r) =>
-        r.id === id ? { ...r, status: "accepted" as const, student: companion, acceptedAt, ...(!req.scheduledAt ? arrival : undefined) } : r,
+        r.id === id ? { ...r, status: "accepted" as const, student: companion, acceptedAt, contractId, ...(!req.scheduledAt ? arrival : undefined) } : r,
       ),
     };
     emit();
@@ -263,10 +265,12 @@ export const store = {
     if (cachedRequestRestConflict(companion.id, req.scheduledAt ?? arrival?.arrivalAt ?? Date.now(), req.contractId)) return false;
     const acceptedAt = Date.now();
     if (!req.scheduledAt && arrival && !checkArrival({ ...arrival, durationHours: req.durationHours ?? 1, now: acceptedAt }).ok) return false;
+    const start = req.scheduledAt ?? arrival?.arrivalAt ?? req.arrivalAt;
+    const contractId = start != null ? cachedInForceContract(companion.id, start)?.id ?? req.contractId : req.contractId;
     state = {
       ...state,
       requests: state.requests.map((r) =>
-        r.id === id ? { ...r, status: "accepted" as const, student: companion, acceptedAt, ...(!req.scheduledAt ? arrival : undefined) } : r,
+        r.id === id ? { ...r, status: "accepted" as const, student: companion, acceptedAt, contractId, ...(!req.scheduledAt ? arrival : undefined) } : r,
       ),
     };
     emit();

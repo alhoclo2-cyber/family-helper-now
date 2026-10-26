@@ -1,19 +1,21 @@
 import { PDFDocument, StandardFonts } from "pdf-lib";
 import { stableStringify, type ContractDocument } from "./contractDocument";
 import { formatContractAsText } from "./contractCompanion";
+import { hasFinalContractStatus } from "./contractFinalStatus";
 
 export async function contractHash(doc: unknown) {
   const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(stableStringify(doc)));
   return Array.from(new Uint8Array(hash), b => b.toString(16).padStart(2, "0")).join("");
 }
-export function checkContractPdf(c: { client_id: string; companion_user_id: string | null; status: string; final_document_hash: string | null } | null, userId: string, recomputedHash: string): string | null {
+export function checkContractPdf(c: { client_id: string; companion_user_id: string | null; status: string; final_document_hash: string | null; final_document?: unknown } | null, userId: string, recomputedHash: string): string | null {
   if (!c || (userId !== c.client_id && userId !== c.companion_user_id)) return "Ce contrat ne vous appartient pas.";
-  if (c.status !== "in_force") return "Le PDF est réservé aux contrats en vigueur.";
+  if (!hasFinalContractStatus(c.status)) return "Le PDF est réservé aux contrats en vigueur ou terminés.";
+  if (!c.final_document) return "Le contrat final est manquant. Téléchargement refusé.";
   if (!c.final_document_hash || c.final_document_hash !== recomputedHash) return "L'empreinte du contrat final ne correspond pas. Téléchargement refusé.";
   return null;
 }
 export function pdfText(text: string): string {
-  return text.replace(/[\u00a0\u202f]/g, " ").replace(/[→⇒]/g, "->").replace(/[←⇐]/g, "<-").replace(/[‐‑‒–—]/g, "-").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/…/g, "...").replace(/[^\x20-\x7e\xa0-\xff\n\r€]/gu, "?");
+  return text.replace(/œ/g, "oe").replace(/Œ/g, "OE").replace(/•/g, "-").replace(/[\u00a0\u202f]/g, " ").replace(/[→⇒]/g, "->").replace(/[←⇐]/g, "<-").replace(/[‐‑‒–—]/g, "-").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/…/g, "...").replace(/[^\x20-\x7e\xa0-\xff\n\r€]/gu, "?");
 }
 export type SignatureEvent = { event: string; occurred_at: string; auth_method: string | null };
 export async function generateContractPdf(input: { contractId: string; document: ContractDocument; employerHash: string; finalHash: string; events: SignatureEvent[]; generatedAt: string }) {

@@ -7,7 +7,7 @@ import { readEmails, sendSimulatedEmail } from "./simulatedEmails";
 export type PlanningContract = { id: string; status: string; companion_ref: string; effective_from: string | null; effective_until: string | null; answers: unknown; final_document: ContractDocument | null };
 export type PlanningEvent = "established" | "added" | "modified" | "cancelled" | "requested";
 const introductions: Record<PlanningEvent, string> = { established: "Votre planning est établi", added: "Une mission a été ajoutée", modified: "Une mission a été modifiée", cancelled: "Une mission a été annulée", requested: "Voici votre planning à jour" };
-export function buildContractPlanning(c: PlanningContract, requests: readonly Request[], now = Date.now()): string | null {
+export function buildContractPlanning(c: PlanningContract, requests: readonly Request[], now = Date.now(), allowEmptyCancellation = false): string | null {
   if (c.status !== "in_force" || !c.final_document) return null;
   const terms = normalizeStoredTerms(c.answers as Record<string, unknown>);
   const missions = requests.filter(r => {
@@ -16,7 +16,7 @@ export function buildContractPlanning(c: PlanningContract, requests: readonly Re
     return r.contractId === c.id && r.status === "accepted" && start > now && (!c.effective_from || day >= c.effective_from) && (!c.effective_until || day <= c.effective_until);
   }).sort((a, b) => (a.scheduledAt ?? a.arrivalAt ?? 0) - (b.scheduledAt ?? b.arrivalAt ?? 0));
   const fixed = terms?.organization?.mode === "fixed" ? terms.organization.days : [];
-  if (!missions.length && !fixed.length) return null;
+  if (!missions.length && !fixed.length) return allowEmptyCancellation ? `Contrat ${c.id}\n\nAucune mission à venir pour le moment.` : null;
   const time = (ts: number) => new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" }).format(ts);
   const date = (ts: number) => new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", dateStyle: "full" }).format(ts);
   return [
@@ -33,7 +33,7 @@ export function buildContractPlanning(c: PlanningContract, requests: readonly Re
 export function planningIsDuplicate(previous: string | null, next: string | null) { return next === null || previous === next; }
 export function sendContractPlanning(c: PlanningContract, requests: readonly Request[], event: PlanningEvent, recipient: "companion" | "employer" = "companion", now = Date.now()): boolean {
   if (typeof window === "undefined") return false;
-  const content = buildContractPlanning(c, requests, now);
+  const content = buildContractPlanning(c, requests, now, event === "cancelled");
   if (!content || !c.final_document) return false;
   const fields = recipient === "companion" ? c.final_document.companion : c.final_document.employer;
   const to = fields.find(f => f.label === "E-mail")?.value;
