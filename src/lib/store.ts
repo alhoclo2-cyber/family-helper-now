@@ -247,7 +247,8 @@ export const store = {
     const companion = as ?? seedStudents[studentIdx % seedStudents.length];
     if (cachedRequestRestConflict(companion.id, req.scheduledAt ?? arrival?.arrivalAt ?? acceptedAt, req.contractId)) return false;
     const start = req.scheduledAt ?? arrival?.arrivalAt ?? req.arrivalAt;
-    const contractId = start != null ? cachedInForceContract(companion.id, start)?.id ?? req.contractId : req.contractId;
+    const fallbackContractId = req.contractAnswerDeadline != null ? req.contractId : undefined;
+    const contractId = start != null ? cachedInForceContract(companion.id, start)?.id ?? fallbackContractId : fallbackContractId;
     state = {
       ...state,
       requests: state.requests.map((r) =>
@@ -266,7 +267,8 @@ export const store = {
     const acceptedAt = Date.now();
     if (!req.scheduledAt && arrival && !checkArrival({ ...arrival, durationHours: req.durationHours ?? 1, now: acceptedAt }).ok) return false;
     const start = req.scheduledAt ?? arrival?.arrivalAt ?? req.arrivalAt;
-    const contractId = start != null ? cachedInForceContract(companion.id, start)?.id ?? req.contractId : req.contractId;
+    const fallbackContractId = req.contractAnswerDeadline != null ? req.contractId : undefined;
+    const contractId = start != null ? cachedInForceContract(companion.id, start)?.id ?? fallbackContractId : fallbackContractId;
     state = {
       ...state,
       requests: state.requests.map((r) =>

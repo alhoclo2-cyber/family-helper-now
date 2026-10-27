@@ -264,6 +264,33 @@ export type Database = {
           },
         ]
       }
+      mandataire_access_log: {
+        Row: {
+          action: string
+          actor_id: string
+          created_at: string
+          id: string
+          object_id: string
+          object_type: string
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          created_at?: string
+          id?: string
+          object_id: string
+          object_type: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          created_at?: string
+          id?: string
+          object_id?: string
+          object_type?: string
+        }
+        Relationships: []
+      }
       mission_payments: {
         Row: {
           amount_cents: number
