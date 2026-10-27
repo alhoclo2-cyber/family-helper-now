@@ -1,3 +1,4 @@
+- [ ] Prompt 8 : dossiers Mandataire, contrats en lecture seule, PDF partagé, journal d'accès et correction de réattribution ; tests et vérifications.
 - [x] Préparer l'identité contrat, les tables sécurisées et les paramètres Mandataire, sans parcours contrat ni blocage des comptes existants.
 - [x] Vérifier les champs d'inscription, l'enregistrement et relecture du profil Compagnon approuvé, les politiques d'accès et les tests de régression (37 réussis).
 - [ ] Vérifier la création complète d'un nouveau compte et le compte Particulier existant : compte de test Particulier nécessaire, non disponible dans la session autorisée.

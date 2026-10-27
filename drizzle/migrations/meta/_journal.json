@@ -113,6 +113,13 @@
       "when": 1792915584724,
       "tag": "0015_contract_pdf_private_storage",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793080068384,
+      "tag": "0016_mandataire_access_log",
+      "breakpoints": true
     }
   ]
 }
