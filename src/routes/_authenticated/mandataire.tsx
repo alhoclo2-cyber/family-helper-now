@@ -1,6 +1,10 @@
+import { Button } from "@/components/ui/button";
+import { MandataireContext, ContractCount, InForceBadge, PersonContracts, ContractsSection, ContractDetail, DossierBlock, DossierMissions, AccessLog, type PersonTarget } from "@/components/MandataireContracts";
+import { listContractsForMandataire } from "@/lib/mandataire.functions";
+import { useStore } from "@/lib/store";
 import { CopyButton } from "@/components/CopyButton";
 import { ContractSettingsPanel } from "@/components/ContractSettingsPanel";
-import { MissionsTab, useMissionsToDeclareCount } from "@/components/MandataireMissionsTab";
+import { MissionsTab } from "@/components/MandataireMissionsTab";
 import { departmentLabel, formatBirthDate } from "@/components/BirthFields";
 import { missingCompanionItems } from "@/lib/companionDossier";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -104,15 +108,15 @@ function Shell({ children, email }: { children: React.ReactNode; email?: string 
   const qc = useQueryClient();
   return (
     <div className="min-h-screen bg-background flex justify-center">
-      <div className="w-full max-w-[440px] min-h-screen flex flex-col bg-background shadow-xl">
+      <div className="w-full max-w-[440px] md:max-w-5xl min-h-screen text-sm flex flex-col bg-background shadow-xl">
         <header className="px-5 pt-6 pb-4 border-b border-border flex items-center gap-3">
           <ShieldCheck className="h-7 w-7 text-primary" />
           <div className="flex-1">
             <h1 className="text-lg font-black leading-tight">Espace Mandataire</h1>
-            {email && <p className="text-xs text-muted-foreground">{email}</p>}
+            {email && <p className="text-sm text-muted-foreground">{email}</p>}
           </div>
           {email && (
-            <button
+            <Button
               aria-label="Se déconnecter"
               onClick={async () => {
                 await qc.cancelQueries();
@@ -123,7 +127,7 @@ function Shell({ children, email }: { children: React.ReactNode; email?: string 
               className="p-2 rounded-xl border-2 border-border"
             >
               <LogOut className="h-5 w-5" />
-            </button>
+            </Button>
           )}
         </header>
         <main className="flex-1 flex flex-col px-5 py-5">{children}</main>
@@ -158,83 +162,68 @@ function Pager({
   if (pages <= 1) return null;
   return (
     <div className="flex items-center justify-between gap-2 pt-2">
-      <button
+      <Button
         disabled={page === 0}
         onClick={() => onPage(page - 1)}
         className="px-4 py-2 rounded-2xl border-2 border-border font-bold disabled:opacity-40"
       >
         ←
-      </button>
+      </Button>
       <span className="text-sm text-muted-foreground">
         Page {page + 1} / {pages}
       </span>
-      <button
+      <Button
         disabled={page >= pages - 1}
         onClick={() => onPage(page + 1)}
         className="px-4 py-2 rounded-2xl border-2 border-border font-bold disabled:opacity-40"
       >
         →
-      </button>
+      </Button>
     </div>
   );
 }
 
+type Tab = "todo" | "companions" | "clients" | "payments" | "missions" | "contracts" | "log" | "settings";
 function Dashboard() {
-  const [tab, setTab] = useState<"companions" | "clients" | "payments" | "missions">("companions");
-  const missionsTodo = useMissionsToDeclareCount();
+  const [tab, setTab] = useState<Tab>("todo");
+  const [target, setTarget] = useState<PersonTarget | null>(null);
+  const [filter, setFilter] = useState("all");
   const list = useServerFn(listApplications);
   const apps = useQuery({ queryKey: ["applications"], queryFn: () => list() });
   const listClients = useServerFn(listClientRegistrations);
   const clients = useQuery({ queryKey: ["client-registrations"], queryFn: () => listClients() });
-
-  const norm = (s: string) => (s === "rejected" ? "changes_requested" : s);
-  const companionTodo = (apps.data ?? []).filter((a) =>
-    ["pending", "changes_requested"].includes(norm(a.status)),
-  ).length;
-  const clientTodo = (clients.data ?? []).filter((c) => clientStatus(c) !== "complete").length;
-
-  return (
-    <div className="flex flex-col gap-4">
-      <ContractSettingsPanel />
-      <div className="grid grid-cols-2 gap-2">
-        {(
-          [
-            ["companions", "Candidatures Compagnon", companionTodo],
-            ["clients", "Inscriptions Particulier", clientTodo],
-            ["payments", "Frais de service", 0],
-            ["missions", "Missions (démo)", missionsTodo],
-          ] as const
-        ).map(([key, label, badge]) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={`relative rounded-2xl border-2 p-3 text-sm font-bold ${tab === key ? "border-primary bg-secondary" : "border-border bg-card"}`}
-          >
-            {label}
-            {badge > 0 && (
-              <span className="absolute -top-2 -right-2 min-w-6 h-6 px-1 rounded-full bg-destructive text-destructive-foreground text-xs font-black flex items-center justify-center">
-                {badge}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
-      {tab === "companions" ? (
-        <CompanionsTab apps={apps} />
-      ) : tab === "clients" ? (
-        <ClientsTab clients={clients} />
-      ) : tab === "missions" ? (
-        <MissionsTab />
-      ) : (
-        <PaymentsTab />
-      )}
+  const listContracts = useServerFn(listContractsForMandataire);
+  const contracts = useQuery({ queryKey: ["mandataire-contracts"], queryFn: () => listContracts() });
+  const fetchPayments = useServerFn(listMissionPayments);
+  const payments = useQuery({ queryKey: ["mission-payments"], queryFn: () => fetchPayments() });
+  const requests = useStore(s => s.requests);
+  const go = (next: Tab, nextFilter = "all") => { setTab(next); setFilter(nextFilter); setTarget(null); };
+  const tasks: { label: string; count: number; tab: Tab; filter?: string }[] = [
+    { label: "Candidatures à valider", count: (apps.data ?? []).filter(a => a.status === "pending").length, tab: "companions", filter: "pending" },
+    { label: "Candidatures à compléter", count: (apps.data ?? []).filter(a => ["changes_requested", "rejected"].includes(a.status)).length, tab: "companions", filter: "changes_requested" },
+    { label: "Dossiers Particulier incomplets", count: (clients.data ?? []).filter(c => clientStatus(c) === "incomplete").length, tab: "clients", filter: "incomplete" },
+    { label: "Documents Particulier à vérifier", count: (clients.data ?? []).filter(c => clientStatus(c) === "to_check").length, tab: "clients", filter: "to_check" },
+    { label: "Missions à déclarer", count: requests.filter(r => r.status === "accepted" && ["validated", "auto_validated"].includes(r.completion ?? "") && !r.declaredAt).length, tab: "missions", filter: "declare" },
+    { label: "Missions signalées", count: requests.filter(r => r.status === "accepted" && r.completion === "problem").length, tab: "missions", filter: "reported" },
+    { label: "Paiements en échec", count: (payments.data ?? []).filter(p => ["debit_echoue", "annulee_echec_paiement"].includes(p.status)).length, tab: "payments", filter: "failed" },
+    { label: "Contrats en attente de réponse", count: (contracts.data ?? []).filter(c => c.status === "awaiting_companion").length, tab: "contracts", filter: "awaiting_companion" },
+  ];
+  return <MandataireContext.Provider value={{ contracts: contracts.data ?? [], clients: clients.data ?? [], companions: apps.data ?? [], navigate: setTarget }}>
+    <div className="flex flex-col gap-5">
+      <nav aria-label="Sections Mandataire" className="grid grid-cols-2 md:grid-cols-4 gap-2">{([
+        ["todo", "À traiter"], ["clients", "Particuliers"], ["companions", "Compagnons"], ["contracts", "Contrats"], ["missions", "Missions"], ["payments", "Frais de service"], ["log", "Journal d'accès"], ["settings", "Réglages"],
+      ] as const).map(([key, label]) => <Button key={key} variant={tab === key ? "secondary" : "outline"} className="h-auto whitespace-normal py-3" onClick={() => go(key)}>{label}</Button>)}</nav>
+      {contracts.isError && <p className="text-destructive">Impossible de charger les contrats.</p>}
+      {target?.type === "contract" ? <ContractDetail key={target.id} id={target.id} onBack={() => setTarget(null)} /> : target?.type === "client" ? (() => { const c = clients.data?.find(c => c.id === target.id); return c ? <ClientDetail client={c} onBack={() => setTarget(null)} /> : <p>Dossier indisponible</p>; })() : target?.type === "companion" ? (() => { const a = apps.data?.find(a => a.user_id === target.id); return a ? <Detail app={a} onBack={() => setTarget(null)} /> : <p>Dossier indisponible</p>; })() : <>
+      <h2 className="text-xl font-bold">{({ todo: "À traiter", clients: "Particuliers", companions: "Compagnons", contracts: "Contrats", missions: "Missions", payments: "Frais de service", log: "Journal d'accès", settings: "Réglages" })[tab]}</h2>
+      {tab === "todo" ? <>{(apps.isPending || clients.isPending || contracts.isPending || payments.isPending) && <p>Chargement des compteurs…</p>}{(apps.isError || clients.isError || payments.isError) && <p className="text-destructive">Certains compteurs sont indisponibles.</p>}<div className="grid gap-3 md:grid-cols-2">{tasks.map(t => <Button key={t.label} variant="outline" className="h-auto p-4 justify-between whitespace-normal text-left" onClick={() => go(t.tab, t.filter)}><span>{t.label}</span><span className="text-2xl font-bold">{t.count}</span></Button>)}</div></> : tab === "companions" ? <CompanionsTab key={filter} apps={apps} initialFilter={filter as Filter} onOpen={id => setTarget({ type: "companion", id })} /> : tab === "clients" ? <ClientsTab key={filter} clients={clients} initialFilter={filter as ClientStatus | "all"} onOpen={id => setTarget({ type: "client", id })} /> : tab === "missions" ? <MissionsTab filter={filter} /> : tab === "payments" ? <PaymentsTab filter={filter} /> : tab === "contracts" ? <ContractsSection key={filter} initialFilter={filter} /> : tab === "log" ? <AccessLog /> : <ContractSettingsPanel />}
+      </>}
     </div>
-  );
+  </MandataireContext.Provider>;
 }
 
-function CompanionsTab({ apps }: { apps: UseQueryResult<App[]> }) {
-  const [filter, setFilter] = useState<Filter>("pending");
-  const [selected, setSelected] = useState<string | null>(null);
+function CompanionsTab({ apps, initialFilter, onOpen }: { apps: UseQueryResult<App[]>; initialFilter: Filter; onOpen: (id: string) => void }) {
+  const [filter, setFilter] = useState<Filter>(initialFilter);
   const [q, setQ] = useState("");
   const [page, setPage] = useState(0);
 
@@ -246,8 +235,6 @@ function CompanionsTab({ apps }: { apps: UseQueryResult<App[]> }) {
     );
 
   const all = apps.data ?? [];
-  const current = all.find((a) => a.id === selected);
-  if (current) return <Detail app={current} onBack={() => setSelected(null)} />;
 
   const norm = (s: string) => (s === "rejected" ? "changes_requested" : s);
   const needle = q.trim().toLowerCase();
@@ -265,7 +252,7 @@ function CompanionsTab({ apps }: { apps: UseQueryResult<App[]> }) {
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-3 gap-2 text-center">
         {(["pending", "changes_requested", "approved"] as const).map((s) => (
-          <button
+          <Button
             key={s}
             onClick={() => {
               setFilter(s);
@@ -274,11 +261,11 @@ function CompanionsTab({ apps }: { apps: UseQueryResult<App[]> }) {
             className={`rounded-2xl border-2 p-3 ${filter === s ? "border-primary bg-secondary" : "border-border bg-card"}`}
           >
             <div className="text-2xl font-black">{count(s)}</div>
-            <div className="text-xs">{STATUS_LABEL[s]}</div>
-          </button>
+            <div className="text-sm">{STATUS_LABEL[s]}</div>
+          </Button>
         ))}
       </div>
-      <button
+      <Button
         onClick={() => {
           setFilter("all");
           setPage(0);
@@ -286,7 +273,7 @@ function CompanionsTab({ apps }: { apps: UseQueryResult<App[]> }) {
         className={`text-sm underline ${filter === "all" ? "font-bold" : "text-muted-foreground"}`}
       >
         Voir toutes les candidatures ({all.length})
-      </button>
+      </Button>
       <SearchBar
         value={q}
         onChange={(v) => {
@@ -301,22 +288,23 @@ function CompanionsTab({ apps }: { apps: UseQueryResult<App[]> }) {
       )}
       {shown.map((a) => (
         <div key={a.id} className="rounded-2xl border-2 border-border bg-card p-4 flex flex-col gap-3">
-          <button onClick={() => setSelected(a.id)} className="text-left flex gap-3 items-center">
+          <Button onClick={() => onOpen(a.user_id)} className="text-left flex gap-3 items-center">
             <DocThumb path={a.selfie_path} size={56} rounded />
             <div className="flex-1 min-w-0">
               <div className="font-bold text-base truncate">
                 {a.first_name} {a.last_name}
+              <InForceBadge personId={a.user_id} role="companion" />
               </div>
               <div className="text-sm text-muted-foreground truncate">
                 {a.situation ?? "—"} · {a.address || a.city}
               </div>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-sm text-muted-foreground">
                 {new Date(a.created_at).toLocaleDateString("fr-FR")}
               </div>
             </div>
-            <span className="text-xs font-bold whitespace-nowrap">{STATUS_LABEL[a.status]}</span>
-          </button>
-          <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-bold">
+            <span className="text-sm font-bold whitespace-nowrap">{STATUS_LABEL[a.status]}</span>
+          </Button>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm font-bold">
             {(
               [
                 ...(a.id_type === "passport"
@@ -354,7 +342,7 @@ function useSignedUrl(path: string | null, bucket: "companion-docs" | "client-do
   const fetchUrl = useServerFn(getDocumentUrl);
   return useQuery({
     queryKey: ["doc-url", bucket, path],
-    queryFn: () => fetchUrl({ data: { path: path!, bucket } }),
+    queryFn: () => { if (!path) throw new Error("Document manquant"); return fetchUrl({ data: { path, bucket } }); },
     enabled: !!path,
     staleTime: 5 * 60_000,
   });
@@ -435,9 +423,9 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
   const NotSet = () => <span className="font-bold text-destructive">Non renseigné</span>;
   return (
     <div className="flex flex-col gap-4">
-      <button onClick={onBack} className="text-sm font-bold text-primary text-left">
+      <Button onClick={onBack} className="text-sm font-bold text-primary text-left">
         ← Retour à la liste
-      </button>
+      </Button>
       <div className="flex items-center gap-4">
         <DocThumb path={app.selfie_path} size={80} rounded />
         <div>
@@ -449,10 +437,13 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
             {app.address ? ` · ${app.address}` : ""}
           </p>
           <p className="text-sm font-bold mt-1">{STATUS_LABEL[app.status]}</p>
+          <p>{app.email}</p><ContractCount personId={app.user_id} role="companion" />
         </div>
       </div>
 
-      <div className="rounded-2xl border-2 border-border bg-card p-4 text-sm space-y-1">
+      <div className="grid md:grid-cols-2 gap-x-6">
+      <DossierBlock title="Identité et coordonnées" open>
+      <div className="text-sm space-y-1">
         <p>📧 {app.email}</p>
         <p>📞 {app.phone}</p>
         <p>📍 {app.address || app.city}</p>
@@ -497,7 +488,8 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
         )}
       </div>
 
-      <h3 className="font-black">Pièces justificatives</h3>
+      </DossierBlock>
+      <DossierBlock title="Documents">
       {app.id_type === "passport" ? (
         <DocCard label="🛂 Passeport (page photo)" path={app.id_passport_path} />
       ) : (
@@ -521,6 +513,8 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
       )}
       <DocCard label="🤳 Selfie" path={app.selfie_path} />
 
+      </DossierBlock>
+      <DossierBlock title="Validation du dossier" open>
       {app.reject_reason && (
         <p className="text-sm rounded-2xl bg-secondary p-3">
           Note envoyée au compagnon : {app.reject_reason}
@@ -535,13 +529,13 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
         </p>
       )}
       {app.status !== "approved" && (
-        <button
+        <Button
           disabled={mut.isPending || missing.length > 0}
           onClick={() => mut.mutate({ status: "approved" })}
           className="btn-huge bg-success text-success-foreground disabled:opacity-50"
         >
           ✅ Valider la candidature
-        </button>
+        </Button>
       )}
       <div className="flex flex-col gap-2">
         <textarea
@@ -550,13 +544,13 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
           onChange={(e) => setReason(e.target.value)}
           className={inputCls + " min-h-20"}
         />
-        <button
+        <Button
           disabled={mut.isPending || reason.trim().length < 10}
           onClick={() => mut.mutate({ status: "changes_requested", rejectReason: reason })}
           className="btn-huge bg-warning text-warning-foreground disabled:opacity-50"
         >
           📝 Demander des corrections
-        </button>
+        </Button>
       </div>
       <a
         href={mailtoLink(app, reason)}
@@ -565,14 +559,20 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
         ✉️ Envoyer l'email
       </a>
       {app.status !== "pending" && (
-        <button
+        <Button
           disabled={mut.isPending}
           onClick={() => mut.mutate({ status: "pending" })}
           className="text-sm underline text-muted-foreground"
         >
           Remettre en attente
-        </button>
+        </Button>
       )}
+      </DossierBlock>
+      <DossierBlock title="Contrats"><PersonContracts personId={app.user_id} role="companion" /></DossierBlock>
+      <DossierBlock title="Autorisation ou mandat"><p>À venir</p></DossierBlock>
+      <DossierBlock title="Missions"><DossierMissions personId={app.user_id} role="companion" /></DossierBlock>
+      <DossierBlock title="Journal de ce dossier"><AccessLog personId={app.user_id} /></DossierBlock>
+      </div>
     </div>
   );
 }
@@ -617,8 +617,8 @@ function clientStatus(c: ClientRow): ClientStatus {
   return present.every((t) => byType.get(t.type)?.status === "validated") ? "complete" : "to_check";
 }
 
-function ClientsTab({ clients }: { clients: UseQueryResult<ClientRow[]> }) {
-  const [filter, setFilter] = useState<ClientStatus | "all">("all");
+function ClientsTab({ clients, initialFilter, onOpen }: { clients: UseQueryResult<ClientRow[]>; initialFilter: ClientStatus | "all"; onOpen: (id: string) => void }) {
+  const [filter, setFilter] = useState<ClientStatus | "all">(initialFilter);
   const [q, setQ] = useState("");
   const [page, setPage] = useState(0);
   const [priority, setPriority] = useState(false);
@@ -650,12 +650,12 @@ function ClientsTab({ clients }: { clients: UseQueryResult<ClientRow[]> }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-xs text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         Un compte Particulier n'est utilisable qu'une fois son dossier complet (champs et documents).
       </p>
       <div className="grid grid-cols-3 gap-2 text-center">
         {(["incomplete", "to_check", "complete"] as const).map((s) => (
-          <button
+          <Button
             key={s}
             onClick={() => {
               setFilter(s);
@@ -664,12 +664,12 @@ function ClientsTab({ clients }: { clients: UseQueryResult<ClientRow[]> }) {
             className={`rounded-2xl border-2 p-3 ${filter === s ? "border-primary bg-secondary" : "border-border bg-card"}`}
           >
             <div className="text-2xl font-black">{count(s)}</div>
-            <div className="text-xs">{CLIENT_STATUS_LABEL[s]}</div>
-          </button>
+            <div className="text-sm">{CLIENT_STATUS_LABEL[s]}</div>
+          </Button>
         ))}
       </div>
       <div className="flex items-center justify-between gap-2">
-        <button
+        <Button
           onClick={() => {
             setFilter("all");
             setPage(0);
@@ -677,7 +677,7 @@ function ClientsTab({ clients }: { clients: UseQueryResult<ClientRow[]> }) {
           className={`text-sm underline ${filter === "all" ? "font-bold" : "text-muted-foreground"}`}
         >
           Toutes les inscriptions ({all.length})
-        </button>
+        </Button>
         <label className="text-sm flex items-center gap-2">
           <input
             type="checkbox"
@@ -699,55 +699,28 @@ function ClientsTab({ clients }: { clients: UseQueryResult<ClientRow[]> }) {
         <p className="text-center text-muted-foreground py-8">Aucune inscription dans cette catégorie.</p>
       )}
       {shown.map((c) => (
-        <ClientCard key={c.id} client={c} />
+        <ClientCard key={c.id} client={c} onOpen={() => onOpen(c.id)} />
       ))}
       <Pager page={page} total={filtered.length} onPage={setPage} />
     </div>
   );
 }
 
-function ClientCard({ client }: { client: ClientRow }) {
-  const [open, setOpen] = useState(false);
-  const byType = new Map(client.documents.map((d) => [d.doc_type, d]));
-  const status = clientStatus(client);
-  return (
-    <div className="rounded-2xl border-2 border-border bg-card p-4 flex flex-col gap-3">
-      <button onClick={() => setOpen((o) => !o)} className="text-left flex gap-3 items-center">
-        <div className="flex-1 min-w-0">
-          <div className="font-bold text-base truncate">
-            {client.first_name} {client.last_name}
-          </div>
-          <div className="text-sm text-muted-foreground truncate">{client.email}</div>
-          <div className="text-xs text-muted-foreground">
-            Inscrit le {new Date(client.created_at).toLocaleDateString("fr-FR")}
-          </div>
-        </div>
-        <span className="text-xs font-bold whitespace-nowrap">{CLIENT_STATUS_LABEL[status]}</span>
-      </button>
-      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-bold">
-        {clientDocTypes(client).map((t) => {
-          const d = byType.get(t.type);
-          const ok = d?.status === "validated";
-          return (
-            <span key={t.type} className={ok ? "text-success" : "text-destructive"}>
-              {ok ? "✓" : "✗"} {t.label}
-            </span>
-          );
-        })}
-      </div>
-      <button onClick={() => setOpen((o) => !o)} className="text-sm font-bold text-primary text-left">
-        {open ? "Masquer les documents" : "Voir et vérifier les documents"}
-      </button>
-      {open && (
-        <div className="flex flex-col gap-3">
-          <UrssafInfo client={client} />
-          {clientDocTypes(client).map((t) => (
-            <ClientDocCard key={t.type} label={t.label} doc={byType.get(t.type) ?? null} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
+function ClientCard({ client, onOpen }: { client: ClientRow; onOpen: () => void }) {
+  return <article className="rounded-lg border border-border bg-card p-4 space-y-2"><Button variant="ghost" onClick={onOpen} className="h-auto w-full justify-start text-left whitespace-normal"><span><b>{client.first_name} {client.last_name}</b><br />{client.email}<br />{CLIENT_STATUS_LABEL[clientStatus(client)]}</span></Button><InForceBadge personId={client.id} role="client" /><p>Inscrit le {new Date(client.created_at).toLocaleDateString("fr-FR")}</p><Button variant="link" onClick={onOpen}>Voir et vérifier le dossier</Button></article>;
+}
+function ClientDetail({ client, onBack }: { client: ClientRow; onBack: () => void }) {
+  const byType = new Map(client.documents.map(d => [d.doc_type, d]));
+  return <div className="space-y-4"><Button variant="ghost" onClick={onBack}>← Retour à la liste</Button><header><h2 className="text-xl font-bold">{client.first_name} {client.last_name}</h2><p>{client.email}</p><p>{CLIENT_STATUS_LABEL[clientStatus(client)]}</p><ContractCount personId={client.id} role="client" /></header><div className="grid md:grid-cols-2 gap-x-6">
+    <DossierBlock title="Identité et coordonnées" open><p>Nom d'usage : {client.last_name}</p><p>Nom de naissance : {client.birth_name || "Non renseigné"}</p><p>{client.address_line} {client.postal_code} {client.city}</p><p>{client.phone}</p><a className="text-primary underline" href={`mailto:${encodeURIComponent(client.email)}`}>{client.email}</a></DossierBlock>
+    <DossierBlock title="Informations URSSAF"><UrssafInfo client={client} /></DossierBlock>
+    <DossierBlock title="Documents">{clientDocTypes(client).map(t => <ClientDocCard key={t.type} label={t.label} doc={byType.get(t.type) ?? null} />)}</DossierBlock>
+    <DossierBlock title="Contrats"><PersonContracts personId={client.id} role="client" /></DossierBlock>
+    <DossierBlock title="Mandat"><p>À venir</p></DossierBlock>
+    <DossierBlock title="Missions et planning"><DossierMissions personId={client.id} role="client" /></DossierBlock>
+    <DossierBlock title="Frais de service"><PaymentsTab personId={client.id} /></DossierBlock>
+    <DossierBlock title="Journal de ce dossier"><AccessLog personId={client.id} /></DossierBlock>
+  </div></div>;
 }
 
 function UrssafInfo({ client }: { client: ClientRow }) {
@@ -794,7 +767,7 @@ function ClientDocCard({ label, doc }: { label: string; doc: ClientDoc | null })
   const url = useSignedUrl(doc?.file_path ?? null, "client-docs");
   const mut = useMutation({
     mutationFn: (v: { status: "validated" | "rejected"; rejectReason?: string }) =>
-      review({ data: { id: doc!.id, ...v } }),
+      doc ? review({ data: { id: doc.id, ...v } }) : Promise.reject(new Error("Document manquant")),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["client-registrations"] }),
     onError: (e: Error) => setErr(e.message),
   });
@@ -805,7 +778,7 @@ function ClientDocCard({ label, doc }: { label: string; doc: ClientDoc | null })
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-bold">{label}</p>
         <span
-          className={`text-xs font-bold shrink-0 ${doc?.status === "validated" ? "text-success" : doc?.status === "pending" ? "text-warning" : "text-destructive"}`}
+          className={`text-sm font-bold shrink-0 ${doc?.status === "validated" ? "text-success" : doc?.status === "pending" ? "text-warning" : "text-destructive"}`}
         >
           {doc?.status === "validated"
             ? "🟢 Validé"
@@ -838,18 +811,18 @@ function ClientDocCard({ label, doc }: { label: string; doc: ClientDoc | null })
             </a>
           )}
           {doc.reject_reason && (
-            <p className="text-xs font-bold text-destructive mt-1">Motif : {doc.reject_reason}</p>
+            <p className="text-sm font-bold text-destructive mt-1">Motif : {doc.reject_reason}</p>
           )}
           {err && <p className="text-sm text-destructive mt-2">{err}</p>}
           <div className="flex flex-col gap-2 mt-3">
             {doc.status !== "validated" && (
-              <button
+              <Button
                 disabled={mut.isPending}
                 onClick={() => mut.mutate({ status: "validated" })}
                 className="py-3 rounded-2xl bg-success text-success-foreground font-bold disabled:opacity-50"
               >
                 ✅ Valider ce document
-              </button>
+              </Button>
             )}
             <textarea
               placeholder="Motif du refus (10 caractères minimum)"
@@ -857,13 +830,13 @@ function ClientDocCard({ label, doc }: { label: string; doc: ClientDoc | null })
               onChange={(e) => setReason(e.target.value)}
               className={inputCls + " min-h-16"}
             />
-            <button
+            <Button
               disabled={mut.isPending || reason.trim().length < 10}
               onClick={() => mut.mutate({ status: "rejected", rejectReason: reason })}
               className="py-3 rounded-2xl bg-warning text-warning-foreground font-bold disabled:opacity-50"
             >
               📝 Refuser et demander une correction
-            </button>
+            </Button>
           </div>
         </>
       )}
@@ -881,7 +854,7 @@ const PAYMENT_STATUS_LABEL: Record<string, string> = {
   annulee_avant_debit: "↩️ Mission annulée avant débit (rien n'a été prélevé)",
 };
 
-function PaymentsTab() {
+function PaymentsTab({ personId, filter = "all" }: { personId?: string; filter?: string } = {}) {
   const qc = useQueryClient();
   const list = useServerFn(listMissionPayments);
   const payments = useQuery({ queryKey: ["mission-payments"], queryFn: () => list() });
@@ -908,26 +881,27 @@ function PaymentsTab() {
     onError: (e: Error) => setMessage(e.message),
   });
 
-  const rows = payments.data ?? [];
+  const rows = (payments.data ?? []).filter(p => (!personId || p.client_id === personId) && (filter !== "failed" || ["debit_echoue", "annulee_echec_paiement"].includes(p.status)));
 
   return (
     <div className="flex flex-col gap-3">
       <div className="rounded-2xl border-2 border-border bg-card p-3 text-sm">
         <p className="font-bold">Débit des frais de service (6,00 €) à 24 h de la mission</p>
-        <p className="text-xs text-muted-foreground mt-1">
+        <p className="text-sm text-muted-foreground mt-1">
           Vérification automatique toutes les heures. Paiement simulé : aucun prélèvement réel.
         </p>
-        <button
+        <Button
           onClick={() => run.mutate()}
           disabled={run.isPending}
           className="mt-3 w-full rounded-2xl bg-primary text-primary-foreground font-bold py-3 disabled:opacity-50"
         >
           {run.isPending ? "Traitement…" : "▶️ Lancer le traitement maintenant"}
-        </button>
-        {message && <p className="text-xs mt-2">{message}</p>}
+        </Button>
+        {message && <p className="text-sm mt-2">{message}</p>}
       </div>
 
       {payments.isLoading && <p className="text-sm text-muted-foreground">Chargement…</p>}
+      {payments.isError && <p className="text-destructive">Impossible de charger les frais de service.</p>}
       {!payments.isLoading && rows.length === 0 && (
         <p className="text-sm text-muted-foreground">Aucune réservation avec paiement différé.</p>
       )}
@@ -935,24 +909,24 @@ function PaymentsTab() {
       {rows.map((p) => (
         <div key={p.id} className="rounded-2xl border-2 border-border bg-card p-3 text-sm">
           <p className="font-bold">{PAYMENT_STATUS_LABEL[p.status] ?? p.status}</p>
-          <p className="text-xs text-muted-foreground mt-1 break-all">Mission {p.mission_id}</p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground mt-1 break-all">Mission {p.mission_id}</p>
+          <p className="text-sm text-muted-foreground">
             Prélèvement prévu :{" "}
             {p.scheduled_charge_at ? new Date(p.scheduled_charge_at).toLocaleString("fr-FR") : "—"}
           </p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Montant : {(p.amount_cents / 100).toFixed(2)} €
             {p.charged_at ? ` · débité le ${new Date(p.charged_at).toLocaleString("fr-FR")}` : ""}
           </p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Tentatives : {p.retry_count ?? 0} / 3
             {p.next_retry_at
               ? ` · prochaine relance le ${new Date(p.next_retry_at).toLocaleString("fr-FR")}`
               : ""}
           </p>
-          {p.failure_reason && <p className="text-xs text-destructive mt-1">{p.failure_reason}</p>}
+          {p.failure_reason && <p className="text-sm text-destructive mt-1">{p.failure_reason}</p>}
           {p.refund_status && p.refund_status !== "aucun" && (
-            <div className="mt-2 rounded-xl border-2 border-border bg-muted/40 p-2 text-xs">
+            <div className="mt-2 rounded-xl border-2 border-border bg-muted/40 p-2 text-sm">
               <p className="font-bold">
                 {p.refund_status === "rembourse"
                   ? "💶 Remboursé"
@@ -966,18 +940,18 @@ function PaymentsTab() {
             </div>
           )}
           <div className="grid grid-cols-2 gap-2 mt-3">
-            <button
+            <Button
               onClick={() => mutate.mutate({ id: p.id, dueNow: true })}
-              className="rounded-2xl border-2 border-primary text-primary font-bold py-2 text-xs"
+              className="rounded-2xl border-2 border-primary text-primary font-bold py-2 text-sm"
             >
               {p.status === "debit_echoue" ? "⏱️ Relancer maintenant" : "⏱️ Rendre exigible maintenant"}
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => mutate.mutate({ id: p.id, simulateFailure: !p.simulate_failure })}
-              className={`rounded-2xl border-2 font-bold py-2 text-xs ${p.simulate_failure ? "border-destructive text-destructive" : "border-border"}`}
+              className={`rounded-2xl border-2 font-bold py-2 text-sm ${p.simulate_failure ? "border-destructive text-destructive" : "border-border"}`}
             >
               {p.simulate_failure ? "Échec simulé : activé" : "Simuler un échec"}
-            </button>
+            </Button>
           </div>
         </div>
       ))}
