@@ -3,6 +3,18 @@ import assert from "node:assert/strict";
 import { store, COMPANIONS } from "./store";
 import { setCalendarContracts } from "./contractCalendar";
 
+for (const method of ["acceptRequest", "acceptRequestBy"] as const) {
+  for (const deadline of [undefined, Date.parse("2099-10-25T12:00:00Z")]) {
+    test(`${method}: an old contract survives only while awaiting a contract answer (${deadline})`, () => {
+      setCalendarContracts("family", []);
+      const id = store.createRequest({ id: `fallback-${method}-${deadline}`, need: "Pharmacie", address: "Paris", phone: "", scheduledAt: Date.parse("2099-10-26T10:00:00Z"), contractId: "old-pair", contractAnswerDeadline: deadline });
+      assert.equal(method === "acceptRequest" ? store.acceptRequest(id, 1) : store.acceptRequestBy(id, "c2"), true);
+      assert.equal(store.getState().requests.find(r => r.id === id)?.contractId, deadline == null ? undefined : "old-pair");
+      setCalendarContracts("", []);
+    });
+  }
+}
+
 describe("Isolation des demandes d'exemple", () => {
   for (const id of ["seed-1", "seed-2"]) {
     test(`${id} est exclusivement une mission démo`, () => {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/CopyButton";
 import { store, useStore, type Request } from "@/lib/store";
 import {
@@ -122,7 +123,7 @@ function Section({ title, items, render }: { title: string; items: Request[]; re
   );
 }
 
-export function MissionsTab() {
+export function MissionsTab({ filter = "all" }: { filter?: string } = {}) {
   const list = useAccepted();
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -130,10 +131,10 @@ export function MissionsTab() {
     return () => clearInterval(t);
   }, []);
 
-  const toDeclare = list.filter((r) => isDone(r) && !r.declaredAt);
-  const reported = list.filter((r) => r.completion === "problem");
-  const pending = list.filter((r) => !r.completion || r.completion === "pending");
-  const declared = list.filter((r) => isDone(r) && r.declaredAt);
+  const toDeclare = list.filter((r) => (filter === "all" || filter === "declare") && isDone(r) && !r.declaredAt);
+  const reported = list.filter((r) => (filter === "all" || filter === "reported") && r.completion === "problem");
+  const pending = list.filter((r) => filter === "all" && (!r.completion || r.completion === "pending"));
+  const declared = list.filter((r) => filter === "all" && isDone(r) && r.declaredAt);
 
   return (
     <div className="flex flex-col gap-5">
@@ -188,7 +189,7 @@ export function MissionsTab() {
             items={declared}
             render={(r) => (
               <MissionCard key={r.id} r={r} now={now}>
-                <p>Déclarée le <b>{fmtDate(r.declaredAt!)}</b></p>
+                <p>Déclarée le <b>{r.declaredAt ? fmtDate(r.declaredAt) : "—"}</b></p>
               </MissionCard>
             )}
           />
