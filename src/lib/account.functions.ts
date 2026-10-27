@@ -1,3 +1,4 @@
+import { requireMandataireAccess } from "./mandataireAccess";
 import { createServerFn } from "@tanstack/react-start";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
@@ -130,19 +131,7 @@ export const bootstrapAccount = createServerFn({ method: "POST" })
     return { isMandataire, strongAuth: strongAuthFromClaims(claims), email };
   });
 
-async function requireMandataire(context: {
-  supabase: SupabaseClient<Database>;
-  userId: string;
-  claims: unknown;
-}) {
-  const { data } = await context.supabase.rpc("has_role", {
-    _user_id: context.userId,
-    _role: "mandataire",
-  });
-  if (!data) throw new Error("Accès réservé au Mandataire Solélia.");
-  if (!strongAuthFromClaims(context.claims as Claims))
-    throw new Error("Double authentification requise.");
-}
+const requireMandataire = requireMandataireAccess;
 
 export const listApplications = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -170,6 +159,9 @@ export const getDocumentUrl = createServerFn({ method: "POST" })
       .from(data.bucket)
       .createSignedUrl(data.path, 600);
     if (error || !signed) throw new Error(error?.message ?? "Document introuvable");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { recordMandataireAccess } = await import("./mandataireLog.server");
+    await recordMandataireAccess(supabaseAdmin, context.userId, "document_open", "document", data.path);
     return { url: signed.signedUrl };
   });
 
@@ -182,7 +174,7 @@ export const listClientRegistrations = createServerFn({ method: "GET" })
       context.supabase
         .from("profiles")
         .select(
-          "id, first_name, last_name, email, phone, city, created_at, tax_number, has_cesu_number, cesu_number, birth_date, birth_place, birth_department",
+          "id, first_name, last_name, birth_name, address_line, postal_code, email, phone, city, created_at, tax_number, has_cesu_number, cesu_number, birth_date, birth_place, birth_department",
         )
         .order("created_at", { ascending: false }),
       context.supabase
