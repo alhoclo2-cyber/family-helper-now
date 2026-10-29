@@ -102,6 +102,7 @@ describe("getContractForCompanion response", () => {
       kind: "cdi",
       firstMissionId: "mission-1",
       companion: { birthName: "Nguyen", lastName: "Nguyen", firstName: "Léa", address: "5 rue de la Paix", phone: "0698765432", email: "lea@example.fr", nir: "123456789012345" },
+      shortNotice: false,
     });
     const fields = Object.fromEntries(response.document.employer.map((f) => [f.label, f.value]));
     assert.equal(fields.Adresse, "rue des Lilas, 75014 Paris");
@@ -109,7 +110,7 @@ describe("getContractForCompanion response", () => {
     assert.equal(fields["E-mail"], "••••");
     assert.equal(fields["N° CESU"], "••••");
     assert.doesNotMatch(JSON.stringify(response.document), /12 rue des Lilas|0612345678|famille@example.fr|1234567/);
-    assert.deepEqual(Object.keys(response).sort(), ["companion", "deadline", "document", "firstMissionId", "kind"]);
+    assert.deepEqual(Object.keys(response).sort(), ["companion", "deadline", "document", "firstMissionId", "kind", "shortNotice"]);
     assert.equal(JSON.stringify(doc), before);
   });
 });

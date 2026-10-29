@@ -259,7 +259,7 @@ async function readOwnCompanionContract(ctx: Ctx, contractId: string) {
   // Privileged read is scoped to the authenticated recipient before loading the snapshot.
   const { data } = await supabaseAdmin
     .from("work_contracts")
-    .select("id, client_id, companion_user_id, companion_ref, status, companion_answer_deadline, document_hash, contract_snapshot, first_mission_id, contract_kind")
+    .select("id, client_id, companion_user_id, companion_ref, status, companion_answer_deadline, document_hash, contract_snapshot, first_mission_id, contract_kind, employer_signed_at, effective_from")
     .eq("id", contractId)
     .eq("companion_user_id", ctx.userId)
     .neq("status", "draft")
