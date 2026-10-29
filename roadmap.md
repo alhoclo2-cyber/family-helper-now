@@ -1,4 +1,4 @@
-- [ ] Prompt 9 : prévenance 5 jours non bloquante, accord exprès compagnon, garde-fou avant échéance ; tests et contrôle TypeScript.
+- [x] Prompt 9 : prévenance 5 jours non bloquante, accord exprès compagnon, garde-fou avant échéance ; tests et contrôle TypeScript automatique. Vérification navigateur non faite.
 - [ ] Prompt 8 : dossiers Mandataire, contrats en lecture seule, PDF partagé, journal d'accès et correction de réattribution ; tests et vérifications.
 - [x] Préparer l'identité contrat, les tables sécurisées et les paramètres Mandataire, sans parcours contrat ni blocage des comptes existants.
 - [x] Vérifier les champs d'inscription, l'enregistrement et relecture du profil Compagnon approuvé, les politiques d'accès et les tests de régression (37 réussis).
