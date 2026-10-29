@@ -342,7 +342,7 @@ export const getContractForCompanion = createServerFn({ method: "POST" })
       kind: c.contract_kind,
       firstMissionId: c.first_mission_id,
       companion,
-      shortNotice: c.employer_signed_at != null && new Date(c.effective_from).getTime() - new Date(c.employer_signed_at).getTime() < 5 * 86_400_000,
+      shortNotice: c.employer_signed_at != null && c.effective_from != null && new Date(c.effective_from).getTime() - new Date(c.employer_signed_at).getTime() < 5 * 86_400_000,
     });
   });
 
