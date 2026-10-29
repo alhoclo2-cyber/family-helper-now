@@ -102,6 +102,7 @@ describe("getContractForCompanion response", () => {
       kind: "cdi",
       firstMissionId: "mission-1",
       companion: { birthName: "Nguyen", lastName: "Nguyen", firstName: "Léa", address: "5 rue de la Paix", phone: "0698765432", email: "lea@example.fr", nir: "123456789012345" },
+      shortNotice: false,
     });
     const fields = Object.fromEntries(response.document.employer.map((f) => [f.label, f.value]));
     assert.equal(fields.Adresse, "rue des Lilas, 75014 Paris");
@@ -109,7 +110,7 @@ describe("getContractForCompanion response", () => {
     assert.equal(fields["E-mail"], "••••");
     assert.equal(fields["N° CESU"], "••••");
     assert.doesNotMatch(JSON.stringify(response.document), /12 rue des Lilas|0612345678|famille@example.fr|1234567/);
-    assert.deepEqual(Object.keys(response).sort(), ["companion", "deadline", "document", "firstMissionId", "kind"]);
+    assert.deepEqual(Object.keys(response).sort(), ["companion", "deadline", "document", "firstMissionId", "kind", "shortNotice"]);
     assert.equal(JSON.stringify(doc), before);
   });
 });
@@ -155,4 +156,11 @@ describe("buildFinalContractDocument", () => {
     assert.match(text, /L'employeur :/);
     assert.match(text, /Le salarié :/);
   });
+});
+
+test("shortNotice is passed through for the companion warning", () => {
+  const doc = { version: 2, kind: "cdi" as const, title: "Contrat", idcc: "3239", employer: [{ label: "Téléphone", value: "0600" }], companion: [], sections: [], emploiPending: false };
+  const companion = { birthName: "", lastName: "", firstName: "", address: "", phone: "", email: "", nir: "" };
+  assert.equal(buildCompanionContractResponse({ document: doc, deadline: "2026-10-30T08:00:00Z", kind: "cdi", firstMissionId: null, companion, shortNotice: true }).shortNotice, true);
+  assert.equal(buildCompanionContractResponse({ document: doc, deadline: "2026-10-30T08:00:00Z", kind: "cdi", firstMissionId: null, companion, shortNotice: false }).shortNotice, false);
 });

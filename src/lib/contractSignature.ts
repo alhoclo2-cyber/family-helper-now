@@ -1,5 +1,5 @@
 import { decideContractKind, validateAnswers, type ContractAnswers, type ContractKind } from "./contractDecision";
-import { defaultTerms, meetsContractNotice, normalizeStoredTerms, validateTerms, type ContractTerms } from "./contractTerms";
+import { defaultTerms, normalizeStoredTerms, validateTerms, type ContractTerms } from "./contractTerms";
 
 /* ------------------------------------------------------------------
    Contrôles de la signature employeur (fonctions pures).
@@ -12,7 +12,7 @@ export const OTP_MAX_ATTEMPTS = 3;
 const HOUR = 3_600_000;
 
 export type SignatureRefusal =
-  | "not_owner" | "not_draft" | "decision_invalid" | "terms_invalid" | "no_cesu" | "notice" | "pair_active" | "salary";
+  | "not_owner" | "not_draft" | "decision_invalid" | "terms_invalid" | "no_cesu" | "too_close" | "pair_active" | "salary";
 
 export const SIGNATURE_MESSAGES: Record<SignatureRefusal, string> = {
   not_owner: "Ce contrat ne vous appartient pas.",
@@ -20,7 +20,7 @@ export const SIGNATURE_MESSAGES: Record<SignatureRefusal, string> = {
   decision_invalid: "Les réponses sur le type de contrat sont incomplètes : reprenez le premier questionnaire.",
   terms_invalid: "Certains choix du contrat sont incomplets ou invalides : vérifiez le questionnaire.",
   no_cesu: "Votre numéro CESU est nécessaire pour signer un contrat de travail.",
-  notice: "La mission doit être réservée au moins 5 jours avant son début.",
+  too_close: "Le début de la mission est trop proche : le compagnon doit pouvoir répondre avant. Modifiez la date et l'heure.",
   pair_active: "Un contrat est déjà actif ou en attente avec ce compagnon.",
   salary: "Le salaire horaire net est invalide.",
 };
@@ -44,7 +44,7 @@ export function checkEmployerSignature(i: SignatureCheckInput): SignatureCheck {
   if (!d || d.client_id !== i.callerId) return { ok: false, code: "not_owner" };
   if (d.status !== "draft") return { ok: false, code: "not_draft" };
   if (!(i.cesu?.has_cesu_number === true && !!i.cesu.cesu_number?.trim())) return { ok: false, code: "no_cesu" };
-  if (!meetsContractNotice(i.missionTs, i.nowTs)) return { ok: false, code: "notice" };
+  if (!meetsContractLeadTime(i.missionTs, i.nowTs)) return { ok: false, code: "too_close" };
   if (i.otherActive) return { ok: false, code: "pair_active" };
   if (!Number.isFinite(i.salaryNet) || i.salaryNet <= 0) return { ok: false, code: "salary" };
 
@@ -68,6 +68,11 @@ export function checkEmployerSignature(i: SignatureCheckInput): SignatureCheck {
 /** Échéance de réponse du compagnon : toujours 8 h après la signature de l'employeur. */
 export function companionAnswerDeadline(signedTs: number, _missionTs?: number): number {
   return signedTs + 8 * HOUR;
+}
+
+/** Garde-fou serveur : la mission commence après l'échéance de réponse du compagnon. */
+export function meetsContractLeadTime(missionTs: number, nowTs: number): boolean {
+  return companionAnswerDeadline(nowTs) <= missionTs;
 }
 
 export function maskValue(v: string | null | undefined): string {

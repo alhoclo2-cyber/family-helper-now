@@ -197,6 +197,11 @@ export function ContractCompanionView({
       ))}
 
       <ContractNoticeSentence />
+      {contract.data.shortNotice && (
+        <p className="text-base rounded-2xl border-2 border-border bg-accent p-4">
+          Cette mission commence dans moins de 5 jours (le délai de prévenance habituel est de 5 jours). En signant, vous acceptez expressément cette mission avec ce délai plus court. Vous pouvez la refuser, sans justification ni pénalité.
+        </p>
+      )}
       <p className="text-base font-semibold">Vous pouvez refuser ce contrat sans justification ni pénalité.</p>
 
       <label className="flex items-start gap-3 rounded-2xl border-2 border-border bg-card p-4 font-semibold">

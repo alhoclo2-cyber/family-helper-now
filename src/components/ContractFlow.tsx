@@ -1,49 +1,34 @@
 import { useState } from "react";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
+import { Button } from "@/components/ui/button";
 import { ContractQuestionnaire } from "@/components/ContractQuestionnaire";
 import { ContractTermsQuestionnaire } from "@/components/ContractTermsQuestionnaire";
 import { ContractReview, type ContractMission, type SignedContract } from "@/components/ContractReview";
-import { CONTRACT_NOTICE_SENTENCE, earliestContractMissionTs, meetsContractNotice } from "@/lib/contractTerms";
+import { meetsContractLeadTime, SIGNATURE_MESSAGES } from "@/lib/contractSignature";
 import type { ContractAnswers, ContractKind } from "@/lib/contractDecision";
 import type { EditTarget } from "@/lib/contractDocument";
 import { COMPANIONS } from "@/lib/store";
 
-/** Carte de blocage : contrat applicable mais mission à moins de 5 jours . */
-export function ContractNoticeBlock({
+/** Information non bloquante : mission à moins de 5 jours avec contrat applicable. */
+export function ContractShortNoticeInfo({
+  state,
+  onContinue,
   onEditDate,
   onOtherCompanion,
-  onBack,
 }: {
-  onEditDate?: () => void;
-  onOtherCompanion?: () => void;
-  onBack?: () => void;
+  state: "threshold_reached" | "in_force";
+  onContinue: () => void;
+  onEditDate: () => void;
+  onOtherCompanion: () => void;
 }) {
-  const earliest = new Date(earliestContractMissionTs(Date.now()));
   return (
-    <div className="rounded-2xl border-2 border-destructive bg-card p-4 flex flex-col gap-3" role="alert">
-      <h2 className="text-lg font-black">Délai de 5 jours minimum</h2>
-      <p className="text-sm font-bold text-destructive">
-        {CONTRACT_NOTICE_SENTENCE}
-      </p>
-      <p className="text-sm">
-        Date et heure au plus tôt : {format(earliest, "EEEE d MMMM yyyy", { locale: fr })} à {format(earliest, "HH:mm")}
-      </p>
-      {onEditDate && (
-        <button type="button" onClick={onEditDate} className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold">
-          Modifier la date et l'heure
-        </button>
-      )}
-      {onOtherCompanion && (
-        <button type="button" onClick={onOtherCompanion} className="w-full py-4 rounded-2xl border-2 border-border font-bold">
-          Choisir un autre compagnon
-        </button>
-      )}
-      {onBack && (
-        <button type="button" onClick={onBack} className="w-full py-4 rounded-2xl border-2 border-border font-bold">
-          Retour
-        </button>
-      )}
+    <div className="rounded-2xl border-2 border-border bg-card p-4 flex flex-col gap-3 text-base" role="status">
+      <h2 className="text-lg font-black">Demande à moins de 5 jours</h2>
+      <p>{state === "threshold_reached" ? "Avec ce compagnon, cette mission dépasse le seuil à partir duquel un contrat de travail écrit est nécessaire (plus de 3 h dans la semaine, ou à partir de la 5e semaine consécutive)." : "Vous avez déjà un contrat de travail en cours avec ce compagnon."}</p>
+      <p>La convention collective prévoit que vous préveniez votre salarié au moins 5 jours avant le début d'une mission. Pour une demande imprévue, la plateforme vous permet de demander à ce compagnon s'il est disponible : il peut accepter ou refuser librement. S'il accepte, la mission est confirmée avec ce délai plus court.</p>
+      <Button type="button" onClick={onContinue} className="h-auto whitespace-normal w-full py-4 text-base font-bold">Continuer ma demande</Button>
+      <Button type="button" variant="outline" onClick={onEditDate} className="h-auto whitespace-normal w-full py-4 text-base font-bold">Modifier la date et l'heure</Button>
+      <Button type="button" variant="outline" onClick={onOtherCompanion} className="h-auto whitespace-normal w-full py-4 text-base font-bold">Choisir un autre compagnon</Button>
+      <p className="text-muted-foreground">Avec un compagnon qui n'a pas atteint le seuil, aucun contrat n'est nécessaire.</p>
     </div>
   );
 }
@@ -66,21 +51,23 @@ export function ContractFlow({
   missionTs: number;
   durationHours: number;
   mission: ContractMission;
-  /** Identifiant de la mission liée au contrat (first_mission_id). */
+  /** Identifiant de la mission liée au contrat (first_mission_id), connu avant la signature. */
   missionId: string;
   /** Retour au formulaire de réservation (aussi utilisé par « Modifier » des sections issues de la réservation). */
   onBack: () => void;
   onSigned: (result: SignedContract) => void;
 }) {
-  const [noticeOk] = useState(() => meetsContractNotice(missionTs, Date.now()));
+  // Garde-fou non contractuel : le compagnon doit pouvoir répondre avant le début.
+  const [leadTimeOk] = useState(() => meetsContractLeadTime(missionTs, Date.now()));
   const [q1, setQ1] = useState<Q1 | null>(null);
   const [phase, setPhase] = useState<Phase>({ name: "q1", fromReview: false });
   const cesuActive = COMPANIONS.find((c) => c.id === companionId)?.cesuActive ?? false;
 
-  if (!noticeOk) {
+  if (!leadTimeOk) {
     return (
-      <div className="flex-1 flex flex-col px-5 py-6 gap-4">
-        <ContractNoticeBlock onBack={onBack} />
+      <div className="flex-1 flex flex-col px-5 py-6 gap-4 text-base">
+        <p role="alert" className="font-semibold">{SIGNATURE_MESSAGES.too_close}</p>
+        <Button type="button" onClick={onBack} className="h-auto whitespace-normal w-full py-4 text-base font-bold">Modifier la date et l'heure</Button>
       </div>
     );
   }

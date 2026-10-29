@@ -1,3 +1,4 @@
+- [x] Prompt 9 : prévenance 5 jours non bloquante, accord exprès compagnon, garde-fou avant échéance ; tests et contrôle TypeScript automatique. Vérification navigateur non faite.
 - [ ] Prompt 8 : dossiers Mandataire, contrats en lecture seule, PDF partagé, journal d'accès et correction de réattribution ; tests et vérifications.
 - [x] Préparer l'identité contrat, les tables sécurisées et les paramètres Mandataire, sans parcours contrat ni blocage des comptes existants.
 - [x] Vérifier les champs d'inscription, l'enregistrement et relecture du profil Compagnon approuvé, les politiques d'accès et les tests de régression (37 réussis).
@@ -22,7 +23,7 @@
 - [x] Prompt 4 : rectifications (horaires 6h–21h, contrôle CESU dans la modale, jours de repos multiples).
 - [x] Prompt 7 : bloquer toute mission réservée un jour de repos du contrat en vigueur ; page Mes contrats ; envoi du planning par e-mail simulé.
 - [x] Prompt 5 : relecture et signature employeur
-- [x] Prompt 5 bis : délai de 5 jours
+- [x] Prompt 5 bis : délai de 5 jours (remplacé au prompt 9 par un rappel non bloquant)
 - [x] Prompt 6 : réponse du compagnon (lecture, signature, refus, délai), contrat final en clair et e-mail simulé
 - [ ] Tâche planifiée d'expiration des contrats (aujourd'hui : vérification au chargement des écrans)
 - [ ] Retrait de la demande par le particulier pendant l'attente de la réponse du compagnon
