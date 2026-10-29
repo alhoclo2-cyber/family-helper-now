@@ -156,3 +156,10 @@ describe("buildFinalContractDocument", () => {
     assert.match(text, /Le salarié :/);
   });
 });
+
+test("shortNotice is passed through for the companion warning", () => {
+  const doc = { version: 2, kind: "cdi" as const, title: "Contrat", idcc: "3239", employer: [{ label: "Téléphone", value: "0600" }], companion: [], sections: [], emploiPending: false };
+  const companion = { birthName: "", lastName: "", firstName: "", address: "", phone: "", email: "", nir: "" };
+  assert.equal(buildCompanionContractResponse({ document: doc, deadline: "2026-10-30T08:00:00Z", kind: "cdi", firstMissionId: null, companion, shortNotice: true }).shortNotice, true);
+  assert.equal(buildCompanionContractResponse({ document: doc, deadline: "2026-10-30T08:00:00Z", kind: "cdi", firstMissionId: null, companion, shortNotice: false }).shortNotice, false);
+});

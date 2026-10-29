@@ -1,6 +1,6 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { checkEmployerSignature, companionAnswerDeadline, type SignatureCheckInput } from "./contractSignature";
+import { checkEmployerSignature, companionAnswerDeadline, meetsContractLeadTime, type SignatureCheckInput } from "./contractSignature";
 
 const DAY = 86_400_000;
 const now = new Date("2026-11-02T09:00:00").getTime();
@@ -30,9 +30,10 @@ describe("checkEmployerSignature", () => {
     assert.equal(code({ cesu: { has_cesu_number: false, cesu_number: "123" } }), "no_cesu");
     assert.equal(code({ cesu: { has_cesu_number: true, cesu_number: " " } }), "no_cesu");
   });
-  test("5 jours exactement acceptés, 1 min de moins refusée", () => {
-    assert.equal(code({ missionTs: now + 5 * DAY - 60_000 }), "notice");
-    assert.equal(code({ missionTs: now + 5 * DAY }), "ok");
+  test("mission à 24 h acceptée, mission trop proche refusée", () => {
+    assert.equal(code({ missionTs: now + 24 * 3_600_000 }), "ok");
+    assert.equal(code({ missionTs: now + 7 * 3_600_000 }), "too_close");
+    assert.equal(code({ missionTs: now + 8 * 3_600_000 }), "ok");
   });
   test("refus d'un brouillon qui n'est pas au particulier connecté", () => assert.equal(code({ callerId: "u2" }), "not_owner"));
   test("refus d'un contrat déjà signé", () => assert.equal(code({ draft: { ...base.draft!, status: "awaiting_companion" } }), "not_draft"));

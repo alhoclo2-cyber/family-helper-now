@@ -24,6 +24,9 @@ describe("buildContractDocument", () => {
     assert.match(text(doc, 3), /2 rue B, 75002 Paris/);
     assert.match(text(doc, 5), /de 0 à 48 heures/);
     assert.match(text(doc, 5), /5 jours calendaires/);
+    assert.match(text(doc, 5), /délai plus court \(24 heures minimum\)/);
+    assert.match(text(doc, 5), /acceptation vaut accord exprès/);
+    assert.match(text(doc, 12), /accord exprès pour cette seule mission, sans modifier le contrat/);
     assert.match(text(doc, 8), /1er mai est chômé/);
     assert.ok(text(doc, 9).includes(PAY_CESU_ACTIVE));
     assert.match(text(doc, 9), /11,50 €/);
@@ -43,6 +46,7 @@ describe("buildContractDocument", () => {
     assert.match(text(doc, 2), /remplacement de Anne Roy, aide à domicile/);
     assert.match(text(doc, 2), /01\/02\/2027/);
     assert.match(text(doc, 5), /Lundi : de 09:00 à 12:00/);
+    assert.match(text(doc, 5), /sauf accord exprès du salarié donné via la plateforme/);
     assert.match(text(doc, 7), /Samedi, Dimanche/);
     assert.match(text(doc, 8), /majorées de 100 %/);
     assert.match(text(doc, 8), /14 juillet/);
