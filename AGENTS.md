@@ -33,7 +33,7 @@
 - Le questionnaire du contrat ne demande aucune donnée du Compagnon : elles sont reprises côté serveur.
 - Solélia n'impose aucun choix d'employeur : planning défini ou durée irrégulière et jours fériés sont choisis par le Particulier.
 - Le paiement du salaire suit le circuit de la plateforme : acomptes possibles, solde au plus tard le 5 du mois suivant ; aucune question n'est posée au particulier sur ce point.
-- Dès qu'un contrat s'applique (seuil atteint ou contrat en vigueur), la mission doit être réservée au moins 5 jours avant son début (comptés à la signature de l'employeur) ; le compagnon dispose de 8 h pour répondre ; phrase explicative en rouge dans le parcours. Le compagnon peut refuser le contrat à tout moment avant de l'accepter, sans justification ni pénalité.
+- 5-day notice is contractual, never blocking; closer mission only with express companion consent; mission must start after the companion answer deadline. The companion may freely refuse.
 - Require employer CESU in the threshold modal and reverify it server-side at signature.
 - La signature de l'employeur est faite par une fonction serveur qui revérifie tout ; le navigateur ne fait jamais foi. Les données personnelles du compagnon ne sont jamais envoyées en clair au particulier avant la signature des deux parties.
 - Preserve signed hashes; display final_document after both signatures. PDFs allow in_force/ended/terminated/closed, with final hash checks and private server storage reuse.

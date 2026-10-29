@@ -14,7 +14,7 @@ import { AuthCard } from "@/components/AuthCard";
 import { store, useStore, randomStudent, COMPANIONS, experienceBadge, FAMILY_RESPONSE_DELAY_MS, type NeedType, type Request, type Companion } from "@/lib/store";
 import { CguAcceptBlock, CguPanel } from "@/components/Cgu";
 import { CesuRecurrenceModal } from "@/components/CesuRecurrence";
-import { ContractFlow, ContractNoticeBlock } from "@/components/ContractFlow";
+import { ContractFlow, ContractShortNoticeInfo } from "@/components/ContractFlow";
 import { ContractCompanionView } from "@/components/ContractCompanionView";
 import { useContractStatus, useMyContractLinks } from "@/lib/contractDraft";
 import { expireOverdueContracts, simulateCompanionAnswer } from "@/lib/contract.functions";
@@ -1245,7 +1245,7 @@ function FamilyForm({
 
   const [showErrors, setShowErrors] = useState(false);
   const [showContractQ, setShowContractQ] = useState(false);
-  const [noticeBlocked, setNoticeBlocked] = useState(false);
+  const [shortNotice, setShortNotice] = useState<"threshold_reached" | "in_force" | null>(null);
   // Identifiant de la mission liée au contrat (first_mission_id), connu avant la signature.
   const [contractMissionId] = useState(() => `req-${crypto.randomUUID()}`);
   const okStreet = bookingAddressSchema.shape.street.safeParse(addressParts.street).success;
@@ -1328,9 +1328,9 @@ function FamilyForm({
     injectSimulations();
     if (mode === "scheduled" && autoSearch === false && pickedCompanion) {
       const { state, check } = evaluatePair(pickedCompanion);
-      // Contrat applicable : délai minimum de 5 jours, avant la modale et le raccourci « in_force ».
+      // Contrat applicable : rappel non bloquant du délai de prévenance.
       if (contractFlow && (state === "threshold_reached" || state === "in_force") && !meetsContractNotice(new Date(when).getTime(), Date.now())) {
-        setNoticeBlocked(true);
+        setShortNotice(state);
         return;
       }
       if (state === "threshold_reached") {
@@ -2132,12 +2132,14 @@ function FamilyForm({
       >
         {mode === "asap" ? "Lancer la recherche" : "Valider la réservation"}
       </button>
-      {noticeBlocked && (
+      {shortNotice && (
         <div className="fixed inset-0 z-50 bg-foreground/40 flex items-center justify-center p-4">
           <div className="w-full max-w-[440px]">
-            <ContractNoticeBlock
-              onEditDate={() => setNoticeBlocked(false)}
-              onOtherCompanion={() => { setNoticeBlocked(false); setPickedCompanion(""); }}
+            <ContractShortNoticeInfo
+              state={shortNotice}
+              onContinue={() => { const state = shortNotice; setShortNotice(null); if (state === "threshold_reached") { const { check } = evaluatePair(pickedCompanion); setComplianceCheck(check); } else createAndGo(); }}
+              onEditDate={() => setShortNotice(null)}
+              onOtherCompanion={() => { setShortNotice(null); setPickedCompanion(""); }}
             />
           </div>
         </div>

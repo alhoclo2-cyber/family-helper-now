@@ -15,7 +15,7 @@ export const CONTRACT_MIN_NOTICE_DAYS = 5;
 export const MISSIONS_FREE_TO_REFUSE = true;
 export const CONTRACT_REFUSAL_FREE = true;
 
-export const CONTRACT_NOTICE_SENTENCE = "La mission doit être réservée au moins 5 jours avant son début.";
+export const CONTRACT_NOTICE_SENTENCE = "Rappel : la convention collective prévoit un délai de prévenance de 5 jours. Une mission plus rapprochée est possible avec l'accord du compagnon.";
 
 export const PUBLIC_HOLIDAYS = [
   { key: "jan1", label: "1er janvier" },

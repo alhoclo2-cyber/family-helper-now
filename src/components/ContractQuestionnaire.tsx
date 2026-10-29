@@ -25,7 +25,7 @@ const SAVE_ERROR = "Impossible d'enregistrer vos réponses, réessayez.";
 type Step = "q1" | "q2" | "q3" | "confirm";
 
 export function ContractNoticeSentence() {
-  return <p className="text-sm font-bold text-destructive">{CONTRACT_NOTICE_SENTENCE}</p>;
+  return <p className="text-base text-muted-foreground">{CONTRACT_NOTICE_SENTENCE}</p>;
 }
 
 function Choice({

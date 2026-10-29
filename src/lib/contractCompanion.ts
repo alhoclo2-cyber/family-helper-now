@@ -71,6 +71,8 @@ export function buildCompanionContractResponse(input: {
   kind: string | null;
   firstMissionId: string | null;
   companion: FinalCompanionIdentity;
+  /** Vrai si la mission commence moins de 5 jours après la signature de l'employeur. */
+  shortNotice: boolean;
 }) {
   return {
     document: maskEmployerForCompanion(input.document),
@@ -78,6 +80,7 @@ export function buildCompanionContractResponse(input: {
     kind: input.kind,
     firstMissionId: input.firstMissionId,
     companion: input.companion,
+    shortNotice: input.shortNotice,
   };
 }
 
