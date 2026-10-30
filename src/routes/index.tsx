@@ -721,6 +721,8 @@ function FamilyFlow() {
     return (
       <FamilyReservedMissions
         missions={reserved}
+        awaiting={allRequests.filter(r => !r.demo && r.status === "searching" && !!r.contractId && r.contractAnswerDeadline != null)}
+        onModify={(r) => { setEditRequest(r); setEditPick(false); setStep("form"); }}
         onBack={() => setStep("home")}
         menu={<AccountMenu reserved={reservedEntry} />}
       />
@@ -2619,7 +2621,7 @@ function ReservedMissionCard({ request, defaultOpen }: { request: Request; defau
   );
 }
 
-function FamilyReservedMissions({ missions, onBack, menu }: { missions: Request[]; onBack: () => void; menu: React.ReactNode }) {
+function FamilyReservedMissions({ missions, awaiting, onModify, onBack, menu }: { missions: Request[]; awaiting: Request[]; onModify: (request: Request) => void; onBack: () => void; menu: React.ReactNode }) {
   return (
     <div className="flex-1 flex flex-col px-5 py-6 gap-4 text-base">
       <div className="w-full flex items-center justify-between gap-3">
@@ -2629,7 +2631,8 @@ function FamilyReservedMissions({ missions, onBack, menu }: { missions: Request[
         </button>
       </div>
       <h2 className="text-2xl font-black">📅 Mes missions réservées</h2>
-      {missions.length === 0 ? (
+      {awaiting.map((r) => <div key={r.id} className="rounded-2xl border-2 border-border bg-card p-4 space-y-3"><p className="font-bold">{r.need} · En attente de la réponse du compagnon</p><p>{formatMissionRange(r)}</p><ContractWithdrawalActions contractId={r.contractId!} onModify={onModify} /></div>)}
+      {missions.length === 0 && awaiting.length === 0 ? (
         <p className="py-10 text-center text-muted-foreground">Vous n'avez aucune mission réservée pour le moment.</p>
       ) : (
         missions.map((r) => <ReservedMissionCard key={r.id} request={r} defaultOpen={missions.length === 1} />)
