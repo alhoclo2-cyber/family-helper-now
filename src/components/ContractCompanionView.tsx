@@ -54,6 +54,7 @@ export function ContractCompanionView({
     queryKey: ["contract-for-companion", contractId],
     queryFn: () => fetchContract({ data: { contractId } }),
     staleTime: 0,
+    refetchInterval: 5000,
     retry: false,
   });
   const [read, setRead] = useState(false);

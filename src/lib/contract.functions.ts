@@ -330,6 +330,7 @@ export const getContractForCompanion = createServerFn({ method: "POST" })
     const { buildCompanionContractResponse, COMPANION_ANSWER_MESSAGES } = await import("./contractCompanion");
     const c = await readOwnCompanionContract(ctx, data.contractId);
     if (!c) throw new Error(COMPANION_ANSWER_MESSAGES.not_companion);
+    if (c.status === "withdrawn") throw new Error("Cette demande a été retirée par le particulier");
     if (c.status !== "awaiting_companion") throw new Error(COMPANION_ANSWER_MESSAGES.not_awaiting);
     if (!c.companion_answer_deadline || new Date(c.companion_answer_deadline).getTime() < Date.now())
       throw new Error(COMPANION_ANSWER_MESSAGES.expired);

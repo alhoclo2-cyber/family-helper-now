@@ -26,6 +26,7 @@ export type EmailKind =
   | "contract_proposal_companion"
   | "contract_refused"
   | "contract_expired"
+  | "contract_withdrawn"
   | "contract_signed_both"
   | "contract_planning";
 
@@ -84,6 +85,8 @@ export function build(kind: EmailKind, p: Params): { subject: string; body: stri
   const h = fmtHours(p.hours);
   const md = p.missionDate ?? "";
   switch (kind) {
+    case "contract_withdrawn":
+      return { subject: p.role === "companion" ? "La demande a été retirée" : "Votre demande a été retirée", body: p.role === "companion" ? "Cette demande a été retirée par le particulier. Vous n'avez plus à y répondre." : "Votre demande a été retirée, sans frais. Vous pouvez faire une nouvelle demande.", ...OPEN };
     case "contract_planning":
       return { subject: "Votre planning Solélia", body: p.planningText ?? "", linkLabel: "Mes contrats", linkTo: "/compte/contrats" };
     case "contract_signature_code":

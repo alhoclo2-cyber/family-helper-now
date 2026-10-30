@@ -358,6 +358,15 @@ export const store = {
     };
     emit();
   },
+  // Reconcile the committed database withdrawal with the session's memory missions.
+  withdrawContractRequest: (contractId: string) => {
+    state = { ...state, requests: state.requests.map(r => r.contractId === contractId ? {
+      ...r, status: "cancelled" as const, cancelledBy: "family" as const,
+      cancelReason: "Retiré par le particulier", paid: false, deferredCharge: false,
+      scheduledChargeAt: undefined, refunded: true, refundAmount: 0,
+    } : r) };
+    emit();
+  },
   markRefusedNoticeSeen: (id: string, companionId: string) => {
     state = {
       ...state,
