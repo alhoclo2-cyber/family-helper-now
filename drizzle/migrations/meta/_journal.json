@@ -120,6 +120,13 @@
       "when": 1793080068384,
       "tag": "0016_mandataire_access_log",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793377347016,
+      "tag": "0017_contract_employer_withdrawal",
+      "breakpoints": true
     }
   ]
 }

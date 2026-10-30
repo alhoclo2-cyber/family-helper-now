@@ -580,6 +580,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      withdraw_contract_employer: {
+        Args: { _client_id: string; _contract_id: string }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "mandataire"
