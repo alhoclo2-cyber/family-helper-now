@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { ContractWithdrawalActions } from "@/components/ContractWithdrawalActions";
+import { setPendingWithdrawalEdit } from "@/lib/contractWithdrawal";
 import { AccountPageShell } from "@/components/AccountPageShell";
 import { Button } from "@/components/ui/button";
 import { FinalContractDocument } from "@/components/FinalContractDocument";
@@ -52,7 +53,7 @@ function ContractsPage() {
       <p>Signature de l'employeur : {date(c.employer_signed_at)}</p>
       <p>Signature du compagnon : {date(c.companion_signed_at)}</p>
       <p>Début : {c.effective_from ? new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", dateStyle: "long" }).format(new Date(`${c.effective_from}T12:00:00Z`)) : "—"}</p>
-      {isEmployer && c.status === "awaiting_companion" && <ContractWithdrawalActions contractId={c.id} onWithdrawn={() => setNotice("Votre demande a été retirée, sans frais.")} onModify={() => { setNotice("Votre demande a été retirée. Recréez-la depuis l'accueil avec « Prendre un rendez-vous »."); void navigate({ to: "/" }); }} />}
+      {isEmployer && c.status === "awaiting_companion" && <ContractWithdrawalActions contractId={c.id} onWithdrawn={() => setNotice("Votre demande a été retirée, sans frais.")} onModify={(r) => { setPendingWithdrawalEdit(r); void navigate({ to: "/" }); }} />}
       {doc && <>
         <Button variant="outline" className="w-full text-base" onClick={() => setOpened(opened === c.id ? null : c.id)}>{opened === c.id ? "Fermer le contrat" : "Lire le contrat"}</Button>
         {opened === c.id && <FinalContractDocument document={doc} />}

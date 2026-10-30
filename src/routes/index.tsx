@@ -61,6 +61,7 @@ import { ArrivalFields, useArrivalInput } from "@/components/ArrivalFields";
 import { cachedRestConflict, cachedInForceContract, contractRestConflict, restConflictMessage, setCalendarContracts } from "@/lib/contractCalendar";
 import { myContractsOptions } from "@/lib/myContracts";
 import { ContractWithdrawalActions } from "@/components/ContractWithdrawalActions";
+import { takePendingWithdrawalEdit } from "@/lib/contractWithdrawal";
 
 
 export const Route = createFileRoute("/")({
@@ -644,6 +645,10 @@ function FamilyFlow() {
   }, [respond, responseAt, currentId]);
 
   const [editPick, setEditPick] = useState(false);
+  useEffect(() => {
+    const pending = takePendingWithdrawalEdit();
+    if (pending) { setEditRequest(pending); setEditPick(false); setStep("form"); }
+  }, []);
   const contractFlowSetting = useAppSetting("contract_flow_enabled", false).data === true;
   const flowInForce = useContractsInForce(session?.user.id).data;
   const contractRef = useRef({ enabled: contractFlowSetting, inForce: flowInForce });
