@@ -60,6 +60,8 @@ import { MISSION_START_LIMIT_MIN, MISSION_END_LIMIT_MIN } from "@/lib/missionHou
 import { ArrivalFields, useArrivalInput } from "@/components/ArrivalFields";
 import { cachedRestConflict, cachedInForceContract, contractRestConflict, restConflictMessage, setCalendarContracts } from "@/lib/contractCalendar";
 import { myContractsOptions } from "@/lib/myContracts";
+import { ContractWithdrawalActions } from "@/components/ContractWithdrawalActions";
+import { takePendingWithdrawalEdit } from "@/lib/contractWithdrawal";
 
 
 export const Route = createFileRoute("/")({
@@ -643,6 +645,10 @@ function FamilyFlow() {
   }, [respond, responseAt, currentId]);
 
   const [editPick, setEditPick] = useState(false);
+  useEffect(() => {
+    const pending = takePendingWithdrawalEdit();
+    if (pending) { setEditRequest(pending); setEditPick(false); setStep("form"); }
+  }, []);
   const contractFlowSetting = useAppSetting("contract_flow_enabled", false).data === true;
   const flowInForce = useContractsInForce(session?.user.id).data;
   const contractRef = useRef({ enabled: contractFlowSetting, inForce: flowInForce });
@@ -715,6 +721,8 @@ function FamilyFlow() {
     return (
       <FamilyReservedMissions
         missions={reserved}
+        awaiting={allRequests.filter(r => !r.demo && r.status === "searching" && !!r.contractId && r.contractAnswerDeadline != null)}
+        onModify={(r) => { setEditRequest(r); setEditPick(false); setStep("form"); }}
         onBack={() => setStep("home")}
         menu={<AccountMenu reserved={reservedEntry} />}
       />
@@ -886,7 +894,7 @@ function FamilyFlow() {
         initial={editPick && editRequest
           ? { ...editRequest, scheduledAt: editRequest.scheduledAt ?? null, autoSearch: false, preferredCompanionId: undefined, contractChoiceRequired: false }
           : editRequest}
-        editId={editRequest?.id}
+        editId={editRequest?.id || undefined}
         inPlace={!editPick && !!editRequest?.paid && !editRequest?.scheduledAt}
         onSubmit={() => { setEditRequest(null); setEditPick(false); setStep("wait"); }}
         onBack={() => (editRequest ? (setEditRequest(null), setEditPick(false), setStep(editPick ? "home" : "wait")) : setStep("home"))}
@@ -900,6 +908,7 @@ function FamilyFlow() {
       simulateNoAnswer={simulateNoAnswer}
       onSimulateNoAnswer={setSimulateNoAnswer}
       onEditRequest={(req, opts) => { const r = req ?? current; if (r) { setEditRequest(r); setEditPick(!!opts?.pickCompanion); setStep("form"); } }}
+      onEditWithdrawn={(r) => { setEditRequest(r); setEditPick(false); setStep("form"); }}
       onDone={() => { store.clearCurrent(); setSimulateNoAnswer(false); setEditRequest(null); setStep("home"); }}
     />
   );
@@ -2612,7 +2621,7 @@ function ReservedMissionCard({ request, defaultOpen }: { request: Request; defau
   );
 }
 
-function FamilyReservedMissions({ missions, onBack, menu }: { missions: Request[]; onBack: () => void; menu: React.ReactNode }) {
+function FamilyReservedMissions({ missions, awaiting, onModify, onBack, menu }: { missions: Request[]; awaiting: Request[]; onModify: (request: Request) => void; onBack: () => void; menu: React.ReactNode }) {
   return (
     <div className="flex-1 flex flex-col px-5 py-6 gap-4 text-base">
       <div className="w-full flex items-center justify-between gap-3">
@@ -2622,7 +2631,8 @@ function FamilyReservedMissions({ missions, onBack, menu }: { missions: Request[
         </button>
       </div>
       <h2 className="text-2xl font-black">📅 Mes missions réservées</h2>
-      {missions.length === 0 ? (
+      {awaiting.map((r) => <div key={r.id} className="rounded-2xl border-2 border-border bg-card p-4 space-y-3"><p className="font-bold">{r.need} · En attente de la réponse du compagnon</p><p>{formatMissionRange(r)}</p><ContractWithdrawalActions contractId={r.contractId!} onModify={onModify} /></div>)}
+      {missions.length === 0 && awaiting.length === 0 ? (
         <p className="py-10 text-center text-muted-foreground">Vous n'avez aucune mission réservée pour le moment.</p>
       ) : (
         missions.map((r) => <ReservedMissionCard key={r.id} request={r} defaultOpen={missions.length === 1} />)
@@ -2636,12 +2646,14 @@ function FamilyWait({
   simulateNoAnswer,
   onSimulateNoAnswer,
   onEditRequest,
+  onEditWithdrawn,
   onDone,
 }: {
   request: Request | undefined;
   simulateNoAnswer: boolean;
   onSimulateNoAnswer: (v: boolean) => void;
   onEditRequest: (req?: Request, opts?: { pickCompanion?: boolean }) => void;
+  onEditWithdrawn: (request: Request) => void;
   onDone: () => void;
 }) {
   const [paid, setPaid] = useState(() => !!request?.paid);
@@ -2690,9 +2702,10 @@ function FamilyWait({
       store.releaseContractRequest(request.id, contractStatus.companion_ref, contractStatusValue);
       void waitQc.invalidateQueries({ queryKey: ["contract-status", request.contractId] });
     }
+    if (contractStatusValue === "withdrawn" && request.status !== "cancelled") store.withdrawContractRequest(request.contractId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [request?.contractId, contractStatusValue]);
-  // Tant que le compagnon n'a pas répondu, seule l'attente est possible côté famille.
+  // Avant la réponse du compagnon, le particulier peut retirer ou modifier sa demande.
   const awaitingCompanion = !!request?.contractId && contractStatusValue === "awaiting_companion";
   const demoContractCompanion =
     awaitingCompanion && contractFlow && !!contractStatus && !/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(contractStatus.companion_ref);
@@ -2715,6 +2728,9 @@ function FamilyWait({
   };
 
   if (!request) return null;
+  if (request.status === "cancelled" && request.cancelReason === "Retiré par le particulier") {
+    return <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center text-base"><p className="text-2xl font-black">Demande retirée</p><p>Votre demande a été retirée, sans frais.</p><Button onClick={onDone}>Retour à l'accueil</Button></div>;
+  }
   if (request.status === "cancelled" && request.cancelledBy === "system") {
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
@@ -2925,6 +2941,7 @@ function FamilyWait({
               <p className="text-base font-bold">
                 Votre signature est enregistrée. Le compagnon a jusqu'à {format(new Date(request.contractAnswerDeadline), "EEEE d MMMM 'à' HH:mm", { locale: fr })} pour accepter la mission et signer le contrat. Il peut aussi refuser.
               </p>
+              {awaitingCompanion && <div className="mt-3"><ContractWithdrawalActions contractId={request.contractId} onModify={onEditWithdrawn} /></div>}
             </div>
           )}
           {request.companionCancelNotice && (

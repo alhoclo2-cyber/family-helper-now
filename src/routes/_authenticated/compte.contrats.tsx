@@ -2,6 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { ContractWithdrawalActions } from "@/components/ContractWithdrawalActions";
+import { setPendingWithdrawalEdit } from "@/lib/contractWithdrawal";
 import { AccountPageShell } from "@/components/AccountPageShell";
 import { Button } from "@/components/ui/button";
 import { FinalContractDocument } from "@/components/FinalContractDocument";
@@ -25,7 +28,7 @@ export const Route = createFileRoute("/_authenticated/compte/contrats")({
   component: ContractsPage,
 });
 
-const states: Record<string, string> = { awaiting_companion: "En attente de la réponse du compagnon", in_force: "En vigueur", refused: "Refusé", expired: "Expiré", ended: "Terminé", terminated: "Terminé", closed: "Terminé" };
+const states: Record<string, string> = { awaiting_companion: "En attente de la réponse du compagnon", in_force: "En vigueur", refused: "Refusé", expired: "Expiré", withdrawn: "Retiré par le particulier", ended: "Terminé", terminated: "Terminé", closed: "Terminé" };
 const date = (iso: string | null) => iso ? new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", dateStyle: "short", timeStyle: "short" }).format(new Date(iso)) : "Non signée";
 function ContractsPage() {
   const { user } = Route.useRouteContext();
@@ -34,6 +37,7 @@ function ContractsPage() {
   const [opened, setOpened] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const navigate = useNavigate();
   const active = contracts.filter(c => ["in_force", "awaiting_companion"].includes(c.status));
   const closed = contracts.filter(c => !["in_force", "awaiting_companion"].includes(c.status));
   const cards = (list: typeof contracts) => list.map(c => {
@@ -49,6 +53,7 @@ function ContractsPage() {
       <p>Signature de l'employeur : {date(c.employer_signed_at)}</p>
       <p>Signature du compagnon : {date(c.companion_signed_at)}</p>
       <p>Début : {c.effective_from ? new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", dateStyle: "long" }).format(new Date(`${c.effective_from}T12:00:00Z`)) : "—"}</p>
+      {isEmployer && c.status === "awaiting_companion" && <ContractWithdrawalActions contractId={c.id} onWithdrawn={() => setNotice("Votre demande a été retirée, sans frais.")} onModify={(r) => { setPendingWithdrawalEdit(r); void navigate({ to: "/" }); }} />}
       {doc && <>
         <Button variant="outline" className="w-full text-base" onClick={() => setOpened(opened === c.id ? null : c.id)}>{opened === c.id ? "Fermer le contrat" : "Lire le contrat"}</Button>
         {opened === c.id && <FinalContractDocument document={doc} />}

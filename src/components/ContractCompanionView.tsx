@@ -54,6 +54,7 @@ export function ContractCompanionView({
     queryKey: ["contract-for-companion", contractId],
     queryFn: () => fetchContract({ data: { contractId } }),
     staleTime: 0,
+    refetchInterval: 5000,
     retry: false,
   });
   const [read, setRead] = useState(false);
@@ -123,6 +124,7 @@ export function ContractCompanionView({
       const r = await sign({ data: { contractId, code } });
       if (!r.ok) {
         setError(r.message);
+        void contract.refetch();
         return;
       }
       // E-mails simulés aux deux parties : contrat complet, sans masquage.
@@ -144,6 +146,7 @@ export function ContractCompanionView({
       const r = await refuse({ data: { contractId } });
       if (!r.ok) {
         setError(r.message);
+        void contract.refetch();
         return;
       }
       onRefused();

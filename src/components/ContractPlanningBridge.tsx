@@ -19,6 +19,7 @@ export function ContractPlanningBridge() {
   useEffect(() => {
     for (const c of contracts.data ?? []) {
       if (statuses.current.get(c.id) === "awaiting_companion" && c.status === "in_force") sendContractPlanning(c, store.getState().requests, "established");
+      if (c.status === "withdrawn" && store.getState().requests.some(r => r.contractId === c.id && r.status !== "cancelled")) store.withdrawContractRequest(c.id);
       statuses.current.set(c.id, c.status);
     }
   }, [contracts.data]);
