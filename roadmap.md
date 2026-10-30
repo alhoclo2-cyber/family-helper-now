@@ -26,7 +26,7 @@
 - [x] Prompt 5 bis : délai de 5 jours (remplacé au prompt 9 par un rappel non bloquant)
 - [x] Prompt 6 : réponse du compagnon (lecture, signature, refus, délai), contrat final en clair et e-mail simulé
 - [ ] Tâche planifiée d'expiration des contrats (aujourd'hui : vérification au chargement des écrans)
-- [ ] Prompt 10 : retrait libre avant réponse, modification, paiements, journal, e-mails simulés et vérifications.
+- [x] Prompt 10 : retrait et modification avant réponse du compagnon, paiement annulé, journal, Mandataire, e-mails simulés ; 186 tests. Vérifié : retrait depuis Mes contrats. Non vérifiés : écran d'attente, Modifier, vue du compagnon réel.
 - [ ] Envoi réel des e-mails (nom de domaine + Resend) au lieu des e-mails simulés
 - [ ] Correction du cesuActive du compagnon réel dans le texte de l'étape 4 du questionnaire 2
 - [ ] Prompt 6 : vérification navigateur complète avec le réglage activé (non faite dans cette session)
