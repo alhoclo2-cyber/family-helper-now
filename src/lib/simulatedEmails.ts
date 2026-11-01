@@ -108,8 +108,8 @@ export function build(kind: EmailKind, p: Params): { subject: string; body: stri
       };
     case "contract_expired":
       return {
-        subject: "Le délai de réponse au contrat est dépassé",
-        body: `Le compagnon n'a pas répondu dans le délai imparti pour la mission « ${p.need ?? ""} ». Le contrat est expiré : vous pouvez choisir un autre compagnon ou modifier votre demande.`,
+        subject: "Le délai de réponse est dépassé, le contrat a expiré",
+        body: p.role === "companion" ? "Le délai de réponse est dépassé, le contrat a expiré. Vous n'avez plus à répondre à cette proposition." : "Le délai de réponse est dépassé, le contrat a expiré. Vous pouvez choisir un autre compagnon pour cette mission ou refaire votre demande.",
         ...OPEN,
       };
     case "contract_signed_both":
@@ -253,6 +253,17 @@ export function sendSimulatedEmail(kind: EmailKind, to: string | undefined, para
     linkTo: b.linkTo,
   };
   writeEmails([...readEmails(), mail]);
+}
+
+/** Durable server-simulated messages retain their ID across polling and reloads. */
+export function importSimulatedEmail(mail: SimulatedEmail) {
+  if (typeof window === "undefined" || readEmails().some(e => e.id === mail.id)) return;
+  const seenKey = "solelia-imported-expiration-emails";
+  let seen: string[] = [];
+  try { seen = JSON.parse(localStorage.getItem(seenKey) ?? "[]"); } catch { /* corrupt local cache */ }
+  if (seen.includes(mail.id)) return;
+  writeEmails([...readEmails(), { ...mail, body: mail.body + SIGN }]);
+  localStorage.setItem(seenKey, JSON.stringify([...seen, mail.id]));
 }
 
 export function useSimulatedEmails() {

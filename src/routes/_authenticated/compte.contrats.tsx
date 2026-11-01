@@ -50,6 +50,7 @@ function ContractsPage() {
     return <article key={c.id} className="border-2 border-border bg-card rounded-lg p-4 space-y-3 text-base">
       <h2 className="font-black text-lg">{other} · {c.contract_kind === "cdd" ? "CDD" : "CDI"}</h2>
       <p className="font-bold">{states[c.status] ?? "Terminé"}</p>
+      {c.status === "expired" && <p>{isEmployer ? "Le compagnon n'a pas répondu dans le délai. Vous pouvez choisir un autre compagnon ou refaire votre demande." : "Le délai de réponse est dépassé"}</p>}
       <p>Signature de l'employeur : {date(c.employer_signed_at)}</p>
       <p>Signature du compagnon : {date(c.companion_signed_at)}</p>
       <p>Début : {c.effective_from ? new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", dateStyle: "long" }).format(new Date(`${c.effective_from}T12:00:00Z`)) : "—"}</p>

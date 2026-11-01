@@ -20,6 +20,11 @@ export function ContractPlanningBridge() {
     for (const c of contracts.data ?? []) {
       if (statuses.current.get(c.id) === "awaiting_companion" && c.status === "in_force") sendContractPlanning(c, store.getState().requests, "established");
       if (c.status === "withdrawn" && store.getState().requests.some(r => r.contractId === c.id && r.status !== "cancelled")) store.withdrawContractRequest(c.id);
+      if (c.status === "expired") {
+        for (const r of store.getState().requests.filter(r => r.contractId === c.id)) {
+          store.releaseContractRequest(r.id, c.companion_ref, "expired", false);
+        }
+      }
       statuses.current.set(c.id, c.status);
     }
   }, [contracts.data]);

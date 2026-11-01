@@ -185,6 +185,44 @@ export type Database = {
         }
         Relationships: []
       }
+      contract_expiration_emails: {
+        Row: {
+          body: string
+          contract_id: string
+          created_at: string
+          id: string
+          recipient_role: string
+          subject: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          contract_id: string
+          created_at?: string
+          id?: string
+          recipient_role: string
+          subject: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          contract_id?: string
+          created_at?: string
+          id?: string
+          recipient_role?: string
+          subject?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_expiration_emails_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "work_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contract_signature_codes: {
         Row: {
           attempts: number

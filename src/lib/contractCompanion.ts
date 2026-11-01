@@ -32,6 +32,7 @@ export type CompanionAnswerInput = {
 export function checkCompanionAnswer(i: CompanionAnswerInput): { ok: true } | { ok: false; code: CompanionAnswerRefusal } {
   const c = i.contract;
   if (!c || c.companion_user_id !== i.callerId) return { ok: false, code: "not_companion" };
+  if (c.status === "expired") return { ok: false, code: "expired" };
   if (c.status !== "awaiting_companion") return { ok: false, code: "not_awaiting" };
   if (!c.companion_answer_deadline || new Date(c.companion_answer_deadline).getTime() < i.nowTs) return { ok: false, code: "expired" };
   if (!c.document_hash || c.document_hash !== i.recomputedHash) return { ok: false, code: "hash_mismatch" };

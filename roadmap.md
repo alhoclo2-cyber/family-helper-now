@@ -25,7 +25,7 @@
 - [x] Prompt 5 : relecture et signature employeur
 - [x] Prompt 5 bis : délai de 5 jours (remplacé au prompt 9 par un rappel non bloquant)
 - [x] Prompt 6 : réponse du compagnon (lecture, signature, refus, délai), contrat final en clair et e-mail simulé
-- [ ] Tâche planifiée d'expiration des contrats (aujourd'hui : vérification au chargement des écrans)
+- [x] Prompt 11 : expiration SQL autonome toutes les 5 minutes (route authenticateCronRequest disponible mais non planifiée, faute de secret géré), journal expired et e-mails simulés persistants, synchronisation, binôme et seuil libérés ; 192 tests et compilation automatique OK. Vérifié sans écran ouvert : expiration, code supprimé, un événement, deux messages, in_force/refused/withdrawn inchangés, nouveau brouillon du même binôme permis ; Mes contrats et absence de doublons au rechargement vérifiés. Non vérifiés : écran d'attente avec mission réelle, écran Compagnon réel et Mandataire connecté, appel cron authentifié (secret absent), contrôle TypeScript séparé non lancé. Fixtures supprimées.
 - [x] Prompt 10 : retrait et modification avant réponse du compagnon, paiement annulé, journal, Mandataire, e-mails simulés ; 186 tests. Vérifié : retrait depuis Mes contrats. Non vérifiés : écran d'attente, Modifier, vue du compagnon réel.
 - [ ] Envoi réel des e-mails (nom de domaine + Resend) au lieu des e-mails simulés
 - [ ] Correction du cesuActive du compagnon réel dans le texte de l'étape 4 du questionnaire 2

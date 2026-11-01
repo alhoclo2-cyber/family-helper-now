@@ -64,7 +64,7 @@ export function ContractCompanionView({
   const [error, setError] = useState<string | null>(null);
   const [confirmRefuse, setConfirmRefuse] = useState(false);
 
-  // Expire les contrats dont l'échéance est dépassée (en attendant une tâche planifiée).
+  // Filet de sécurité à l'ouverture, en complément de l'expiration autonome.
   useEffect(() => {
     void expire().catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps

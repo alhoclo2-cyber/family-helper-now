@@ -329,11 +329,13 @@ export const store = {
   },
   // Le compagnon a refusé le contrat ou laissé passer le délai : la demande repart
   // en recherche (compagnon exclu), le binôme est libéré côté contrat.
-  releaseContractRequest: (id: string, companionId: string, outcome: "refused" | "expired") => {
+  releaseContractRequest: (id: string, companionId: string, outcome: "refused" | "expired", notify = true) => {
     const req = findReq(id);
     if (!req || !req.contractId) return;
-    sendSimulatedEmail(outcome === "refused" ? "contract_refused" : "contract_expired", undefined, { need: req.need, role: "family" });
-    sendSimulatedEmail(outcome === "refused" ? "contract_refused" : "contract_expired", undefined, { need: req.need, role: "companion" });
+    if (notify) {
+      sendSimulatedEmail(outcome === "refused" ? "contract_refused" : "contract_expired", undefined, { need: req.need, role: "family" });
+      sendSimulatedEmail(outcome === "refused" ? "contract_refused" : "contract_expired", undefined, { need: req.need, role: "companion" });
+    }
     state = {
       ...state,
       requests: state.requests.map((r) =>
