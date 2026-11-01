@@ -19,6 +19,7 @@ import { Route as AuthenticatedMandataireRouteImport } from './routes/_authentic
 import { Route as ComptePauseRouteImport } from './routes/compte.pause'
 import { Route as CompteSuppressionRouteImport } from './routes/compte.suppression'
 import { Route as AuthenticatedCompteContratsRouteImport } from './routes/_authenticated/compte.contrats'
+import { Route as ApiPublicHooksExpireContractsRouteImport } from './routes/api/public/hooks/expire-contracts'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -70,6 +71,12 @@ const AuthenticatedCompteContratsRoute =
     path: '/compte/contrats',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiPublicHooksExpireContractsRoute =
+  ApiPublicHooksExpireContractsRouteImport.update({
+    id: '/api/public/hooks/expire-contracts',
+    path: '/api/public/hooks/expire-contracts',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/compte/pause': typeof ComptePauseRoute
   '/compte/suppression': typeof CompteSuppressionRoute
   '/compte/contrats': typeof AuthenticatedCompteContratsRoute
+  '/api/public/hooks/expire-contracts': typeof ApiPublicHooksExpireContractsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -92,6 +100,7 @@ export interface FileRoutesByTo {
   '/compte/pause': typeof ComptePauseRoute
   '/compte/suppression': typeof CompteSuppressionRoute
   '/compte/contrats': typeof AuthenticatedCompteContratsRoute
+  '/api/public/hooks/expire-contracts': typeof ApiPublicHooksExpireContractsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -105,6 +114,7 @@ export interface FileRoutesById {
   '/compte/pause': typeof ComptePauseRoute
   '/compte/suppression': typeof CompteSuppressionRoute
   '/_authenticated/compte/contrats': typeof AuthenticatedCompteContratsRoute
+  '/api/public/hooks/expire-contracts': typeof ApiPublicHooksExpireContractsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -118,6 +128,7 @@ export interface FileRouteTypes {
     | '/compte/pause'
     | '/compte/suppression'
     | '/compte/contrats'
+    | '/api/public/hooks/expire-contracts'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -129,6 +140,7 @@ export interface FileRouteTypes {
     | '/compte/pause'
     | '/compte/suppression'
     | '/compte/contrats'
+    | '/api/public/hooks/expire-contracts'
   id:
     | '__root__'
     | '/'
@@ -141,6 +153,7 @@ export interface FileRouteTypes {
     | '/compte/pause'
     | '/compte/suppression'
     | '/_authenticated/compte/contrats'
+    | '/api/public/hooks/expire-contracts'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -152,6 +165,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   ComptePauseRoute: typeof ComptePauseRoute
   CompteSuppressionRoute: typeof CompteSuppressionRoute
+  ApiPublicHooksExpireContractsRoute: typeof ApiPublicHooksExpireContractsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -226,6 +240,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCompteContratsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/hooks/expire-contracts': {
+      id: '/api/public/hooks/expire-contracts'
+      path: '/api/public/hooks/expire-contracts'
+      fullPath: '/api/public/hooks/expire-contracts'
+      preLoaderRoute: typeof ApiPublicHooksExpireContractsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -251,6 +272,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   ComptePauseRoute: ComptePauseRoute,
   CompteSuppressionRoute: CompteSuppressionRoute,
+  ApiPublicHooksExpireContractsRoute: ApiPublicHooksExpireContractsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
