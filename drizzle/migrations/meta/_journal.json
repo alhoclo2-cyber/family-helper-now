@@ -134,6 +134,13 @@
       "when": 1793528045821,
       "tag": "0018_contract_automatic_expiration",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793528554571,
+      "tag": "0019_allow_contract_expired_signature_event",
+      "breakpoints": true
     }
   ]
 }

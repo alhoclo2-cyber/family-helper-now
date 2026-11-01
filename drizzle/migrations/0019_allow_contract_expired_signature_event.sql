@@ -1,0 +1,2 @@
+ALTER TABLE public.contract_signature_log DROP CONSTRAINT contract_signature_log_event_check;
+ALTER TABLE public.contract_signature_log ADD CONSTRAINT contract_signature_log_event_check CHECK (event IN ('employer_signed','companion_signed','companion_refused','timeout','contract_finalized','contract_emailed','employer_withdrawn','expired'));
