@@ -405,6 +405,7 @@ export function ContractTermsQuestionnaire({
             <p>{companionCesuActive
               ? "Le salaire sera versé au compagnon par l'URSSAF (Cesu+), à partir des déclarations faites par Solélia Accompagnement en votre nom."
               : "Tant que le compagnon n'a pas son numéro CESU, vous réglez le salaire le jour de chaque mission (acompte), et il est soldé au plus tard le 5 du mois suivant. Ensuite, le salaire est versé par l'URSSAF."}</p>
+            <p className="mt-2">Le salaire horaire net que vous avez indiqué inclut 10 % au titre des congés payés. Le compagnon prend ses congés (2,5 jours ouvrables acquis par mois), mais vous ne les rémunérez pas en plus.</p>
           </div>
           <div>
             <label htmlFor="ct-leave" className="block text-base font-bold mb-1">Délai de prévenance pour fixer les congés (en mois)</label>

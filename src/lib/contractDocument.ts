@@ -2,7 +2,7 @@ import { format } from "date-fns";
 import type { ContractAnswers, ContractKind } from "./contractDecision";
 import { PUBLIC_HOLIDAYS, WEEKDAYS, WEEKLY_HOURS, fixedWeeklyMinutes, formatWeekly, type ContractTerms } from "./contractTerms";
 import { emploiFor, isEmploiPending } from "./contractEmploi";
-import { grossHourlyFromNet } from "./salary";
+import { grossHourlyFromNet, hourlyNetWithoutPaidLeave } from "./salary";
 
 /* ------------------------------------------------------------------
    Document du contrat de travail (fonction pure, sans React).
@@ -11,7 +11,7 @@ import { grossHourlyFromNet } from "./salary";
    elle est ajoutée par l'écran.
 ------------------------------------------------------------------- */
 
-export const CONTRACT_DOCUMENT_VERSION = 2;
+export const CONTRACT_DOCUMENT_VERSION = 3;
 export const IDCC = "3239";
 
 export type PartyIdentity = {
@@ -166,8 +166,8 @@ export function buildContractDocument(input: BuildContractInput): ContractDocume
     {
       number: 9, key: "remuneration", title: "Rémunération",
       paragraphs: [
-        "Cas n° 1 : salaire net majoré de 10 % au titre des congés payés.",
-        `Salaire horaire net de base : ${euro(salary.netHourly)}.`,
+        "Le salaire horaire net est majoré de 10 % au titre des congés payés.",
+        `Salaire horaire net : ${euro(salary.netHourly)}, congés payés de 10 % inclus (soit ${euro(hourlyNetWithoutPaidLeave(salary.netHourly))} hors congés payés).`,
         `Salaire horaire brut (estimation) : ${euro(gross)}.`,
         "Heures supplémentaires : rémunérées, majorées de 25 % de la 41e à la 48e heure puis de 50 %.",
         "Présence de nuit : sans objet.",
@@ -181,8 +181,9 @@ export function buildContractDocument(input: BuildContractInput): ContractDocume
     {
       number: 10, key: "conges", title: "Congés payés",
       paragraphs: [
-        "Les congés payés annuels doivent être pris.",
-        `L'employeur fixe les dates de congés en respectant un délai de prévenance de ${terms.leaveNoticeMonths} mois.`,
+        "Le salarié acquiert 2,5 jours ouvrables de congés payés par mois de travail effectif.",
+        "Son salaire horaire net étant majoré de 10 % au titre des congés payés (article 9), les congés pris ne sont pas rémunérés en plus au moment de leur prise, et aucune indemnité compensatrice de congés payés n'est due à la fin du contrat.",
+        `Les congés payés annuels doivent être pris. L'employeur fixe les dates de congés en respectant un délai de prévenance de ${terms.leaveNoticeMonths} mois.`,
       ],
       edit: { q: 2, step: 4 },
     },
