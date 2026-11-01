@@ -13,6 +13,8 @@ test("autonomous RPC updates only overdue awaiting contracts and records atomic 
   assert.match(sql, /DELETE FROM public.contract_signature_codes WHERE contract_id = r.id/);
   assert.match(sql, /VALUES\(r.id,'expired',NULL,'system',now\(\)\)/);
   assert.match(sql, /UNIQUE \(contract_id, recipient_role\)/);
+  const events = readFileSync("drizzle/migrations/0019_allow_contract_expired_signature_event.sql", "utf8");
+  assert.match(events, /CHECK \(event IN \([^;]+'expired'\)\)/);
 });
 test("expired releases the open pair", () => assert.equal(OPEN_CONTRACT_STATUSES.includes("expired"), false));
 test("expired assignment stops counting in weekly hours", () => {
