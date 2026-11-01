@@ -3717,6 +3717,7 @@ function StudentFlow() {
     }
     if (r.demo && !demo && !testOn) return false;
     if (r.declinedBy?.includes(me.id)) return false;
+    if (session?.user.id && r.declinedBy?.includes(session.user.id)) return false;
     if (companionDistance(r) > settings.radiusKm) return false;
     if ((r.durationHours ?? 1) < settings.minDurationH) return false;
     const needOk =

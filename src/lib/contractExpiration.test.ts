@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { store } from "./store";
 import { checkContractRequirement } from "./contractCompliance";
 import { OPEN_CONTRACT_STATUSES } from "./contractWithdrawal";
-import { contractStateLabel, contractsForPerson, mandataireDocument } from "./mandataireModel";
+import { contractsForPerson, mandataireDocument } from "./mandataireModel";
 import { checkCompanionAnswer } from "./contractCompanion";
 
 test("autonomous RPC updates only overdue awaiting contracts and records atomic expiry", () => {
