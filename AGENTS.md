@@ -39,4 +39,5 @@
 - Preserve signed hashes; display final_document after both signatures. PDFs allow in_force/ended/terminated/closed, with final hash checks and private server storage reuse.
 - contract_snapshot is server-only (supabaseAdmin after caller check); grant every new work_contracts column. Employer withdrawal uses a locked service-role RPC and reconciles memory missions.
 - Use the masked companion DTO and pair/effective-date Paris calendar. Attach cached contracts atomically at acceptance for root planning events; suppress duplicate emails, allowing empty planning only on cancellation.
-- Le compagnon ne voit jamais les coordonnées exactes de la famille avant la signature des deux parties ; le refus du contrat est libre, sans motif ni pénalité ; aucune acceptation automatique pour une mission sous contrat ; en cas d'erreur sur ses informations, le compagnon les corrige dans son compte, et le contrat final utilise les informations du compte au moment de sa signature.
+- Companion refusal is free; contract missions never auto-accept. Final identity comes from the account at signing.
+- Expiration runs in SQL every five minutes (no managed HTTP credential), atomically logging expired and recipient-only simulated emails. Root reconciliation releases expired assignments; opening screens remains a safety net. The optional cron route requires authenticateCronRequest.

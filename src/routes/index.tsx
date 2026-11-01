@@ -2934,6 +2934,7 @@ function FamilyWait({
               <p className="text-base text-muted-foreground mt-1">
                 Vous pouvez choisir un autre compagnon ou modifier votre demande.
               </p>
+              <Button className="mt-3 w-full text-base" onClick={() => onEditRequest(request, { pickCompanion: true })}>Choisir un autre compagnon</Button>
             </div>
           )}
           {request.contractId && request.contractAnswerDeadline && (
