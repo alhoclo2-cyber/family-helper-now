@@ -102,15 +102,12 @@ export function buildContractDocument(input: BuildContractInput): ContractDocume
       ? [
           `Durée de travail irrégulière, de ${WEEKLY_HOURS.min} à ${WEEKLY_HOURS.max} heures par semaine.`,
           "Le planning est généré par la plateforme Solélia Accompagnement à partir des missions réservées. Il est envoyé par e-mail au salarié et consultable par les deux parties dans Mes contrats.",
-          // À valider par l'avocat
           "Délai de prévenance : 5 jours calendaires.",
-          // À valider par l'avocat
           "En cas de demande imprévue, l'employeur peut proposer au salarié, via la plateforme, une mission avec un délai plus court (24 heures minimum). Le salarié est libre de l'accepter ou de la refuser ; son acceptation vaut accord exprès pour cette seule mission.",
         ]
       : [
           `Planning défini : ${formatWeekly(fixedWeeklyMinutes(terms.organization.days))} par semaine.`,
           ...terms.organization.days.map((d) => `${WEEKDAYS[d.weekday - 1]} : de ${d.start} à ${d.end}.`),
-          // À valider par l'avocat
           "Toute modification du planning est communiquée au salarié au moins 5 jours calendaires à l'avance, sauf accord exprès du salarié donné via la plateforme pour la modification concernée.",
         ];
 
@@ -198,7 +195,6 @@ export function buildContractDocument(input: BuildContractInput): ContractDocume
       paragraphs: [
         ...(terms.specialConditions?.trim() ? [terms.specialConditions.trim()] : []),
         "a) Le salarié peut refuser ce contrat à tout moment avant de l'avoir accepté, sans justification ni pénalité.",
-        // À valider par l'avocat
         "b) L'employeur prévient le salarié de chaque mission au moins 5 jours calendaires avant son début. En cas de demande imprévue, une mission peut être proposée avec un délai plus court (24 heures minimum) ; le salarié est libre de l'accepter ou de la refuser, et son acceptation vaut accord exprès pour cette seule mission, sans modifier le contrat.",
         "c) Le salarié s'engage à informer sans délai l'employeur et Solélia Accompagnement dès qu'il obtient son numéro Cesu.",
       ],

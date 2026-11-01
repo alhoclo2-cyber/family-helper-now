@@ -97,7 +97,7 @@ function addDuration(start: Date, d: MinDuration): Date {
 /**
  * Règle du CDD : 1 jour par semaine, 2 semaines maximum jusqu'à 6 mois, 1 mois au-delà ;
  * pour un terme imprécis, calcul sur la durée minimale.
- * Arrondi à la semaine complète : à confirmer par l'avocat.
+ * Arrondi à la semaine complète.
  */
 export function maxTrialDaysCdd({ startDate, endDate, minDuration }: { startDate: string; endDate?: string; minDuration?: MinDuration }): number {
   const start = parseDay(startDate);
