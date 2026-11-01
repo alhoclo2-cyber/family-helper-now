@@ -331,6 +331,7 @@ export const getContractForCompanion = createServerFn({ method: "POST" })
     const c = await readOwnCompanionContract(ctx, data.contractId);
     if (!c) throw new Error(COMPANION_ANSWER_MESSAGES.not_companion);
     if (c.status === "withdrawn") throw new Error("Cette demande a été retirée par le particulier");
+    if (c.status === "expired") throw new Error(COMPANION_ANSWER_MESSAGES.expired);
     if (c.status !== "awaiting_companion") throw new Error(COMPANION_ANSWER_MESSAGES.not_awaiting);
     if (!c.companion_answer_deadline || new Date(c.companion_answer_deadline).getTime() < Date.now())
       throw new Error(COMPANION_ANSWER_MESSAGES.expired);
@@ -472,14 +473,19 @@ export const refuseContractAsCompanion = createServerFn({ method: "POST" })
     return { ok: true as const, contractId: c.id, firstMissionId: c.first_mission_id };
   });
 
-/** Expire les contrats dont l'échéance est dépassée (en attendant une tâche planifiée). */
+/** Opening-screen safety net; SQL scheduling performs autonomous expiration. */
 export const expireOverdueContracts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin.rpc("expire_overdue_contracts");
-    if (error) return { expired: [] as string[] };
-    return { expired: (data ?? []) as string[] };
+    if (error) throw new Error("Impossible de vérifier l'expiration des contrats.");
+    if (!data?.length) return { expired: [] as string[] };
+    // Never expose identifiers of another user's contracts after a global sweep.
+    const { data: own, error: readError } = await context.supabase.from("work_contracts")
+      .select("id").in("id", data).or(`client_id.eq.${context.userId},companion_user_id.eq.${context.userId}`);
+    if (readError) throw new Error("Impossible de vérifier vos contrats.");
+    return { expired: (own ?? []).map(c => c.id) };
   });
 
 /** Mode test : réponse simulée d'un compagnon fictif, déclenchée par le particulier propriétaire. */

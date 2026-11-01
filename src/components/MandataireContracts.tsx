@@ -57,7 +57,9 @@ export function DossierMissions({ personId, role, contractId }: { personId?: str
 export function ContractDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const fetch = useServerFn(getContractForMandataire); const ctx = useContext(MandataireContext); const qc = useQueryClient();
   const query = useQuery({ queryKey: ["mandataire-contract", id], queryFn: async () => { const result = await fetch({ data: { id } }); void qc.invalidateQueries({ queryKey: ["mandataire-log"] }); return result; }, staleTime: 0 });
-  const c = query.data; const list = ctx.contracts.find(c => c.id === id);
+  const list = ctx.contracts.find(c => c.id === id);
+  // The periodically refreshed list supplies database status without logging another consultation.
+  const c = query.data && { ...query.data, status: list?.status ?? query.data.status };
   return <div className="space-y-4"><Button variant="ghost" onClick={onBack}><ArrowLeft />Retour</Button><h2 className="text-xl font-bold">Fiche contrat</h2>{query.isPending && <p>Chargement…</p>}{query.isError && <p className="text-destructive">{query.error.message}</p>}{c && <><p className="font-bold">{contractStateLabel[c.status] ?? c.status}</p><p>Signature employeur : {date(c.employer_signed_at)} · Compagnon : {date(c.companion_signed_at)}</p><p>Début : {date(c.effective_from)} · Fin : {date(c.effective_until)}</p>{c.companion_answer_deadline && <p>Réponse avant le {date(c.companion_answer_deadline)} (heure de Paris)</p>}{c.final_document && <>
     {list && <DossierBlock title="Les parties" open><PartyLink c={list} role="client" /><PartyLink c={list} role="companion" /></DossierBlock>}
     <DossierBlock title="Conditions" open><p>Type : {c.contract_kind?.toUpperCase()}</p>{c.final_document.sections.filter(s => [2, 5, 7, 8, 9].includes(s.number)).map(s => <div key={s.key}><h3 className="font-bold">{s.title}</h3>{s.paragraphs.map((p, i) => <p key={i}>{p}</p>)}</div>)}</DossierBlock>

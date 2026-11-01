@@ -193,7 +193,7 @@ function Dashboard() {
   const listClients = useServerFn(listClientRegistrations);
   const clients = useQuery({ queryKey: ["client-registrations"], queryFn: () => listClients() });
   const listContracts = useServerFn(listContractsForMandataire);
-  const contracts = useQuery({ queryKey: ["mandataire-contracts"], queryFn: () => listContracts() });
+  const contracts = useQuery({ queryKey: ["mandataire-contracts"], queryFn: () => listContracts(), refetchInterval: 30_000 });
   const fetchPayments = useServerFn(listMissionPayments);
   const payments = useQuery({ queryKey: ["mission-payments"], queryFn: () => fetchPayments() });
   const requests = useStore(s => s.requests);

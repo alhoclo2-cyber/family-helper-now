@@ -2699,7 +2699,7 @@ function FamilyWait({
   useEffect(() => {
     if (!request?.contractId || !contractStatus) return;
     if (contractStatusValue === "refused" || contractStatusValue === "expired") {
-      store.releaseContractRequest(request.id, contractStatus.companion_ref, contractStatusValue);
+      store.releaseContractRequest(request.id, contractStatus.companion_ref, contractStatusValue, contractStatusValue !== "expired");
       void waitQc.invalidateQueries({ queryKey: ["contract-status", request.contractId] });
     }
     if (contractStatusValue === "withdrawn" && request.status !== "cancelled") store.withdrawContractRequest(request.contractId);
@@ -2930,8 +2930,8 @@ function FamilyWait({
           )}
           {request.contractEndedNotice && (
             <div className="w-full rounded-2xl border-2 border-warning bg-warning/10 p-4 text-left">
-              <p className="text-sm font-black">Ce compagnon n'a pas donné suite.</p>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-base font-black">{request.contractEndedNotice === "expired" ? "Le compagnon n'a pas répondu dans le délai" : "Ce compagnon n'a pas donné suite."}</p>
+              <p className="text-base text-muted-foreground mt-1">
                 Vous pouvez choisir un autre compagnon ou modifier votre demande.
               </p>
             </div>
