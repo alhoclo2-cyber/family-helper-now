@@ -23,6 +23,7 @@ import { meetsContractNotice } from "@/lib/contractTerms";
 import { format, startOfWeek, subWeeks } from "date-fns";
 import { fr } from "date-fns/locale";
 import { checkContractRequirement, type ContractCheckResult } from "@/lib/contractCompliance";
+import { minHourlyNetFor, levelFor } from "@/lib/contractEmploi";
 import { getPairState, type PairState } from "@/lib/contractEligibility";
 import { useContractsInForce, getInForceRefs, setSimulatedInForce, useSimulatedInForce } from "@/lib/contractsInForce";
 import { useAppSetting } from "@/lib/appSettings";
@@ -227,15 +228,14 @@ function formatSchedule(ts: number) {
 
 /** Modèle mandataire : seul montant réglé sur la plateforme */
 const SERVICE_FEE = 6; // frais de service mandataire Solélia (forfait fixe)
-const DEFAULT_HOURLY_RATE = 11.5; // salaire net horaire conseillé, congés payés inclus
-const MIN_HOURLY_NET = 10.84; // Plancher de saisie, net de l'heure, congés payés de 10 % inclus. Niveaux IDCC 3239 (juin 2026) : niveau 1 = 10,82 €, niveau 2 = 10,93 €, niveau 3 = 11,07 €. À vérifier à chaque avenant.
-
-function isValidHourlyNet(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value) && value >= MIN_HOURLY_NET;
+// Le minimum net horaire dépend du service choisi (niveau IDCC 3239) : voir src/lib/contractEmploi.ts.
+function isValidHourlyNet(value: unknown, need: string): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= minHourlyNetFor(need);
 }
 
-function hourlyNetError() {
-  return `Le salaire horaire net ne peut pas être inférieur à ${formatPrice(MIN_HOURLY_NET)} € net de l'heure (congés payés inclus).`;
+function hourlyNetError(value: number, need: string) {
+  if (!Number.isFinite(value) || value <= 0) return "Indiquez le salaire horaire net.";
+  return `Pour ce service (${levelFor(need)} de la convention collective), le salaire horaire net ne peut pas être inférieur à ${formatPrice(minHourlyNetFor(need))} € net de l'heure (congés payés inclus).`;
 }
 
 const bookingAddressSchema = z.object({
@@ -582,9 +582,9 @@ function MandatairePanel() {
             situation). Certains services ont un plafond spécifique inférieur, précisé lors de la sélection du service.
           </li>
           <li>
-            <b className="text-foreground">Vous êtes particulier employeur</b> : le salaire net conseillé est de{" "}
-            {formatPrice(DEFAULT_HOURLY_RATE)} €/h (10 % congés payés inclus), modifiable — recommandation indicative,
-            vous restez libre de fixer le salaire.
+            <b className="text-foreground">Vous êtes particulier employeur</b> : vous fixez librement le salaire net
+            de votre compagnon, au minimum de la convention collective (IDCC 3239) pour le service choisi, congés
+            payés inclus.
           </li>
           <li>
             <b className="text-foreground">Contrat de travail</b> : obligatoire dès 3h/semaine avec le même compagnon,
@@ -1018,9 +1018,9 @@ function FamilyForm({
   const [escortDetail, setEscortDetail] = useState<string>(initial?.escortDetail ?? "");
   const [extraInfo, setExtraInfo] = useState<string>(parsed.rest);
   const [missionInfo, setMissionInfo] = useState<string>(initial?.missionInfo ?? "");
-  const [salaireNetHoraire, setSalaireNetHoraire] = useState<number>(initial?.salaryNetHourly ?? DEFAULT_HOURLY_RATE);
-  const [salaireText, setSalaireText] = useState<string>(() => formatPrice(initial?.salaryNetHourly ?? DEFAULT_HOURLY_RATE));
-  const [salaryTouched, setSalaryTouched] = useState<boolean>(initial?.salaryNetHourly != null);
+  // Champ vide à l'ouverture, sauf modification d'une demande existante (salaire déjà renseigné).
+  const [salaireNetHoraire, setSalaireNetHoraire] = useState<number>(initial?.salaryNetHourly ?? 0);
+  const [salaireText, setSalaireText] = useState<string>(() => (initial?.salaryNetHourly != null ? formatPrice(initial.salaryNetHourly) : ""));
   const [acknowledgedLimits, setAcknowledgedLimits] = useState<Record<string, boolean>>({});
   
   const [cguOk, setCguOk] = useState(false);
@@ -1055,7 +1055,6 @@ function FamilyForm({
         { v: "Rangement extérieur", icon: "🧺" },
         { v: "Petit bricolage", icon: "🔧" },
         { v: "Aide administrative", icon: "📄" },
-        { v: "Aide informatique & smartphone", icon: "📱" },
       ],
     },
     {
@@ -1100,12 +1099,6 @@ function FamilyForm({
         ? 2
         : 3;
   const extraChildren = isMultiChild ? childCountNum - 1 : 0;
-  const recommendedRate = DEFAULT_HOURLY_RATE + extraChildren;
-  useEffect(() => {
-    if (salaryTouched) return;
-    setSalaireNetHoraire(recommendedRate);
-    setSalaireText(formatPrice(recommendedRate));
-  }, [recommendedRate, salaryTouched]);
   // Pré-remplissage adresse/téléphone depuis le compte (modifiable pour cette réservation uniquement).
   const { session: formSession } = useSession();
   useEffect(() => {
@@ -1143,7 +1136,7 @@ function FamilyForm({
   const addressCheck = bookingAddressSchema.safeParse(addressParts);
   const address = `${addressParts.street.trim()}, ${addressParts.postalCode.trim()} ${addressParts.city.trim()}`;
   const requiresLimitsAcknowledgement = isCleaning || isGardening || isOutdoorTidying;
-  const requiresFiscalAcknowledgement = need === "Petit bricolage" || need === "Aide informatique & smartphone";
+  const requiresFiscalAcknowledgement = need === "Petit bricolage";
   const okAcknowledgement = !(requiresLimitsAcknowledgement || requiresFiscalAcknowledgement) || !!acknowledgedLimits[need];
   const setAcknowledged = (checked: boolean) => setAcknowledgedLimits((prev) => ({ ...prev, [need]: checked }));
 
