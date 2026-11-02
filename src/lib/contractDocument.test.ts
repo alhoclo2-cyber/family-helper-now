@@ -33,7 +33,7 @@ describe("buildContractDocument", () => {
     assert.match(text(doc, 9), /14,74 €/); // 11,50 / 0,78
     assert.ok(doc.employer.some((f) => f.label === "N° CESU" && f.value === "123"));
     assert.equal(doc.idcc, "3239");
-    assert.equal(doc.emploiPending, true);
+    assert.equal(doc.emploiPending, false);
   });
 
   test("CDD complet, planning défini, 1er mai travaillé, sans CESU", () => {
