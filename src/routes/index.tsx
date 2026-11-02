@@ -2123,7 +2123,7 @@ function FamilyForm({
       {submitError && (
         <p ref={submitErrorRef} role="alert" className="my-2 scroll-mt-24 text-sm font-semibold text-destructive text-center">
           {submitError === "salary"
-            ? hourlyNetError()
+            ? hourlyNetError(salaireNetHoraire, need)
             : submitError === "form"
             ? "Un champ est incomplet ou une case n'est pas cochée : vérifiez les éléments signalés en rouge."
             : submitError === "when"
@@ -2823,7 +2823,7 @@ function FamilyWait({
         deferred={deferred}
         chargeAt={chargeAt}
         onDone={(salaireNetHoraire) => {
-          if (!isValidHourlyNet(salaireNetHoraire)) return false;
+          if (!isValidHourlyNet(salaireNetHoraire, request.need)) return false;
           addOrderToAccount({
             id: request.id,
             date: Date.now(),
@@ -3209,7 +3209,7 @@ function FamilyWait({
               companionName={request.student.firstName}
               missionTs={request.scheduledAt ?? request.createdAt}
               durationHours={hours}
-              mission={{ address: request.address, need: request.need, salaryNet: request.salaryNetHourly ?? DEFAULT_HOURLY_RATE }}
+              mission={{ address: request.address, need: request.need, salaryNet: request.salaryNetHourly ?? minHourlyNetFor(request.need) }}
               missionId={request.id}
               onBack={() => setShowContractQ(false)}
               onSigned={(signed) => {
@@ -3400,12 +3400,12 @@ function PaymentScreen({
   const [exp, setExp] = useState("");
   const [cvc, setCvc] = useState("");
   // Tarif choisi dans le formulaire de réservation, connu dès la création de la demande.
-  const salaireNum = request.salaryNetHourly ?? DEFAULT_HOURLY_RATE;
+  const salaireNum = request.salaryNetHourly ?? minHourlyNetFor(request.need);
   const costEstimate = estimateMissionCost(salaireNum, hours);
 
   const pay = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isValidHourlyNet(salaireNum)) {
+    if (!isValidHourlyNet(salaireNum, request.need)) {
       showSalaryError();
       return;
     }
@@ -3598,7 +3598,7 @@ function PaymentScreen({
       <div className="flex-1" />
       {salaryError && (
         <p ref={salaryErrorRef} role="alert" className="my-2 scroll-mt-24 text-sm font-semibold text-destructive text-center">
-          {hourlyNetError()}
+          {hourlyNetError(salaireNum, request.need)}
         </p>
       )}
       <button type="submit" disabled={processing} className="btn-huge bg-success text-success-foreground disabled:opacity-60">
@@ -3935,7 +3935,7 @@ function buildDemoAccepted(me: Companion): Request[] {
 
 function AcceptedCard({ r, onOpen }: { r: Request; onOpen: () => void }) {
   const hours = r.durationHours ?? 1;
-  const rate = r.salaryNetHourly ?? DEFAULT_HOURLY_RATE;
+  const rate = r.salaryNetHourly ?? minHourlyNetFor(r.need);
   const cancelled = r.status === "cancelled";
   const btn = "flex min-h-14 items-center justify-center rounded-2xl border-2 px-2 text-center text-base font-bold";
   return (
@@ -4174,7 +4174,7 @@ function CompanionMissions({
 
 function MissionInfo({ r, full }: { r: Request; full?: boolean }) {
   const hours = r.durationHours ?? 1;
-  const rate = r.salaryNetHourly ?? DEFAULT_HOURLY_RATE;
+  const rate = r.salaryNetHourly ?? minHourlyNetFor(r.need);
   return (
     <div className="flex flex-col gap-1 text-base">
       <div className="flex items-start justify-between gap-2">
@@ -4559,7 +4559,7 @@ function StudentDetail({ request, onBack, blocked, onOpenContract }: { request: 
           <div className="bg-card rounded-2xl p-4 border-2 border-border">
             <p className="text-xs text-muted-foreground font-bold uppercase">Rémunération</p>
             <p className="text-lg font-black mt-1">
-              Salaire net horaire proposé : {formatPrice(request.salaryNetHourly ?? DEFAULT_HOURLY_RATE)} €/h
+              Salaire net horaire proposé : {formatPrice(request.salaryNetHourly ?? minHourlyNetFor(request.need))} €/h
             </p>
           </div>
           <div className="flex-1" />
