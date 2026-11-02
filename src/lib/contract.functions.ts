@@ -201,6 +201,7 @@ export const signContractAsEmployer = createServerFn({ method: "POST" })
       cesu: { has_cesu_number: employerFull.hasCesu, cesu_number: employerFull.rawCesu },
       otherActive: (others?.length ?? 0) > 0,
       salaryNet: data.salaryNet,
+      need: data.need,
     });
     if (!check.ok) return fail(check.code);
 
