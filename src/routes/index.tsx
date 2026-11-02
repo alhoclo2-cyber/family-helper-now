@@ -1141,7 +1141,7 @@ function FamilyForm({
   const setAcknowledged = (checked: boolean) => setAcknowledgedLimits((prev) => ({ ...prev, [need]: checked }));
 
   const createAndGo = async (companionOverride?: string, contract?: { contractId: string; deadline: number }) => {
-    if (!isValidHourlyNet(salaireNetHoraire)) {
+    if (!isValidHourlyNet(salaireNetHoraire, need)) {
       setShowErrors(true);
       showSubmitError("salary");
       return;
@@ -1280,7 +1280,7 @@ function FamilyForm({
         if (conflict) { setRestError(restConflictMessage(conflict)); return; }
       } catch { setRestError("Impossible de vérifier les jours de repos du contrat. Réessayez."); return; }
     }
-    if (!isValidHourlyNet(salaireNetHoraire)) {
+    if (!isValidHourlyNet(salaireNetHoraire, need)) {
       setShowErrors(true);
       showSubmitError("salary");
       return;
@@ -1666,9 +1666,8 @@ function FamilyForm({
       {requiresFiscalAcknowledgement && (
         <div className={bad(okAcknowledgement) ? "rounded-2xl border-2 border-destructive p-2" : ""}>
           <div className="rounded-2xl border-2 border-border bg-accent p-3 text-xs leading-relaxed">
-            {need === "Petit bricolage"
-              ? "🔧 Petit bricolage : plafond fiscal spécifique de 500 € par an et par foyer fiscal pour le crédit d'impôt, limité à 2h par intervention (distinct du plafond global des autres services à la personne)."
-              : "📱 Aide informatique & smartphone : plafond fiscal spécifique de 3 000 € par an et par foyer fiscal pour le crédit d'impôt (distinct du plafond global des autres services à la personne)."}
+            🔧 Petit bricolage : plafond fiscal spécifique de 500 € par an et par foyer fiscal pour le crédit
+            d'impôt, limité à 2h par intervention (distinct du plafond global des autres services à la personne).
             <label className="flex items-center gap-3 mt-3 text-sm font-semibold cursor-pointer">
               <input type="checkbox" checked={!!acknowledgedLimits[need]} onChange={(e) => setAcknowledged(e.target.checked)} className="h-5 w-5 shrink-0 accent-primary" />
               Je certifie en avoir pris connaissance.
@@ -1745,28 +1744,30 @@ function FamilyForm({
             onChange={(e) => {
               const raw = e.target.value.replace(/[^0-9.,]/g, "");
               setSalaireText(raw);
-              setSalaryTouched(true);
               const n = Number(raw.replace(",", "."));
-              setSalaireNetHoraire(Number.isFinite(n) ? n : 0);
+              setSalaireNetHoraire(raw.trim() === "" || !Number.isFinite(n) ? 0 : n);
             }}
-            onBlur={() => setSalaireText(formatPrice(salaireNetHoraire))}
-            aria-invalid={bad(isValidHourlyNet(salaireNetHoraire))}
-            className={`flex-1 min-w-0 w-full px-5 py-4 rounded-2xl border-2 bg-background text-lg outline-none ${bad(isValidHourlyNet(salaireNetHoraire)) ? "border-destructive focus:border-destructive" : "border-border focus:border-primary"}`}
+            onBlur={() => {
+              if (salaireNetHoraire > 0) setSalaireText(formatPrice(salaireNetHoraire));
+            }}
+            placeholder={`Au moins ${formatPrice(minHourlyNetFor(need))}`}
+            aria-invalid={bad(isValidHourlyNet(salaireNetHoraire, need))}
+            className={`flex-1 min-w-0 w-full px-5 py-4 rounded-2xl border-2 bg-background text-lg outline-none ${bad(isValidHourlyNet(salaireNetHoraire, need)) ? "border-destructive focus:border-destructive" : "border-border focus:border-primary"}`}
           />
           <span className="shrink-0 text-lg font-bold">€/h</span>
         </div>
         <p className="text-sm text-foreground mt-2">
-          <span className="font-bold">Solélia Accompagnement recommande {formatPrice(recommendedRate)} €/h net</span>{" "}
-          (10 % congés payés inclus),{" "}
-          {extraChildren > 0 && (
-            <>
-              dont <span className="font-semibold">1 € supplémentaire par enfant</span>,{" "}
-            </>
-          )}
-          mais vous pouvez modifier le montant.
+          Minimum conventionnel pour ce service : {formatPrice(minHourlyNetFor(need))} € net/h ({levelFor(need)}),
+          congés payés de 10 % inclus. Vous fixez librement le salaire de votre compagnon, à partir de ce minimum.
         </p>
-        <p className="text-xs text-muted-foreground mt-1">Le montant recommandé tient compte des minima de la convention collective (IDCC 3239) pour les missions proposées sur Solélia Accompagnement. Si vous choisissez un montant inférieur, il vous appartient de vérifier le niveau de classification de votre compagnon et de respecter son minimum.</p>
-        <p className="text-sm font-semibold mt-2">Soit un salaire de {formatPrice(durationHours * salaireNetHoraire)} € net à verser au salarié</p>
+        {extraChildren > 0 && !isHomework && (
+          <p className="text-sm font-bold text-foreground mt-1">
+            Solélia recommande d'ajouter 1 € par enfant supplémentaire.
+          </p>
+        )}
+        {isValidHourlyNet(salaireNetHoraire, need) && (
+          <p className="text-sm font-semibold mt-2">Soit un salaire de {formatPrice(durationHours * salaireNetHoraire)} € net à verser au salarié</p>
+        )}
         <div className="h-px bg-border my-3" />
         <p className="text-sm font-semibold">
           <span className="text-2xl font-black text-foreground">+ </span>
@@ -1777,19 +1778,21 @@ function FamilyForm({
             Également éligible au crédit d'impôt de 50 %, versé l'année suivante.
           </p>
         )}
-        <div className="mt-4 space-y-1">
-          <p className="text-base font-semibold">
-            Coût total avant crédit d'impôt (salaire + cotisations URSSAF + frais de service) : {formatPrice(costEstimate.avant)} €
-          </p>
-          <p className="text-lg font-black text-success">
-            {sapDeclarationActive
-              ? "Coût total après crédit d'impôt (-50 %)"
-              : "Coût total après crédit d'impôt (-50 % sur le salaire et les cotisations)"} : {formatPrice(costEstimate.apres)} €
-          </p>
-          <p className="text-xs text-muted-foreground mt-2">
-            Estimation indicative : le montant définitif du salaire et des cotisations est calculé par l'URSSAF.
-          </p>
-        </div>
+        {isValidHourlyNet(salaireNetHoraire, need) && (
+          <div className="mt-4 space-y-1">
+            <p className="text-base font-semibold">
+              Coût total avant crédit d'impôt (salaire + cotisations URSSAF + frais de service) : {formatPrice(costEstimate.avant)} €
+            </p>
+            <p className="text-lg font-black text-success">
+              {sapDeclarationActive
+                ? "Coût total après crédit d'impôt (-50 %)"
+                : "Coût total après crédit d'impôt (-50 % sur le salaire et les cotisations)"} : {formatPrice(costEstimate.apres)} €
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Estimation indicative : le montant définitif du salaire et des cotisations est calculé par l'URSSAF.
+            </p>
+          </div>
+        )}
       </div>
       {need === "Retrait ou dépôt d'un colis" && (
         <div className="flex flex-col gap-4">
