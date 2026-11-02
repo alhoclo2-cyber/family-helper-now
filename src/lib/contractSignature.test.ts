@@ -18,6 +18,7 @@ const base: SignatureCheckInput = {
   cesu: { has_cesu_number: true, cesu_number: "123" },
   otherActive: false,
   salaryNet: 11.5,
+  need: "Présence et Compagnie",
 };
 const code = (patch: Partial<SignatureCheckInput>) => {
   const r = checkEmployerSignature({ ...base, ...patch });
