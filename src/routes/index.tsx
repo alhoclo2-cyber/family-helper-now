@@ -23,6 +23,7 @@ import { meetsContractNotice } from "@/lib/contractTerms";
 import { format, startOfWeek, subWeeks } from "date-fns";
 import { fr } from "date-fns/locale";
 import { checkContractRequirement, type ContractCheckResult } from "@/lib/contractCompliance";
+import { minHourlyNetFor, levelFor } from "@/lib/contractEmploi";
 import { getPairState, type PairState } from "@/lib/contractEligibility";
 import { useContractsInForce, getInForceRefs, setSimulatedInForce, useSimulatedInForce } from "@/lib/contractsInForce";
 import { useAppSetting } from "@/lib/appSettings";
@@ -227,15 +228,14 @@ function formatSchedule(ts: number) {
 
 /** Modèle mandataire : seul montant réglé sur la plateforme */
 const SERVICE_FEE = 6; // frais de service mandataire Solélia (forfait fixe)
-const DEFAULT_HOURLY_RATE = 11.5; // salaire net horaire conseillé, congés payés inclus
-const MIN_HOURLY_NET = 10.84; // Plancher de saisie, net de l'heure, congés payés de 10 % inclus. Niveaux IDCC 3239 (juin 2026) : niveau 1 = 10,82 €, niveau 2 = 10,93 €, niveau 3 = 11,07 €. À vérifier à chaque avenant.
-
-function isValidHourlyNet(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value) && value >= MIN_HOURLY_NET;
+// Le minimum net horaire dépend du service choisi (niveau IDCC 3239) : voir src/lib/contractEmploi.ts.
+function isValidHourlyNet(value: unknown, need: string): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= minHourlyNetFor(need);
 }
 
-function hourlyNetError() {
-  return `Le salaire horaire net ne peut pas être inférieur à ${formatPrice(MIN_HOURLY_NET)} € net de l'heure (congés payés inclus).`;
+function hourlyNetError(value: number, need: string) {
+  if (!Number.isFinite(value) || value <= 0) return "Indiquez le salaire horaire net.";
+  return `Pour ce service (${levelFor(need)} de la convention collective), le salaire horaire net ne peut pas être inférieur à ${formatPrice(minHourlyNetFor(need))} € net de l'heure (congés payés inclus).`;
 }
 
 const bookingAddressSchema = z.object({
@@ -582,9 +582,9 @@ function MandatairePanel() {
             situation). Certains services ont un plafond spécifique inférieur, précisé lors de la sélection du service.
           </li>
           <li>
-            <b className="text-foreground">Vous êtes particulier employeur</b> : le salaire net conseillé est de{" "}
-            {formatPrice(DEFAULT_HOURLY_RATE)} €/h (10 % congés payés inclus), modifiable — recommandation indicative,
-            vous restez libre de fixer le salaire.
+            <b className="text-foreground">Vous êtes particulier employeur</b> : vous fixez librement le salaire net
+            de votre compagnon, au minimum de la convention collective (IDCC 3239) pour le service choisi, congés
+            payés inclus.
           </li>
           <li>
             <b className="text-foreground">Contrat de travail</b> : obligatoire dès 3h/semaine avec le même compagnon,
@@ -1018,9 +1018,9 @@ function FamilyForm({
   const [escortDetail, setEscortDetail] = useState<string>(initial?.escortDetail ?? "");
   const [extraInfo, setExtraInfo] = useState<string>(parsed.rest);
   const [missionInfo, setMissionInfo] = useState<string>(initial?.missionInfo ?? "");
-  const [salaireNetHoraire, setSalaireNetHoraire] = useState<number>(initial?.salaryNetHourly ?? DEFAULT_HOURLY_RATE);
-  const [salaireText, setSalaireText] = useState<string>(() => formatPrice(initial?.salaryNetHourly ?? DEFAULT_HOURLY_RATE));
-  const [salaryTouched, setSalaryTouched] = useState<boolean>(initial?.salaryNetHourly != null);
+  // Champ vide à l'ouverture, sauf modification d'une demande existante (salaire déjà renseigné).
+  const [salaireNetHoraire, setSalaireNetHoraire] = useState<number>(initial?.salaryNetHourly ?? 0);
+  const [salaireText, setSalaireText] = useState<string>(() => (initial?.salaryNetHourly != null ? formatPrice(initial.salaryNetHourly) : ""));
   const [acknowledgedLimits, setAcknowledgedLimits] = useState<Record<string, boolean>>({});
   
   const [cguOk, setCguOk] = useState(false);
@@ -1055,7 +1055,6 @@ function FamilyForm({
         { v: "Rangement extérieur", icon: "🧺" },
         { v: "Petit bricolage", icon: "🔧" },
         { v: "Aide administrative", icon: "📄" },
-        { v: "Aide informatique & smartphone", icon: "📱" },
       ],
     },
     {
@@ -1100,12 +1099,6 @@ function FamilyForm({
         ? 2
         : 3;
   const extraChildren = isMultiChild ? childCountNum - 1 : 0;
-  const recommendedRate = DEFAULT_HOURLY_RATE + extraChildren;
-  useEffect(() => {
-    if (salaryTouched) return;
-    setSalaireNetHoraire(recommendedRate);
-    setSalaireText(formatPrice(recommendedRate));
-  }, [recommendedRate, salaryTouched]);
   // Pré-remplissage adresse/téléphone depuis le compte (modifiable pour cette réservation uniquement).
   const { session: formSession } = useSession();
   useEffect(() => {
@@ -1143,12 +1136,12 @@ function FamilyForm({
   const addressCheck = bookingAddressSchema.safeParse(addressParts);
   const address = `${addressParts.street.trim()}, ${addressParts.postalCode.trim()} ${addressParts.city.trim()}`;
   const requiresLimitsAcknowledgement = isCleaning || isGardening || isOutdoorTidying;
-  const requiresFiscalAcknowledgement = need === "Petit bricolage" || need === "Aide informatique & smartphone";
+  const requiresFiscalAcknowledgement = need === "Petit bricolage";
   const okAcknowledgement = !(requiresLimitsAcknowledgement || requiresFiscalAcknowledgement) || !!acknowledgedLimits[need];
   const setAcknowledged = (checked: boolean) => setAcknowledgedLimits((prev) => ({ ...prev, [need]: checked }));
 
   const createAndGo = async (companionOverride?: string, contract?: { contractId: string; deadline: number }) => {
-    if (!isValidHourlyNet(salaireNetHoraire)) {
+    if (!isValidHourlyNet(salaireNetHoraire, need)) {
       setShowErrors(true);
       showSubmitError("salary");
       return;
@@ -1287,7 +1280,7 @@ function FamilyForm({
         if (conflict) { setRestError(restConflictMessage(conflict)); return; }
       } catch { setRestError("Impossible de vérifier les jours de repos du contrat. Réessayez."); return; }
     }
-    if (!isValidHourlyNet(salaireNetHoraire)) {
+    if (!isValidHourlyNet(salaireNetHoraire, need)) {
       setShowErrors(true);
       showSubmitError("salary");
       return;
@@ -1673,9 +1666,8 @@ function FamilyForm({
       {requiresFiscalAcknowledgement && (
         <div className={bad(okAcknowledgement) ? "rounded-2xl border-2 border-destructive p-2" : ""}>
           <div className="rounded-2xl border-2 border-border bg-accent p-3 text-xs leading-relaxed">
-            {need === "Petit bricolage"
-              ? "🔧 Petit bricolage : plafond fiscal spécifique de 500 € par an et par foyer fiscal pour le crédit d'impôt, limité à 2h par intervention (distinct du plafond global des autres services à la personne)."
-              : "📱 Aide informatique & smartphone : plafond fiscal spécifique de 3 000 € par an et par foyer fiscal pour le crédit d'impôt (distinct du plafond global des autres services à la personne)."}
+            🔧 Petit bricolage : plafond fiscal spécifique de 500 € par an et par foyer fiscal pour le crédit
+            d'impôt, limité à 2h par intervention (distinct du plafond global des autres services à la personne).
             <label className="flex items-center gap-3 mt-3 text-sm font-semibold cursor-pointer">
               <input type="checkbox" checked={!!acknowledgedLimits[need]} onChange={(e) => setAcknowledged(e.target.checked)} className="h-5 w-5 shrink-0 accent-primary" />
               Je certifie en avoir pris connaissance.
@@ -1752,28 +1744,30 @@ function FamilyForm({
             onChange={(e) => {
               const raw = e.target.value.replace(/[^0-9.,]/g, "");
               setSalaireText(raw);
-              setSalaryTouched(true);
               const n = Number(raw.replace(",", "."));
-              setSalaireNetHoraire(Number.isFinite(n) ? n : 0);
+              setSalaireNetHoraire(raw.trim() === "" || !Number.isFinite(n) ? 0 : n);
             }}
-            onBlur={() => setSalaireText(formatPrice(salaireNetHoraire))}
-            aria-invalid={bad(isValidHourlyNet(salaireNetHoraire))}
-            className={`flex-1 min-w-0 w-full px-5 py-4 rounded-2xl border-2 bg-background text-lg outline-none ${bad(isValidHourlyNet(salaireNetHoraire)) ? "border-destructive focus:border-destructive" : "border-border focus:border-primary"}`}
+            onBlur={() => {
+              if (salaireNetHoraire > 0) setSalaireText(formatPrice(salaireNetHoraire));
+            }}
+            placeholder={`Au moins ${formatPrice(minHourlyNetFor(need))}`}
+            aria-invalid={bad(isValidHourlyNet(salaireNetHoraire, need))}
+            className={`flex-1 min-w-0 w-full px-5 py-4 rounded-2xl border-2 bg-background text-lg outline-none ${bad(isValidHourlyNet(salaireNetHoraire, need)) ? "border-destructive focus:border-destructive" : "border-border focus:border-primary"}`}
           />
           <span className="shrink-0 text-lg font-bold">€/h</span>
         </div>
         <p className="text-sm text-foreground mt-2">
-          <span className="font-bold">Solélia Accompagnement recommande {formatPrice(recommendedRate)} €/h net</span>{" "}
-          (10 % congés payés inclus),{" "}
-          {extraChildren > 0 && (
-            <>
-              dont <span className="font-semibold">1 € supplémentaire par enfant</span>,{" "}
-            </>
-          )}
-          mais vous pouvez modifier le montant.
+          Minimum conventionnel pour ce service : {formatPrice(minHourlyNetFor(need))} € net/h ({levelFor(need)}),
+          congés payés de 10 % inclus. Vous fixez librement le salaire de votre compagnon, à partir de ce minimum.
         </p>
-        <p className="text-xs text-muted-foreground mt-1">Le montant recommandé tient compte des minima de la convention collective (IDCC 3239) pour les missions proposées sur Solélia Accompagnement. Si vous choisissez un montant inférieur, il vous appartient de vérifier le niveau de classification de votre compagnon et de respecter son minimum.</p>
-        <p className="text-sm font-semibold mt-2">Soit un salaire de {formatPrice(durationHours * salaireNetHoraire)} € net à verser au salarié</p>
+        {extraChildren > 0 && !isHomework && (
+          <p className="text-sm font-bold text-foreground mt-1">
+            Solélia recommande d'ajouter 1 € par enfant supplémentaire.
+          </p>
+        )}
+        {isValidHourlyNet(salaireNetHoraire, need) && (
+          <p className="text-sm font-semibold mt-2">Soit un salaire de {formatPrice(durationHours * salaireNetHoraire)} € net à verser au salarié</p>
+        )}
         <div className="h-px bg-border my-3" />
         <p className="text-sm font-semibold">
           <span className="text-2xl font-black text-foreground">+ </span>
@@ -1784,19 +1778,21 @@ function FamilyForm({
             Également éligible au crédit d'impôt de 50 %, versé l'année suivante.
           </p>
         )}
-        <div className="mt-4 space-y-1">
-          <p className="text-base font-semibold">
-            Coût total avant crédit d'impôt (salaire + cotisations URSSAF + frais de service) : {formatPrice(costEstimate.avant)} €
-          </p>
-          <p className="text-lg font-black text-success">
-            {sapDeclarationActive
-              ? "Coût total après crédit d'impôt (-50 %)"
-              : "Coût total après crédit d'impôt (-50 % sur le salaire et les cotisations)"} : {formatPrice(costEstimate.apres)} €
-          </p>
-          <p className="text-xs text-muted-foreground mt-2">
-            Estimation indicative : le montant définitif du salaire et des cotisations est calculé par l'URSSAF.
-          </p>
-        </div>
+        {isValidHourlyNet(salaireNetHoraire, need) && (
+          <div className="mt-4 space-y-1">
+            <p className="text-base font-semibold">
+              Coût total avant crédit d'impôt (salaire + cotisations URSSAF + frais de service) : {formatPrice(costEstimate.avant)} €
+            </p>
+            <p className="text-lg font-black text-success">
+              {sapDeclarationActive
+                ? "Coût total après crédit d'impôt (-50 %)"
+                : "Coût total après crédit d'impôt (-50 % sur le salaire et les cotisations)"} : {formatPrice(costEstimate.apres)} €
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Estimation indicative : le montant définitif du salaire et des cotisations est calculé par l'URSSAF.
+            </p>
+          </div>
+        )}
       </div>
       {need === "Retrait ou dépôt d'un colis" && (
         <div className="flex flex-col gap-4">
@@ -2127,7 +2123,7 @@ function FamilyForm({
       {submitError && (
         <p ref={submitErrorRef} role="alert" className="my-2 scroll-mt-24 text-sm font-semibold text-destructive text-center">
           {submitError === "salary"
-            ? hourlyNetError()
+            ? hourlyNetError(salaireNetHoraire, need)
             : submitError === "form"
             ? "Un champ est incomplet ou une case n'est pas cochée : vérifiez les éléments signalés en rouge."
             : submitError === "when"
@@ -2827,7 +2823,7 @@ function FamilyWait({
         deferred={deferred}
         chargeAt={chargeAt}
         onDone={(salaireNetHoraire) => {
-          if (!isValidHourlyNet(salaireNetHoraire)) return false;
+          if (!isValidHourlyNet(salaireNetHoraire, request.need)) return false;
           addOrderToAccount({
             id: request.id,
             date: Date.now(),
@@ -3213,7 +3209,7 @@ function FamilyWait({
               companionName={request.student.firstName}
               missionTs={request.scheduledAt ?? request.createdAt}
               durationHours={hours}
-              mission={{ address: request.address, need: request.need, salaryNet: request.salaryNetHourly ?? DEFAULT_HOURLY_RATE }}
+              mission={{ address: request.address, need: request.need, salaryNet: request.salaryNetHourly ?? minHourlyNetFor(request.need) }}
               missionId={request.id}
               onBack={() => setShowContractQ(false)}
               onSigned={(signed) => {
@@ -3404,12 +3400,12 @@ function PaymentScreen({
   const [exp, setExp] = useState("");
   const [cvc, setCvc] = useState("");
   // Tarif choisi dans le formulaire de réservation, connu dès la création de la demande.
-  const salaireNum = request.salaryNetHourly ?? DEFAULT_HOURLY_RATE;
+  const salaireNum = request.salaryNetHourly ?? minHourlyNetFor(request.need);
   const costEstimate = estimateMissionCost(salaireNum, hours);
 
   const pay = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isValidHourlyNet(salaireNum)) {
+    if (!isValidHourlyNet(salaireNum, request.need)) {
       showSalaryError();
       return;
     }
@@ -3602,7 +3598,7 @@ function PaymentScreen({
       <div className="flex-1" />
       {salaryError && (
         <p ref={salaryErrorRef} role="alert" className="my-2 scroll-mt-24 text-sm font-semibold text-destructive text-center">
-          {hourlyNetError()}
+          {hourlyNetError(salaireNum, request.need)}
         </p>
       )}
       <button type="submit" disabled={processing} className="btn-huge bg-success text-success-foreground disabled:opacity-60">
@@ -3939,7 +3935,7 @@ function buildDemoAccepted(me: Companion): Request[] {
 
 function AcceptedCard({ r, onOpen }: { r: Request; onOpen: () => void }) {
   const hours = r.durationHours ?? 1;
-  const rate = r.salaryNetHourly ?? DEFAULT_HOURLY_RATE;
+  const rate = r.salaryNetHourly ?? minHourlyNetFor(r.need);
   const cancelled = r.status === "cancelled";
   const btn = "flex min-h-14 items-center justify-center rounded-2xl border-2 px-2 text-center text-base font-bold";
   return (
@@ -4178,7 +4174,7 @@ function CompanionMissions({
 
 function MissionInfo({ r, full }: { r: Request; full?: boolean }) {
   const hours = r.durationHours ?? 1;
-  const rate = r.salaryNetHourly ?? DEFAULT_HOURLY_RATE;
+  const rate = r.salaryNetHourly ?? minHourlyNetFor(r.need);
   return (
     <div className="flex flex-col gap-1 text-base">
       <div className="flex items-start justify-between gap-2">
@@ -4563,7 +4559,7 @@ function StudentDetail({ request, onBack, blocked, onOpenContract }: { request: 
           <div className="bg-card rounded-2xl p-4 border-2 border-border">
             <p className="text-xs text-muted-foreground font-bold uppercase">Rémunération</p>
             <p className="text-lg font-black mt-1">
-              Salaire net horaire proposé : {formatPrice(request.salaryNetHourly ?? DEFAULT_HOURLY_RATE)} €/h
+              Salaire net horaire proposé : {formatPrice(request.salaryNetHourly ?? minHourlyNetFor(request.need))} €/h
             </p>
           </div>
           <div className="flex-1" />

@@ -17,11 +17,9 @@ export type NeedType =
   | "Rangement extérieur"
   | "Petit bricolage"
   | "Aide administrative"
-  | "Aide informatique & smartphone"
   | "Accompagnement d'un adulte"
   | "Enfants de plus de 3 ans"
   | "Sortir ou nourrir animal de compagnie"
-  | "Arroser les plantes"
   | "Retrait ou dépôt d'un colis"
   | "Garde d'enfants"
   | "Aide aux devoirs";

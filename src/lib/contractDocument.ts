@@ -11,7 +11,7 @@ import { grossHourlyFromNet, hourlyNetWithoutPaidLeave } from "./salary";
    elle est ajoutée par l'écran.
 ------------------------------------------------------------------- */
 
-export const CONTRACT_DOCUMENT_VERSION = 3;
+export const CONTRACT_DOCUMENT_VERSION = 4;
 export const IDCC = "3239";
 
 export type PartyIdentity = {

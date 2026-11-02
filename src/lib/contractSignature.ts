@@ -1,5 +1,6 @@
 import { decideContractKind, validateAnswers, type ContractAnswers, type ContractKind } from "./contractDecision";
 import { defaultTerms, normalizeStoredTerms, validateTerms, type ContractTerms } from "./contractTerms";
+import { minHourlyNetFor } from "./contractEmploi";
 
 /* ------------------------------------------------------------------
    Contrôles de la signature employeur (fonctions pures).
@@ -12,7 +13,7 @@ export const OTP_MAX_ATTEMPTS = 3;
 const HOUR = 3_600_000;
 
 export type SignatureRefusal =
-  | "not_owner" | "not_draft" | "decision_invalid" | "terms_invalid" | "no_cesu" | "too_close" | "pair_active" | "salary";
+  | "not_owner" | "not_draft" | "decision_invalid" | "terms_invalid" | "no_cesu" | "too_close" | "pair_active" | "salary" | "salary_below_minimum";
 
 export const SIGNATURE_MESSAGES: Record<SignatureRefusal, string> = {
   not_owner: "Ce contrat ne vous appartient pas.",
@@ -23,6 +24,7 @@ export const SIGNATURE_MESSAGES: Record<SignatureRefusal, string> = {
   too_close: "Le début de la mission est trop proche : le compagnon doit pouvoir répondre avant. Modifiez la date et l'heure.",
   pair_active: "Un contrat est déjà actif ou en attente avec ce compagnon.",
   salary: "Le salaire horaire net est invalide.",
+  salary_below_minimum: "Le salaire horaire net est inférieur au minimum de la convention collective pour ce service.",
 };
 
 export type SignatureCheckInput = {
@@ -33,6 +35,7 @@ export type SignatureCheckInput = {
   cesu: { has_cesu_number: boolean | null; cesu_number: string | null } | null;
   otherActive: boolean;
   salaryNet: number;
+  need: string;
 };
 
 export type SignatureCheck =
@@ -47,6 +50,7 @@ export function checkEmployerSignature(i: SignatureCheckInput): SignatureCheck {
   if (!meetsContractLeadTime(i.missionTs, i.nowTs)) return { ok: false, code: "too_close" };
   if (i.otherActive) return { ok: false, code: "pair_active" };
   if (!Number.isFinite(i.salaryNet) || i.salaryNet <= 0) return { ok: false, code: "salary" };
+  if (i.salaryNet < minHourlyNetFor(i.need)) return { ok: false, code: "salary_below_minimum" };
 
   const raw = (d.answers ?? {}) as Record<string, unknown>;
   const { terms: _t, terms_version: _v, decision_version, certified_at, ...rest } = raw;

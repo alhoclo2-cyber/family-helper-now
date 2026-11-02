@@ -106,7 +106,6 @@ Deux modes de demande sont implémentés côté client :
 - Aide au repas
 - Accompagnement sorties extérieures
 - Sortir ou nourrir un animal de compagnie
-- Arroser les plantes
 - Retrait ou dépôt d'un colis (avec poids et taille)
 - Aide aux devoirs (primaire au lycée, avec niveau/classe)
 - Garde d'enfants (à partir de 3 ans)

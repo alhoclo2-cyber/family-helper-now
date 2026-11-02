@@ -1,33 +1,46 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { runInNewContext } from "node:vm";
-import ts from "typescript";
+import { minHourlyNetFor, levelFor, emploiFor, isEmploiPending, CONTRACT_EMPLOI } from "./contractEmploi";
 
-// Test the actual route predicate without importing the SSR/auth UI graph.
-const source = readFileSync(new URL("../routes/index.tsx", import.meta.url), "utf8");
-const constant = source.match(/const MIN_HOURLY_NET = [^;]+;/)?.[0];
-const predicate = source.match(/function isValidHourlyNet\([\s\S]*?\n\}/)?.[0];
-assert.ok(constant);
-assert.ok(predicate);
-const js = ts.transpileModule(`${constant}\n${predicate}`, {
-  compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None },
-}).outputText;
-const valid = runInNewContext(`${js}\nisValidHourlyNet`) as (value: unknown) => boolean;
+// Les minimums conventionnels par service vivent uniquement dans contractEmploi.ts.
 
-test("Hourly net floor is inclusive at 10.84 €, rejecting amounts below it", () => {
-  assert.equal(valid(10.84), true);
-  for (const value of [10.83, 4, 0, -1]) assert.equal(valid(value), false);
-});
-
-test("Empty, null, nonnumeric and nonfinite salaries cannot be recorded", () => {
-  for (const value of ["", null, undefined, "abc", NaN, Infinity, -Infinity]) {
-    assert.equal(valid(value), false);
+test("Minimum net horaire par service (congés payés de 10 % inclus)", () => {
+  const expected: Record<string, number> = {
+    "Présence et Compagnie": 11.07,
+    "Courses urgentes": 11.07,
+    Pharmacie: 11.07,
+    "Retrait ou dépôt d'un colis": 11.07,
+    "Sortir ou nourrir animal de compagnie": 11.07,
+    "Aide à la préparation des repas": 10.93,
+    "Ménage / rangement intérieur": 10.82,
+    "Jardinage extérieur": 10.82,
+    "Rangement extérieur": 10.82,
+    "Petit bricolage": 10.82,
+    "Aide administrative": 11.07,
+    "Accompagnement d'un adulte": 11.07,
+    "Enfants de plus de 3 ans": 11.07,
+    "Garde d'enfants": 11.07,
+    "Aide aux devoirs": 11.46,
+  };
+  for (const [need, min] of Object.entries(expected)) {
+    assert.equal(minHourlyNetFor(need), min, need);
   }
 });
 
-test("No ceiling; recommended and demo hourly salaries remain valid", () => {
-  for (const value of [11.5, 12, 12.5, 1000, Number.MAX_VALUE]) {
-    assert.equal(valid(value), true);
+test("Niveau affiché par service", () => {
+  assert.equal(levelFor("Aide aux devoirs"), "niveau IV");
+  assert.equal(levelFor("Présence et Compagnie"), "niveau III");
+  assert.equal(levelFor("Aide à la préparation des repas"), "niveau II");
+  assert.equal(levelFor("Ménage / rangement intérieur"), "niveau I");
+});
+
+test("Service inconnu : valeur de secours à 11,07 € et emploi marqué à confirmer", () => {
+  assert.equal(minHourlyNetFor("Service inexistant"), 11.07);
+  assert.ok(isEmploiPending(emploiFor("Service inexistant")));
+});
+
+test("Aucun service connu n'est resté à confirmer", () => {
+  for (const e of Object.values(CONTRACT_EMPLOI)) {
+    assert.equal(isEmploiPending(e), false, e.intitule);
   }
 });
