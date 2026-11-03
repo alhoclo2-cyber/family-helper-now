@@ -47,6 +47,8 @@ export type ContractTerms = {
   workedHolidays: HolidayKey[];
   leaveNoticeMonths: number;
   specialConditions?: string;
+  /** Services supplémentaires du contrat, sans le service de la réservation. */
+  extraNeeds?: string[];
 };
 
 export type TermsContext = { kind: ContractKind; missionTs: number; answers: ContractAnswers };
