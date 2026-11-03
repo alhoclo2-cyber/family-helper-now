@@ -3518,7 +3518,7 @@ function PaymentScreen({
               ? `Vos ${SERVICE_FEE} € de frais de service seront prélevés 24 h avant la mission.`
               : `Vous réglez aujourd'hui ${SERVICE_FEE} € de frais de service.`}{" "}
             Ce compagnon finalise son compte
-            CESU+ : pour cette mission, vous réglerez directement son salaire conseillé de{" "}
+            CESU+ : pour cette mission, vous réglerez directement son salaire de{" "}
             <b className="text-foreground">{formatPrice(salaireNum * hours)} €</b> sur place le jour de l'intervention
             (espèces, chèque ou virement immédiat). Solélia transmet la déclaration à l'URSSAF ; vous bénéficierez de
             votre crédit d'impôt de 50 % sur le salaire et les cotisations lors de votre déclaration d'impôts annuelle.

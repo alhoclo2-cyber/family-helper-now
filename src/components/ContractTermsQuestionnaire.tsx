@@ -45,7 +45,7 @@ function Choice({ label, selected, onSelect }: { label: string; selected: boolea
 const inputCls = "w-full p-3 rounded-2xl border-2 bg-card border-border";
 
 export function ContractTermsQuestionnaire({
-  draftId, kind, answers, missionTs, onBack, onDone, initialStep, editMode = false, companionCesuActive, missionNeed, missionSalaryNet,
+  draftId, kind, answers, missionTs, onBack, onEditBooking, onDone, initialStep, editMode = false, companionCesuActive, missionNeed, missionSalaryNet,
 }: {
   draftId: string;
   /** Étape ouverte directement (bouton « Modifier » de la relecture). */
@@ -60,6 +60,7 @@ export function ContractTermsQuestionnaire({
   missionNeed: string;
   missionSalaryNet: number;
   onBack: () => void;
+  onEditBooking: () => void;
   onDone: () => void;
 }) {
   const ctx = { kind, missionTs, answers };
@@ -435,7 +436,7 @@ export function ContractTermsQuestionnaire({
             {salaryTooLow && (
               <p role="alert" className="font-semibold text-destructive">
                 Votre salaire de {euroText(missionSalaryNet)} net/h est inférieur au minimum de {euroText(requiredMin)} pour ces services. Décochez un service ou{" "}
-                <button type="button" onClick={onBack} className="underline font-bold">augmentez le salaire dans la réservation</button>.
+                <button type="button" onClick={onEditBooking} className="underline font-bold">augmentez le salaire dans la réservation</button>.
               </p>
             )}
             <ErrorText f="extraNeeds" />
@@ -481,6 +482,7 @@ export function ContractTermsQuestionnaire({
             </div><Edit to={3} /></div>
             <div className="flex justify-between gap-2"><div>
               <p><b>Délai de prévenance des congés :</b> {terms.leaveNoticeMonths} mois</p>
+              <p><b>Services :</b> {contractNeeds.join(", ")}</p>
             </div><Edit to={4} /></div>
           </div>
           <div className="rounded-2xl border-2 border-border bg-accent p-4 text-sm">

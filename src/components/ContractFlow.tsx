@@ -108,6 +108,7 @@ export function ContractFlow({
           companionCesuActive={cesuActive}
           missionNeed={mission.need}
           missionSalaryNet={mission.salaryNet}
+          onEditBooking={() => onEdit({ q: "booking" })}
           onBack={() => (phase.edit ? setPhase({ name: "review" }) : setPhase({ name: "q1", fromReview: false }))}
           onDone={() => setPhase({ name: "review" })}
         />
