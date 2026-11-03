@@ -55,7 +55,7 @@ export type TermsContext = { kind: ContractKind; missionTs: number; answers: Con
 
 export type TermsField =
   | "trialDays" | "minDuration" | "days" | "weeklyRestDays" | "mayFirst"
-  | "leaveNoticeMonths" | "specialConditions";
+  | "leaveNoticeMonths" | "specialConditions" | "extraNeeds";
 export type TermsError = { field: TermsField; message: string };
 
 const DAY_MS = 86_400_000;
@@ -75,6 +75,7 @@ export function defaultTerms({ kind, missionTs, answers }: TermsContext): Contra
     workedHolidays: [],
     leaveNoticeMonths: MIN_LEAVE_NOTICE_MONTHS,
     specialConditions: "",
+    extraNeeds: [],
   };
 }
 
@@ -174,6 +175,10 @@ export function validateTerms(terms: ContractTerms, ctx: TermsContext): TermsErr
   if ((terms.specialConditions ?? "").length > SPECIAL_CONDITIONS_MAX) {
     errors.push({ field: "specialConditions", message: "500 caractères au maximum." });
   }
+  const extra = terms.extraNeeds ?? [];
+  if (extra.length > 12 || new Set(extra).size !== extra.length || extra.some((n) => !CONTRACT_SELECTABLE_NEEDS.includes(n as (typeof CONTRACT_SELECTABLE_NEEDS)[number]))) {
+    errors.push({ field: "extraNeeds", message: "La liste des services supplémentaires est invalide." });
+  }
   return errors;
 }
 
@@ -190,6 +195,9 @@ export function normalizeStoredTerms(answers: Record<string, unknown> | null | u
   const out = { ...rest } as Partial<ContractTerms>;
   if (!Array.isArray(out.weeklyRestDays)) {
     out.weeklyRestDays = typeof weeklyRestDay === "number" ? [weeklyRestDay as Weekday] : [];
+  }
+  if (!Array.isArray(out.extraNeeds) || out.extraNeeds.some((n) => typeof n !== "string")) {
+    out.extraNeeds = [];
   }
   return out;
 }
