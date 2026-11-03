@@ -13,6 +13,7 @@ import {
   type ContractTerms, type FixedDay, type TermsField, type Weekday,
 } from "@/lib/contractTerms";
 import { ContractNoticeSentence } from "@/components/ContractQuestionnaire";
+import { CONTRACT_SELECTABLE_NEEDS, highestLevelNeed, levelFor, requiredMinHourlyNet } from "@/lib/contractEmploi";
 
 /* ------------------------------------------------------------------
    Questionnaire 2 du parcours contrat : choix du Particulier.
@@ -24,7 +25,7 @@ const STEP_FIELDS: Record<number, TermsField[]> = {
   1: ["trialDays", "minDuration"],
   2: ["days"],
   3: ["weeklyRestDays", "mayFirst"],
-  4: ["leaveNoticeMonths"],
+  4: ["leaveNoticeMonths", "extraNeeds"],
   5: ["trialDays", "minDuration", "days", "weeklyRestDays", "mayFirst", "leaveNoticeMonths", "specialConditions"],
 };
 const SAVE_ERROR = "Impossible d'enregistrer vos réponses, réessayez.";
@@ -44,7 +45,7 @@ function Choice({ label, selected, onSelect }: { label: string; selected: boolea
 const inputCls = "w-full p-3 rounded-2xl border-2 bg-card border-border";
 
 export function ContractTermsQuestionnaire({
-  draftId, kind, answers, missionTs, onBack, onDone, initialStep, editMode = false, companionCesuActive,
+  draftId, kind, answers, missionTs, onBack, onDone, initialStep, editMode = false, companionCesuActive, missionNeed, missionSalaryNet,
 }: {
   draftId: string;
   /** Étape ouverte directement (bouton « Modifier » de la relecture). */
@@ -55,6 +56,9 @@ export function ContractTermsQuestionnaire({
   kind: ContractKind;
   answers: ContractAnswers;
   missionTs: number;
+  /** Service et salaire de la réservation, pour le minimum applicable du contrat. */
+  missionNeed: string;
+  missionSalaryNet: number;
   onBack: () => void;
   onDone: () => void;
 }) {
