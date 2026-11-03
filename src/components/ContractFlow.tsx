@@ -106,6 +106,8 @@ export function ContractFlow({
           initialStep={phase.step}
           editMode={phase.edit}
           companionCesuActive={cesuActive}
+          missionNeed={mission.need}
+          missionSalaryNet={mission.salaryNet}
           onBack={() => (phase.edit ? setPhase({ name: "review" }) : setPhase({ name: "q1", fromReview: false }))}
           onDone={() => setPhase({ name: "review" })}
         />

@@ -418,6 +418,28 @@ export function ContractTermsQuestionnaire({
               : "Tant que le compagnon n'a pas son numéro CESU, vous réglez le salaire le jour de chaque mission (acompte), et il est soldé au plus tard le 5 du mois suivant. Ensuite, le salaire est versé par l'URSSAF."}</p>
             <p className="mt-2">Le salaire horaire net que vous avez indiqué inclut 10 % au titre des congés payés. Le compagnon prend ses congés (2,5 jours ouvrables acquis par mois), mais vous ne les rémunérez pas en plus.</p>
           </div>
+          <div className="rounded-2xl border-2 border-border bg-card p-4 text-sm flex flex-col gap-3">
+            <p className="font-bold text-base">Ce compagnon pourrait-il aussi vous aider pour d'autres services ? (facultatif)</p>
+            <p><b>Service réservé :</b> {missionNeed}</p>
+            <p className="text-muted-foreground">Les services cochés seront listés dans le contrat. Ne cochez que ce dont vous aurez réellement besoin : le salaire minimum applicable est celui du service dont le niveau est le plus élevé.</p>
+            <div className="flex flex-col gap-2" role="group" aria-label="Services supplémentaires">
+              {CONTRACT_SELECTABLE_NEEDS.filter((n) => n !== missionNeed).map((n) => (
+                <label key={n} className="flex items-center gap-3 rounded-2xl border-2 border-border bg-card p-3 text-sm font-semibold">
+                  <input type="checkbox" className="h-5 w-5 accent-primary" checked={extraNeeds.includes(n)}
+                    onChange={(e) => set({ extraNeeds: e.target.checked ? [...extraNeeds, n] : extraNeeds.filter((x) => x !== n) })} />
+                  {n}
+                </label>
+              ))}
+            </div>
+            <p className="font-bold">Minimum applicable à ce contrat : {euroText(requiredMin)} net/h ({topNeed ? levelFor(topNeed) : "…"}), congés payés inclus.</p>
+            {salaryTooLow && (
+              <p role="alert" className="font-semibold text-destructive">
+                Votre salaire de {euroText(missionSalaryNet)} net/h est inférieur au minimum de {euroText(requiredMin)} pour ces services. Décochez un service ou{" "}
+                <button type="button" onClick={onBack} className="underline font-bold">augmentez le salaire dans la réservation</button>.
+              </p>
+            )}
+            <ErrorText f="extraNeeds" />
+          </div>
           <div>
             <label htmlFor="ct-leave" className="block text-base font-bold mb-1">Délai de prévenance pour fixer les congés (en mois)</label>
             <input id="ct-leave" type="number" min={MIN_LEAVE_NOTICE_MONTHS} className={`${inputCls}${err("leaveNoticeMonths") ? " border-destructive" : ""}`}
