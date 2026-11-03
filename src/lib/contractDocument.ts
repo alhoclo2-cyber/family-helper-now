@@ -11,7 +11,7 @@ import { grossHourlyFromNet, hourlyNetWithoutPaidLeave } from "./salary";
    elle est ajoutée par l'écran.
 ------------------------------------------------------------------- */
 
-export const CONTRACT_DOCUMENT_VERSION = 4;
+export const CONTRACT_DOCUMENT_VERSION = 5;
 export const IDCC = "3239";
 
 export type PartyIdentity = {
@@ -130,8 +130,13 @@ export function buildContractDocument(input: BuildContractInput): ContractDocume
     },
     {
       number: 4, key: "emploi", title: "Nature de l'emploi",
-      paragraphs: emplois.map((e) => `${e.need} : ${e.intitule} (classification : ${e.classification}).`),
-      edit: { q: "booking" },
+      paragraphs: [
+        ...emplois.map((e) => `${e.need} : ${e.intitule} (classification : ${e.classification}).`),
+        ...(emplois.length > 1
+          ? [`Le salaire minimum applicable est celui du niveau le plus élevé des emplois ci-dessus (${emplois.reduce((top, e) => (e.minNet > top.minNet ? e : top), emplois[0]).level}).`]
+          : []),
+      ],
+      edit: { q: 2, step: 4 },
     },
     { number: 5, key: "duree", title: "Durée du travail et horaires", paragraphs: organization, edit: { q: 2, step: 2 } },
     {

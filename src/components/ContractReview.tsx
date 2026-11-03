@@ -68,7 +68,7 @@ export function ContractReview({
   const doc = buildContractDocument({
     kind, answers, terms: fullTerms,
     employer: parties.data.employer, companion: parties.data.companion,
-    mission: { address: mission.address, needs: [mission.need] },
+    mission: { address: mission.address, needs: [mission.need, ...(fullTerms.extraNeeds ?? [])] },
     salary: { netHourly: mission.salaryNet },
   });
 

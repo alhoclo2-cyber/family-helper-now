@@ -67,3 +67,31 @@ export function minHourlyNetFor(need: string): number {
 export function levelFor(need: string): string {
   return emploiFor(need).level;
 }
+
+/**
+ * Services proposés dans le formulaire de réservation, dans le même ordre
+ * et avec les mêmes libellés que serviceCategories (src/routes/index.tsx).
+ */
+export const CONTRACT_SELECTABLE_NEEDS = [
+  "Présence et Compagnie",
+  "Aide à la préparation des repas",
+  "Ménage / rangement intérieur",
+  "Jardinage extérieur",
+  "Rangement extérieur",
+  "Petit bricolage",
+  "Aide administrative",
+  "Accompagnement d'un adulte",
+  "Enfants de plus de 3 ans",
+  "Garde d'enfants",
+  "Aide aux devoirs",
+] as const;
+
+/** Minimum net horaire applicable à un contrat : le plus élevé des services (0 si liste vide). */
+export function requiredMinHourlyNet(needs: string[]): number {
+  return needs.reduce((max, n) => Math.max(max, minHourlyNetFor(n)), 0);
+}
+
+/** Service dont le minimum est le plus élevé ; en cas d'égalité, le premier de la liste. */
+export function highestLevelNeed(needs: string[]): string | undefined {
+  return needs.reduce<string | undefined>((best, n) => (best === undefined || minHourlyNetFor(n) > minHourlyNetFor(best) ? n : best), undefined);
+}
