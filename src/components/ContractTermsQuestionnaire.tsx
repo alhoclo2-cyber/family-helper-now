@@ -118,6 +118,12 @@ export function ContractTermsQuestionnaire({
   const fixedDays = terms.organization.mode === "fixed" ? terms.organization.days : [];
   const weekly = fixedWeeklyMinutes(fixedDays);
   const effectiveUntil = kind === "cdd" && answers.endMode === "date" ? answers.endDate ?? null : null;
+  const extraNeeds = terms.extraNeeds ?? [];
+  const contractNeeds = [missionNeed, ...extraNeeds];
+  const requiredMin = requiredMinHourlyNet(contractNeeds);
+  const topNeed = highestLevelNeed(contractNeeds);
+  const salaryTooLow = missionSalaryNet < requiredMin;
+  const euroText = (n: number) => `${n.toFixed(2).replace(".", ",")} €`;
 
   const saveIdentity = async () => {
     const patch: Partial<Record<keyof typeof need, string>> = {};
@@ -139,6 +145,7 @@ export function ContractTermsQuestionnaire({
 
   const goNext = async () => {
     if (step === 0) return saveIdentity();
+    if (step === 4 && salaryTooLow) return;
     const errs = validateTerms(terms, ctx).filter((e) => STEP_FIELDS[step].includes(e.field));
     setErrors(errs);
     if (errs.length > 0) return;
