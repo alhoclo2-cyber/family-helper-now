@@ -214,7 +214,7 @@ export const signContractAsEmployer = createServerFn({ method: "POST" })
       terms: check.terms,
       employer,
       companion,
-      mission: { address: data.address, needs: [data.need] },
+      mission: { address: data.address, needs: [data.need, ...(check.terms.extraNeeds ?? [])] },
       salary: { netHourly: data.salaryNet },
     });
     const snapshot = {
