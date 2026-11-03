@@ -1,6 +1,6 @@
 import { decideContractKind, validateAnswers, type ContractAnswers, type ContractKind } from "./contractDecision";
 import { defaultTerms, normalizeStoredTerms, validateTerms, type ContractTerms } from "./contractTerms";
-import { minHourlyNetFor } from "./contractEmploi";
+import { requiredMinHourlyNet } from "./contractEmploi";
 
 /* ------------------------------------------------------------------
    Contrôles de la signature employeur (fonctions pures).
@@ -50,7 +50,6 @@ export function checkEmployerSignature(i: SignatureCheckInput): SignatureCheck {
   if (!meetsContractLeadTime(i.missionTs, i.nowTs)) return { ok: false, code: "too_close" };
   if (i.otherActive) return { ok: false, code: "pair_active" };
   if (!Number.isFinite(i.salaryNet) || i.salaryNet <= 0) return { ok: false, code: "salary" };
-  if (i.salaryNet < minHourlyNetFor(i.need)) return { ok: false, code: "salary_below_minimum" };
 
   const raw = (d.answers ?? {}) as Record<string, unknown>;
   const { terms: _t, terms_version: _v, decision_version, certified_at, ...rest } = raw;
@@ -66,6 +65,8 @@ export function checkEmployerSignature(i: SignatureCheckInput): SignatureCheck {
   const terms = { ...defaultTerms(ctx), ...stored } as ContractTerms;
   if (terms.startDate !== defaultTerms(ctx).startDate) return { ok: false, code: "terms_invalid" };
   if (validateTerms(terms, ctx).length > 0) return { ok: false, code: "terms_invalid" };
+  // Le minimum conventionnel s'applique à tous les services du contrat.
+  if (i.salaryNet < requiredMinHourlyNet([i.need, ...(terms.extraNeeds ?? [])])) return { ok: false, code: "salary_below_minimum" };
   return { ok: true, kind, answers, terms };
 }
 

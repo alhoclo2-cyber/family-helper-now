@@ -1,5 +1,6 @@
 import { addDays, addMonths, addWeeks, differenceInCalendarDays, format, startOfDay } from "date-fns";
 import type { ContractAnswers, ContractKind } from "./contractDecision";
+import { CONTRACT_SELECTABLE_NEEDS } from "./contractEmploi";
 import { MISSION_START_LIMIT_MIN, MISSION_END_LIMIT_MIN } from "./missionHours";
 
 /* ------------------------------------------------------------------
