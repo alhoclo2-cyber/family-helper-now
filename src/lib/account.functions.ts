@@ -165,6 +165,30 @@ export const getDocumentUrl = createServerFn({ method: "POST" })
     return { url: signed.signedUrl };
   });
 
+/** Vignette selfie de la liste des candidatures : URL signée sans journalisation, uniquement si le chemin est le selfie d'une candidature existante. */
+export const getSelfieThumbUrl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { path: string }) => {
+    if (typeof input?.path !== "string" || !input.path) throw new Error("Chemin invalide");
+    return { path: input.path };
+  })
+  .handler(async ({ data, context }) => {
+    await requireMandataire(context);
+    const { data: rows, error } = await context.supabase
+      .from("companion_applications")
+      .select("selfie_path")
+      .eq("selfie_path", data.path);
+    if (error) throw new Error(error.message);
+    const { isCompanionSelfiePath } = await import("./mandataireModel");
+    if (!isCompanionSelfiePath(data.path, (rows ?? []).map((r) => r.selfie_path)))
+      throw new Error("Vignette refusée : ce chemin n'est pas un selfie de candidature.");
+    const { data: signed, error: signError } = await context.supabase.storage
+      .from("companion-docs")
+      .createSignedUrl(data.path, 600);
+    if (signError || !signed) throw new Error(signError?.message ?? "Document introuvable");
+    return { url: signed.signedUrl };
+  });
+
 /** Comptes Particulier (profils hors candidats Compagnon) et statut de leurs documents. */
 export const listClientRegistrations = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
