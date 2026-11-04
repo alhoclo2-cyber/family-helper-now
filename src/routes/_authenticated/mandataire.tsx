@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { MandataireContext, ContractCount, InForceBadge, PersonContracts, ContractsSection, ContractDetail, DossierBlock, DossierMissions, AccessLog, type PersonTarget } from "@/components/MandataireContracts";
 import { listContractsForMandataire } from "@/lib/mandataire.functions";
+import { sortPaymentsByChargeDesc } from "@/lib/mandataireModel";
 import { useStore } from "@/lib/store";
 import { CopyButton } from "@/components/CopyButton";
 import { ContractSettingsPanel } from "@/components/ContractSettingsPanel";
@@ -16,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAccess, useSession } from "@/lib/auth";
 import {
   getDocumentUrl,
+  getSelfieThumbUrl,
   listApplications,
   listClientRegistrations,
   reviewApplication,
@@ -244,7 +246,7 @@ function CompanionsTab({ apps, initialFilter, onOpen }: { apps: UseQueryResult<A
         ? true
         : `${a.first_name} ${a.last_name} ${a.email}`.toLowerCase().includes(needle),
     )
-    .sort((a, b) => a.created_at.localeCompare(b.created_at));
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
   const count = (s: string) => all.filter((a) => norm(a.status) === s).length;
   const shown = filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
 
@@ -338,12 +340,12 @@ function CompanionsTab({ apps, initialFilter, onOpen }: { apps: UseQueryResult<A
 }
 
 
-function useSignedUrl(path: string | null, bucket: "companion-docs" | "client-docs" = "companion-docs") {
+function useSignedUrl(path: string | null, bucket: "companion-docs" | "client-docs" = "companion-docs", enabled = true) {
   const fetchUrl = useServerFn(getDocumentUrl);
   return useQuery({
     queryKey: ["doc-url", bucket, path],
     queryFn: () => { if (!path) throw new Error("Document manquant"); return fetchUrl({ data: { path, bucket } }); },
-    enabled: !!path,
+    enabled: enabled && !!path,
     staleTime: 5 * 60_000,
   });
 }
@@ -357,7 +359,13 @@ function DocThumb({
   size?: number;
   rounded?: boolean;
 }) {
-  const url = useSignedUrl(path);
+  const fetchUrl = useServerFn(getSelfieThumbUrl);
+  const url = useQuery({
+    queryKey: ["selfie-thumb", path],
+    queryFn: () => { if (!path) throw new Error("Document manquant"); return fetchUrl({ data: { path } }); },
+    enabled: !!path,
+    staleTime: 5 * 60_000,
+  });
   const cls = `${rounded ? "rounded-full" : "rounded-xl"} bg-muted object-cover shrink-0`;
   if (!path || !url.data) return <div style={{ width: size, height: size }} className={cls} />;
   return (
@@ -373,13 +381,18 @@ function DocThumb({
 }
 
 function DocCard({ label, path }: { label: string; path: string | null }) {
-  const url = useSignedUrl(path);
+  const [shown, setShown] = useState(false);
+  const url = useSignedUrl(path, "companion-docs", shown);
   const isPdf = path?.toLowerCase().endsWith(".pdf");
   return (
     <div className="rounded-2xl border-2 border-border bg-card p-3">
       <div className="text-sm font-bold mb-2">{label}</div>
       {!path ? (
         <p className="text-sm text-destructive">Non fourni</p>
+      ) : !shown ? (
+        <Button onClick={() => setShown(true)} className="rounded-2xl border-2 border-primary text-primary font-bold py-2 text-sm">
+          👁️ Afficher le document
+        </Button>
       ) : url.isLoading ? (
         <p className="text-sm text-muted-foreground">Chargement…</p>
       ) : url.isError || !url.data ? (
@@ -764,7 +777,8 @@ function ClientDocCard({ label, doc }: { label: string; doc: ClientDoc | null })
   const review = useServerFn(reviewClientDocument);
   const [reason, setReason] = useState(doc?.reject_reason ?? "");
   const [err, setErr] = useState<string | null>(null);
-  const url = useSignedUrl(doc?.file_path ?? null, "client-docs");
+  const [shown, setShown] = useState(false);
+  const url = useSignedUrl(doc?.file_path ?? null, "client-docs", shown);
   const mut = useMutation({
     mutationFn: (v: { status: "validated" | "rejected"; rejectReason?: string }) =>
       doc ? review({ data: { id: doc.id, ...v } }) : Promise.reject(new Error("Document manquant")),
@@ -793,6 +807,15 @@ function ClientDocCard({ label, doc }: { label: string; doc: ClientDoc | null })
         <p className="text-sm text-destructive mt-2">Non fourni</p>
       ) : (
         <>
+          {!shown && (
+            <Button onClick={() => setShown(true)} className="mt-2 rounded-2xl border-2 border-primary text-primary font-bold py-2 text-sm">
+              👁️ Afficher le document
+            </Button>
+          )}
+          {shown && url.isLoading && <p className="text-sm text-muted-foreground mt-2">Chargement…</p>}
+          {shown && (url.isError || (!url.isLoading && !url.data)) && (
+            <p className="text-sm text-destructive mt-2">Document inaccessible</p>
+          )}
           {url.data && !isPdf && (
             <img
               src={url.data.url}
@@ -881,7 +904,10 @@ function PaymentsTab({ personId, filter = "all" }: { personId?: string; filter?:
     onError: (e: Error) => setMessage(e.message),
   });
 
-  const rows = (payments.data ?? []).filter(p => (!personId || p.client_id === personId) && (filter !== "failed" || ["debit_echoue", "annulee_echec_paiement"].includes(p.status)));
+  // Filtre par personne appliqué AVANT la limite de 100 lignes, puis tri par date de prélèvement prévue décroissante.
+  const rows = sortPaymentsByChargeDesc(
+    (payments.data ?? []).filter(p => (!personId || p.client_id === personId) && (filter !== "failed" || ["debit_echoue", "annulee_echec_paiement"].includes(p.status))),
+  ).slice(0, 100);
 
   return (
     <div className="flex flex-col gap-3">
