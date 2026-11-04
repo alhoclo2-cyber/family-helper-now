@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/CopyButton";
 import { store, useStore, type Request } from "@/lib/store";
+import { sortMissionsByStartDesc } from "@/lib/mandataireModel";
 import {
   AUTO_VALIDATION_DELAY_MS,
   formatMissionRange,
@@ -131,10 +132,11 @@ export function MissionsTab({ filter = "all" }: { filter?: string } = {}) {
     return () => clearInterval(t);
   }, []);
 
-  const toDeclare = list.filter((r) => (filter === "all" || filter === "declare") && isDone(r) && !r.declaredAt);
-  const reported = list.filter((r) => (filter === "all" || filter === "reported") && r.completion === "problem");
-  const pending = list.filter((r) => filter === "all" && (!r.completion || r.completion === "pending"));
-  const declared = list.filter((r) => filter === "all" && isDone(r) && r.declaredAt);
+  const byStartDesc = (rows: Request[]) => sortMissionsByStartDesc(rows, getMissionStart);
+  const toDeclare = byStartDesc(list.filter((r) => (filter === "all" || filter === "declare") && isDone(r) && !r.declaredAt));
+  const reported = byStartDesc(list.filter((r) => (filter === "all" || filter === "reported") && r.completion === "problem"));
+  const pending = byStartDesc(list.filter((r) => filter === "all" && (!r.completion || r.completion === "pending")));
+  const declared = byStartDesc(list.filter((r) => filter === "all" && isDone(r) && r.declaredAt));
 
   return (
     <div className="flex flex-col gap-5">
