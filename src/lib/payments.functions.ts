@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { z } from "zod";
 
 async function requireMandataire(context: { supabase: SupabaseClient<Database>; userId: string }) {
   const { data } = await context.supabase.rpc("has_role", {
@@ -14,15 +15,32 @@ async function requireMandataire(context: { supabase: SupabaseClient<Database>; 
 /** Liste des paiements différés (outil de suivi et de test du débit à J-24 h). */
 export const listMissionPayments = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((input: { clientId?: string } | undefined) =>
+    z.object({ clientId: z.string().uuid().optional() }).parse(input ?? {}),
+  )
+  .handler(async ({ data: input, context }) => {
     await requireMandataire(context);
-    const { data, error } = await context.supabase
+    let query = context.supabase
       .from("mission_payments")
-      .select("*")
-      .order("scheduled_charge_at", { ascending: true })
+      .select("*");
+    if (input.clientId) query = query.eq("client_id", input.clientId);
+    const { data, error } = await query
+      .order("scheduled_charge_at", { ascending: false, nullsFirst: false })
       .limit(100);
     if (error) throw new Error(error.message);
     return data;
+  });
+
+export const countFailedMissionPayments = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await requireMandataire(context);
+    const { count, error } = await context.supabase
+      .from("mission_payments")
+      .select("id", { count: "exact", head: true })
+      .in("status", ["debit_echoue", "annulee_echec_paiement"]);
+    if (error) throw new Error(error.message);
+    return count ?? 0;
   });
 
 /** Outil de test : rend le prélèvement immédiatement exigible, ou force un échec simulé. */
