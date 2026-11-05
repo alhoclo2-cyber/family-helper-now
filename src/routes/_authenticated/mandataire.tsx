@@ -25,6 +25,7 @@ import {
 } from "@/lib/account.functions";
 import { inputCls } from "@/lib/auth";
 import {
+  countFailedMissionPayments,
   listMissionPayments,
   runDuePaymentsNow,
   updatePaymentSimulation,
@@ -196,8 +197,8 @@ function Dashboard() {
   const clients = useQuery({ queryKey: ["client-registrations"], queryFn: () => listClients() });
   const listContracts = useServerFn(listContractsForMandataire);
   const contracts = useQuery({ queryKey: ["mandataire-contracts"], queryFn: () => listContracts(), refetchInterval: 30_000 });
-  const fetchPayments = useServerFn(listMissionPayments);
-  const payments = useQuery({ queryKey: ["mission-payments"], queryFn: () => fetchPayments() });
+  const countFailedPayments = useServerFn(countFailedMissionPayments);
+  const payments = useQuery({ queryKey: ["mission-payments", "failed-count"], queryFn: () => countFailedPayments() });
   const requests = useStore(s => s.requests);
   const go = (next: Tab, nextFilter = "all") => { setTab(next); setFilter(nextFilter); setTarget(null); };
   const tasks: { label: string; count: number; tab: Tab; filter?: string }[] = [
@@ -207,7 +208,7 @@ function Dashboard() {
     { label: "Documents Particulier à vérifier", count: (clients.data ?? []).filter(c => clientStatus(c) === "to_check").length, tab: "clients", filter: "to_check" },
     { label: "Missions à déclarer", count: requests.filter(r => r.status === "accepted" && ["validated", "auto_validated"].includes(r.completion ?? "") && !r.declaredAt).length, tab: "missions", filter: "declare" },
     { label: "Missions signalées", count: requests.filter(r => r.status === "accepted" && r.completion === "problem").length, tab: "missions", filter: "reported" },
-    { label: "Paiements en échec", count: (payments.data ?? []).filter(p => ["debit_echoue", "annulee_echec_paiement"].includes(p.status)).length, tab: "payments", filter: "failed" },
+    { label: "Paiements en échec", count: payments.data ?? 0, tab: "payments", filter: "failed" },
     { label: "Contrats en attente de réponse", count: (contracts.data ?? []).filter(c => c.status === "awaiting_companion").length, tab: "contracts", filter: "awaiting_companion" },
   ];
   return <MandataireContext.Provider value={{ contracts: contracts.data ?? [], clients: clients.data ?? [], companions: apps.data ?? [], navigate: setTarget }}>
@@ -880,7 +881,7 @@ const PAYMENT_STATUS_LABEL: Record<string, string> = {
 function PaymentsTab({ personId, filter = "all" }: { personId?: string; filter?: string } = {}) {
   const qc = useQueryClient();
   const list = useServerFn(listMissionPayments);
-  const payments = useQuery({ queryKey: ["mission-payments"], queryFn: () => list() });
+  const payments = useQuery({ queryKey: ["mission-payments", personId ?? null], queryFn: () => list({ data: { clientId: personId } }) });
   const update = useServerFn(updatePaymentSimulation);
   const runNow = useServerFn(runDuePaymentsNow);
   const [message, setMessage] = useState<string | null>(null);
@@ -904,10 +905,10 @@ function PaymentsTab({ personId, filter = "all" }: { personId?: string; filter?:
     onError: (e: Error) => setMessage(e.message),
   });
 
-  // Filtre par personne appliqué AVANT la limite de 100 lignes, puis tri par date de prélèvement prévue décroissante.
+  // La sélection des 100 lignes les plus récentes par personne est faite côté serveur.
   const rows = sortPaymentsByChargeDesc(
-    (payments.data ?? []).filter(p => (!personId || p.client_id === personId) && (filter !== "failed" || ["debit_echoue", "annulee_echec_paiement"].includes(p.status))),
-  ).slice(0, 100);
+    (payments.data ?? []).filter(p => filter !== "failed" || ["debit_echoue", "annulee_echec_paiement"].includes(p.status)),
+  );
 
   return (
     <div className="flex flex-col gap-3">
