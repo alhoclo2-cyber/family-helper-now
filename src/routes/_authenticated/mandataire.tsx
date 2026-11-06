@@ -127,7 +127,8 @@ function Shell({ children, email }: { children: React.ReactNode; email?: string 
                 await supabase.auth.signOut();
                 navigate({ to: "/pro", replace: true });
               }}
-              className="p-2 rounded-xl border-2 border-border"
+              variant="outline"
+              className="h-auto p-2 rounded-xl border-2 border-border text-foreground"
             >
               <LogOut className="h-5 w-5" />
             </Button>
@@ -168,7 +169,8 @@ function Pager({
       <Button
         disabled={page === 0}
         onClick={() => onPage(page - 1)}
-        className="px-4 py-2 rounded-2xl border-2 border-border font-bold disabled:opacity-40"
+        variant="outline"
+        className="h-auto whitespace-normal px-4 py-2 rounded-2xl border-2 border-border text-foreground font-bold disabled:opacity-40"
       >
         ←
       </Button>
@@ -178,7 +180,8 @@ function Pager({
       <Button
         disabled={page >= pages - 1}
         onClick={() => onPage(page + 1)}
-        className="px-4 py-2 rounded-2xl border-2 border-border font-bold disabled:opacity-40"
+        variant="outline"
+        className="h-auto whitespace-normal px-4 py-2 rounded-2xl border-2 border-border text-foreground font-bold disabled:opacity-40"
       >
         →
       </Button>
@@ -257,23 +260,25 @@ function CompanionsTab({ apps, initialFilter, onOpen }: { apps: UseQueryResult<A
         {(["pending", "changes_requested", "approved"] as const).map((s) => (
           <Button
             key={s}
+            variant="outline"
             onClick={() => {
               setFilter(s);
               setPage(0);
             }}
-            className={`rounded-2xl border-2 p-3 ${filter === s ? "border-primary bg-secondary" : "border-border bg-card"}`}
+            className={`h-auto flex-col whitespace-normal w-full min-w-0 rounded-2xl border-2 px-2 py-3 text-center text-foreground ${filter === s ? "border-primary bg-secondary hover:bg-secondary" : "border-border bg-card"}`}
           >
             <div className="text-2xl font-black">{count(s)}</div>
-            <div className="text-sm">{STATUS_LABEL[s]}</div>
+            <span className="inline-flex items-start justify-center gap-1 text-sm"><span className="shrink-0">{STATUS_LABEL[s].split(" ")[0]}</span><span>{STATUS_LABEL[s].split(" ").slice(1).join(" ")}</span></span>
           </Button>
         ))}
       </div>
       <Button
+        variant="outline"
         onClick={() => {
           setFilter("all");
           setPage(0);
         }}
-        className={`text-sm underline ${filter === "all" ? "font-bold" : "text-muted-foreground"}`}
+        className={`h-auto whitespace-normal py-2 text-sm underline text-foreground ${filter === "all" ? "font-bold" : ""}`}
       >
         Voir toutes les candidatures ({all.length})
       </Button>
@@ -291,7 +296,7 @@ function CompanionsTab({ apps, initialFilter, onOpen }: { apps: UseQueryResult<A
       )}
       {shown.map((a) => (
         <div key={a.id} className="rounded-2xl border-2 border-border bg-card p-4 flex flex-col gap-3">
-          <Button onClick={() => onOpen(a.user_id)} className="text-left flex gap-3 items-center">
+          <Button variant="ghost" onClick={() => onOpen(a.user_id)} className="h-auto w-full whitespace-normal text-foreground text-left grid grid-cols-[auto_minmax(0,1fr)] gap-3 items-center px-2 py-3 md:flex">
             <DocThumb path={a.selfie_path} size={56} rounded />
             <div className="flex-1 min-w-0">
               <div className="font-bold text-base truncate">
@@ -305,7 +310,7 @@ function CompanionsTab({ apps, initialFilter, onOpen }: { apps: UseQueryResult<A
                 {new Date(a.created_at).toLocaleDateString("fr-FR")}
               </div>
             </div>
-            <span className="text-sm font-bold whitespace-nowrap">{STATUS_LABEL[a.status]}</span>
+            <span className="col-span-2 text-sm font-bold whitespace-normal md:shrink-0">{STATUS_LABEL[a.status]}</span>
           </Button>
           <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm font-bold">
             {(
@@ -391,7 +396,7 @@ function DocCard({ label, path }: { label: string; path: string | null }) {
       {!path ? (
         <p className="text-sm text-destructive">Non fourni</p>
       ) : !shown ? (
-        <Button onClick={() => setShown(true)} className="rounded-2xl border-2 border-primary text-primary font-bold py-2 text-sm">
+        <Button variant="outline" onClick={() => setShown(true)} className="h-auto w-full whitespace-normal text-center rounded-2xl border-2 border-primary text-foreground font-bold py-2 text-sm">
           👁️ Afficher le document
         </Button>
       ) : url.isLoading ? (
@@ -437,7 +442,7 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
   const NotSet = () => <span className="font-bold text-destructive">Non renseigné</span>;
   return (
     <div className="flex flex-col gap-4">
-      <Button onClick={onBack} className="text-sm font-bold text-primary text-left">
+      <Button variant="outline" onClick={onBack} className="h-auto whitespace-normal py-2 text-sm font-bold text-foreground text-left">
         ← Retour à la liste
       </Button>
       <div className="flex items-center gap-4">
@@ -546,7 +551,7 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
         <Button
           disabled={mut.isPending || missing.length > 0}
           onClick={() => mut.mutate({ status: "approved" })}
-          className="btn-huge bg-success text-success-foreground disabled:opacity-50"
+          className="btn-huge h-auto whitespace-normal text-center bg-success text-success-foreground hover:bg-success/90 disabled:opacity-50"
         >
           ✅ Valider la candidature
         </Button>
@@ -561,7 +566,7 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
         <Button
           disabled={mut.isPending || reason.trim().length < 10}
           onClick={() => mut.mutate({ status: "changes_requested", rejectReason: reason })}
-          className="btn-huge bg-warning text-warning-foreground disabled:opacity-50"
+          className="btn-huge h-auto whitespace-normal text-center bg-warning text-warning-foreground hover:bg-warning/90 hover:text-warning-foreground disabled:opacity-50"
         >
           📝 Demander des corrections
         </Button>
@@ -574,9 +579,10 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
       </a>
       {app.status !== "pending" && (
         <Button
+          variant="outline"
           disabled={mut.isPending}
           onClick={() => mut.mutate({ status: "pending" })}
-          className="text-sm underline text-muted-foreground"
+          className="h-auto whitespace-normal py-2 text-sm underline text-foreground"
         >
           Remettre en attente
         </Button>
@@ -671,24 +677,26 @@ function ClientsTab({ clients, initialFilter, onOpen }: { clients: UseQueryResul
         {(["incomplete", "to_check", "complete"] as const).map((s) => (
           <Button
             key={s}
+            variant="outline"
             onClick={() => {
               setFilter(s);
               setPage(0);
             }}
-            className={`rounded-2xl border-2 p-3 ${filter === s ? "border-primary bg-secondary" : "border-border bg-card"}`}
+            className={`h-auto flex-col whitespace-normal w-full min-w-0 rounded-2xl border-2 px-2 py-3 text-center text-foreground ${filter === s ? "border-primary bg-secondary hover:bg-secondary" : "border-border bg-card"}`}
           >
             <div className="text-2xl font-black">{count(s)}</div>
-            <div className="text-sm">{CLIENT_STATUS_LABEL[s]}</div>
+            <span className="inline-flex items-start justify-center gap-1 text-sm"><span className="shrink-0">{CLIENT_STATUS_LABEL[s].split(" ")[0]}</span><span>{CLIENT_STATUS_LABEL[s].split(" ").slice(1).join(" ")}</span></span>
           </Button>
         ))}
       </div>
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
         <Button
+          variant="outline"
           onClick={() => {
             setFilter("all");
             setPage(0);
           }}
-          className={`text-sm underline ${filter === "all" ? "font-bold" : "text-muted-foreground"}`}
+          className={`h-auto whitespace-normal py-2 text-sm underline text-foreground ${filter === "all" ? "font-bold" : ""}`}
         >
           Toutes les inscriptions ({all.length})
         </Button>
@@ -721,11 +729,11 @@ function ClientsTab({ clients, initialFilter, onOpen }: { clients: UseQueryResul
 }
 
 function ClientCard({ client, onOpen }: { client: ClientRow; onOpen: () => void }) {
-  return <article className="rounded-lg border border-border bg-card p-4 space-y-2"><Button variant="ghost" onClick={onOpen} className="h-auto w-full justify-start text-left whitespace-normal"><span><b>{client.first_name} {client.last_name}</b><br />{client.email}<br />{CLIENT_STATUS_LABEL[clientStatus(client)]}</span></Button><InForceBadge personId={client.id} role="client" /><p>Inscrit le {new Date(client.created_at).toLocaleDateString("fr-FR")}</p><Button variant="link" onClick={onOpen}>Voir et vérifier le dossier</Button></article>;
+  return <article className="rounded-lg border border-border bg-card p-4 space-y-2"><Button variant="ghost" onClick={onOpen} className="h-auto w-full min-w-0 justify-start text-foreground text-left whitespace-normal break-words"><span className="min-w-0"><b>{client.first_name} {client.last_name}</b><br />{client.email}<br />{CLIENT_STATUS_LABEL[clientStatus(client)]}</span></Button><InForceBadge personId={client.id} role="client" /><p>Inscrit le {new Date(client.created_at).toLocaleDateString("fr-FR")}</p><Button variant="link" className="h-auto whitespace-normal py-2" onClick={onOpen}>Voir et vérifier le dossier</Button></article>;
 }
 function ClientDetail({ client, onBack }: { client: ClientRow; onBack: () => void }) {
   const byType = new Map(client.documents.map(d => [d.doc_type, d]));
-  return <div className="space-y-4"><Button variant="ghost" onClick={onBack}>← Retour à la liste</Button><header><h2 className="text-xl font-bold">{client.first_name} {client.last_name}</h2><p>{client.email}</p><p>{CLIENT_STATUS_LABEL[clientStatus(client)]}</p><ContractCount personId={client.id} role="client" /></header><div className="grid md:grid-cols-2 gap-x-6">
+  return <div className="space-y-4"><Button variant="outline" className="h-auto whitespace-normal py-2 text-foreground" onClick={onBack}>← Retour à la liste</Button><header><h2 className="text-xl font-bold">{client.first_name} {client.last_name}</h2><p>{client.email}</p><p>{CLIENT_STATUS_LABEL[clientStatus(client)]}</p><ContractCount personId={client.id} role="client" /></header><div className="grid md:grid-cols-2 gap-x-6">
     <DossierBlock title="Identité et coordonnées" open><p>Nom d'usage : {client.last_name}</p><p>Nom de naissance : {client.birth_name || "Non renseigné"}</p><p>{client.address_line} {client.postal_code} {client.city}</p><p>{client.phone}</p><a className="text-primary underline" href={`mailto:${encodeURIComponent(client.email)}`}>{client.email}</a></DossierBlock>
     <DossierBlock title="Informations URSSAF"><UrssafInfo client={client} /></DossierBlock>
     <DossierBlock title="Documents">{clientDocTypes(client).map(t => <ClientDocCard key={t.type} label={t.label} doc={byType.get(t.type) ?? null} />)}</DossierBlock>
@@ -809,7 +817,7 @@ function ClientDocCard({ label, doc }: { label: string; doc: ClientDoc | null })
       ) : (
         <>
           {!shown && (
-            <Button onClick={() => setShown(true)} className="mt-2 rounded-2xl border-2 border-primary text-primary font-bold py-2 text-sm">
+            <Button variant="outline" onClick={() => setShown(true)} className="h-auto w-full whitespace-normal text-center mt-2 rounded-2xl border-2 border-primary text-foreground font-bold py-2 text-sm">
               👁️ Afficher le document
             </Button>
           )}
@@ -843,7 +851,7 @@ function ClientDocCard({ label, doc }: { label: string; doc: ClientDoc | null })
               <Button
                 disabled={mut.isPending}
                 onClick={() => mut.mutate({ status: "validated" })}
-                className="py-3 rounded-2xl bg-success text-success-foreground font-bold disabled:opacity-50"
+                className="h-auto whitespace-normal text-center py-3 rounded-2xl bg-success text-success-foreground hover:bg-success/90 font-bold disabled:opacity-50"
               >
                 ✅ Valider ce document
               </Button>
@@ -857,7 +865,7 @@ function ClientDocCard({ label, doc }: { label: string; doc: ClientDoc | null })
             <Button
               disabled={mut.isPending || reason.trim().length < 10}
               onClick={() => mut.mutate({ status: "rejected", rejectReason: reason })}
-              className="py-3 rounded-2xl bg-warning text-warning-foreground font-bold disabled:opacity-50"
+              className="h-auto whitespace-normal text-center py-3 rounded-2xl bg-warning text-warning-foreground hover:bg-warning/90 hover:text-warning-foreground font-bold disabled:opacity-50"
             >
               📝 Refuser et demander une correction
             </Button>
@@ -918,9 +926,10 @@ function PaymentsTab({ personId, filter = "all" }: { personId?: string; filter?:
           Vérification automatique toutes les heures. Paiement simulé : aucun prélèvement réel.
         </p>
         <Button
+          variant="outline"
           onClick={() => run.mutate()}
           disabled={run.isPending}
-          className="mt-3 w-full rounded-2xl bg-primary text-primary-foreground font-bold py-3 disabled:opacity-50"
+          className="h-auto whitespace-normal text-center mt-3 w-full rounded-2xl text-foreground font-bold py-2 disabled:opacity-50"
         >
           {run.isPending ? "Traitement…" : "▶️ Lancer le traitement maintenant"}
         </Button>
@@ -966,16 +975,18 @@ function PaymentsTab({ personId, filter = "all" }: { personId?: string; filter?:
               {p.refund_reason && <p className="text-muted-foreground mt-1">Motif : {p.refund_reason}</p>}
             </div>
           )}
-          <div className="grid grid-cols-2 gap-2 mt-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
             <Button
+              variant="outline"
               onClick={() => mutate.mutate({ id: p.id, dueNow: true })}
-              className="rounded-2xl border-2 border-primary text-primary font-bold py-2 text-sm"
+              className="h-auto whitespace-normal text-center rounded-2xl border-2 border-primary text-foreground font-bold py-2 text-sm"
             >
-              {p.status === "debit_echoue" ? "⏱️ Relancer maintenant" : "⏱️ Rendre exigible maintenant"}
+              <span className="inline-flex items-start justify-center gap-1"><span className="shrink-0">⏱️</span><span>{p.status === "debit_echoue" ? "Relancer maintenant" : "Rendre exigible maintenant"}</span></span>
             </Button>
             <Button
+              variant="outline"
               onClick={() => mutate.mutate({ id: p.id, simulateFailure: !p.simulate_failure })}
-              className={`rounded-2xl border-2 font-bold py-2 text-sm ${p.simulate_failure ? "border-destructive text-destructive" : "border-border"}`}
+              className={`h-auto whitespace-normal text-center rounded-2xl border-2 bg-card font-bold py-2 text-sm ${p.simulate_failure ? "border-destructive text-destructive hover:bg-card hover:text-destructive" : "border-border text-foreground"}`}
             >
               {p.simulate_failure ? "Échec simulé : activé" : "Simuler un échec"}
             </Button>
