@@ -1,3 +1,4 @@
+- [ ] Suspension et clôture Mandataire : déterminer le périmètre sûr de réutilisation de la suppression existante (état et archives actuels uniquement simulés dans le navigateur, missions non persistées et déclaration URSSAF non suivie).
 - [x] Trois corrections ciblées : salaire sans « conseillé » au paiement CESU+, lien du salaire insuffisant vers la modification de réservation comme l'article 9, services dans le récapitulatif de l'étape 5 avec modification à l'étape 4 ; aucun nouveau test.
 - [x] Prompt 9 : prévenance 5 jours non bloquante, accord exprès compagnon, garde-fou avant échéance ; tests et contrôle TypeScript automatique. Vérification navigateur non faite.
 - [ ] Prompt 8 : dossiers Mandataire, contrats en lecture seule, PDF partagé, journal d'accès et correction de réattribution ; tests et vérifications.
