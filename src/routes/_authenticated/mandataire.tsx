@@ -462,7 +462,7 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
             {app.situation ?? "—"}
             {app.address ? ` · ${app.address}` : ""}
           </p>
-          <p className="text-sm font-bold mt-1">{RESTRICTION_LABELS[restrictions[app.user_id]?.status] ?? STATUS_LABEL[app.status]}</p>
+          <p className="text-sm font-bold mt-1">{RESTRICTION_LABELS[restrictions[app.user_id]?.status ?? "active"] ?? STATUS_LABEL[app.status]}</p>
           <p>{app.email}</p><ContractCount personId={app.user_id} role="companion" />
         </div>
       </div>
