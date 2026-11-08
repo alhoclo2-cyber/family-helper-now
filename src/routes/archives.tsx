@@ -35,7 +35,7 @@ const ERR: Record<string, string> = {
   none: "Code expiré, demandez-en un nouveau",
 };
 
-function ArchiveDocDialog() {
+export function ArchiveDocDialog() {
   const [d, setD] = useState<ArchiveDoc | null>(null);
   useEffect(() => {
     const h = (e: Event) => setD((e as CustomEvent<ArchiveDoc>).detail);

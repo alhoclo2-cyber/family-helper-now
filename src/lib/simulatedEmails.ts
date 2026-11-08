@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { formatDateFr } from "@/lib/accountState";
 
 export type EmailKind =
+  | "companion_closure_confirmation"
+  | "companion_closure_reminder"
   | "deletion_confirmation"
   | "deletion_reminder"
   | "exit_dossier"
@@ -85,6 +87,10 @@ export function build(kind: EmailKind, p: Params): { subject: string; body: stri
   const h = fmtHours(p.hours);
   const md = p.missionDate ?? "";
   switch (kind) {
+    case "companion_closure_confirmation":
+      return { subject: "Clôture programmée de votre compte (simulation)", body: `La clôture de votre compte est programmée le ${d}. Motif : ${p.reason ?? ""}. Votre accès reste suspendu. Pour demander l'annulation, écrivez à solelia.accompagnement@gmail.com. Vous ne pouvez pas l'annuler vous-même.` };
+    case "companion_closure_reminder":
+      return { subject: "Rappel de clôture de votre compte (simulation)", body: `Votre compte sera clôturé le ${d}. Vous pouvez nous écrire à solelia.accompagnement@gmail.com avant cette date. Vos documents de sortie seront accessibles dans Mes archives.` };
     case "contract_withdrawn":
       return { subject: p.role === "companion" ? "La demande a été retirée" : "Votre demande a été retirée", body: p.role === "companion" ? "Cette demande a été retirée par le particulier. Vous n'avez plus à y répondre." : "Votre demande a été retirée, sans frais. Vous pouvez faire une nouvelle demande.", ...OPEN };
     case "contract_planning":

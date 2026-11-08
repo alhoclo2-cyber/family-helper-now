@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import type { Session } from "@supabase/supabase-js";
 import { useSession } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
+import { CompanionRestrictionNotice } from "./CompanionRestrictionPanel";
 
 /** Mise en page commune des pages Compte (même gabarit que PlaceholderPage). */
 export function AccountPageShell({ title, children }: { title: string; children: (s: Session) => ReactNode }) {
@@ -13,6 +14,7 @@ export function AccountPageShell({ title, children }: { title: string; children:
       <div className="w-full max-w-[440px] min-h-screen flex flex-col bg-background shadow-xl px-5 py-8 gap-6">
         <Link to="/" className="text-sm font-bold text-primary">← Retour à l'accueil</Link>
         <h1 className="text-2xl font-black">{title}</h1>
+        <CompanionRestrictionNotice userId={session?.user.id} />
         {loading ? (
           <p className="text-muted-foreground">Chargement…</p>
         ) : !session ? (

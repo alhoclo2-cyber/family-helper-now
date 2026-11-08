@@ -41,3 +41,5 @@
 - Use the masked companion DTO and pair/effective-date Paris calendar. Attach cached contracts atomically at acceptance for root planning events; suppress duplicate emails, allowing empty planning only on cancellation.
 - Companion refusal is free; contract missions never auto-accept. Final identity comes from the account at signing.
 - Expiration runs in SQL every five minutes (no managed HTTP credential), atomically logging expired and recipient-only simulated emails. Root reconciliation releases expired assignments; opening screens remains a safety net. The optional cron route requires authenticateCronRequest.
+
+- Mandataire companion restrictions are browser-local simulation only; keep them separate from server authorization and real account deletion so no demo action can destroy data or revoke real access.

@@ -1,6 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CompanionRestrictionNotice } from "@/components/CompanionRestrictionPanel";
+import { useCompanionRestrictions } from "@/lib/companionRestrictions";
 import { AccountMenu } from "@/components/AccountMenu";
 import { useServerFn } from "@tanstack/react-start";
 import { requestLateRefund, getRefundState } from "@/lib/refunds.functions";
@@ -3664,6 +3666,7 @@ function useMyApplication(userId: string | undefined) {
 }
 
 function StudentFlow() {
+  const restrictions = useCompanionRestrictions();
   const { session, loading: sessionLoading } = useSession();
   const qc = useQueryClient();
   const myApp = useMyApplication(session?.user.id);
@@ -3735,6 +3738,10 @@ function StudentFlow() {
         }
       : (myApp.data ?? null);
   const status: EnrollStatus = demo ? "approved" : (effectiveApp?.status ?? "none");
+
+  if (session && restrictions[session.user.id] && restrictions[session.user.id].status !== "active") {
+    return <div className="flex flex-col gap-4"><CompanionRestrictionNotice userId={session.user.id} /><AccountMenu /></div>;
+  }
 
   if (status !== "approved") {
     return (
