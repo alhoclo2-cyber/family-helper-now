@@ -13,6 +13,7 @@ import { AccountSimulationPanel } from "@/components/AccountSimulationPanel";
 import { formatDateFr, useAccountState } from "@/lib/accountState";
 import { useAccountBlockers, useAccountRole } from "@/lib/accountBlockers";
 import { sendSimulatedEmail } from "@/lib/simulatedEmails";
+import { useCompanionRestrictions } from "@/lib/companionRestrictions";
 
 export const Route = createFileRoute("/compte/suppression")({
   head: () => ({
@@ -40,6 +41,7 @@ function Block({ title, text }: { title: string; text: string }) {
 }
 
 function DeleteContent({ session }: { session: Session }) {
+  const restrictions = useCompanionRestrictions();
   const uid = session.user.id;
   const account = useAccountState(uid);
   const role = useAccountRole(uid);
@@ -49,6 +51,8 @@ function DeleteContent({ session }: { session: Session }) {
   const failed = error || role.isError;
   const disabled = loading || role.isLoading || failed || blockers.length > 0;
   const ok = typed.trim().toUpperCase() === "SUPPRIMER";
+
+  if (restrictions[uid] && restrictions[uid].status !== "active") return <p>La suspension ou clôture Mandataire ne peut pas être annulée depuis votre compte (simulation). Vous pouvez écrire à solelia.accompagnement@gmail.com.</p>;
 
   return (
     <>

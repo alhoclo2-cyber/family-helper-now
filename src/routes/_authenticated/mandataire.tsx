@@ -1,4 +1,7 @@
 import { Button } from "@/components/ui/button";
+import { CompanionRestrictionPanel } from "@/components/CompanionRestrictionPanel";
+import { useCompanionRestrictions, RESTRICTION_LABELS } from "@/lib/companionRestrictions";
+import { ArchiveDocDialog } from "../archives";
 import { MandataireContext, ContractCount, InForceBadge, PersonContracts, ContractsSection, ContractDetail, DossierBlock, DossierMissions, AccessLog, type PersonTarget } from "@/components/MandataireContracts";
 import { listContractsForMandataire } from "@/lib/mandataire.functions";
 import { sortPaymentsByChargeDesc } from "@/lib/mandataireModel";
@@ -47,7 +50,7 @@ export const Route = createFileRoute("/_authenticated/mandataire")({
 });
 
 type App = Awaited<ReturnType<typeof listApplications>>[number];
-type Filter = "pending" | "changes_requested" | "approved" | "all";
+type Filter = "pending" | "changes_requested" | "approved" | "all" | "suspended" | "closure_pending" | "closed";
 
 const STATUS_LABEL: Record<string, string> = {
   pending: "⏳ En attente",
@@ -229,6 +232,7 @@ function Dashboard() {
 }
 
 function CompanionsTab({ apps, initialFilter, onOpen }: { apps: UseQueryResult<App[]>; initialFilter: Filter; onOpen: (id: string) => void }) {
+  const restrictions = useCompanionRestrictions();
   const [filter, setFilter] = useState<Filter>(initialFilter);
   const [q, setQ] = useState("");
   const [page, setPage] = useState(0);
@@ -243,21 +247,22 @@ function CompanionsTab({ apps, initialFilter, onOpen }: { apps: UseQueryResult<A
   const all = apps.data ?? [];
 
   const norm = (s: string) => (s === "rejected" ? "changes_requested" : s);
+  const stateOf = (a: App) => restrictions[a.user_id]?.status && restrictions[a.user_id].status !== "active" ? restrictions[a.user_id].status : norm(a.status);
   const needle = q.trim().toLowerCase();
-  const filtered = (filter === "all" ? all : all.filter((a) => norm(a.status) === filter))
+  const filtered = (filter === "all" ? all : all.filter((a) => stateOf(a) === filter))
     .filter((a) =>
       !needle
         ? true
         : `${a.first_name} ${a.last_name} ${a.email}`.toLowerCase().includes(needle),
     )
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
-  const count = (s: string) => all.filter((a) => norm(a.status) === s).length;
+  const count = (s: string) => all.filter((a) => stateOf(a) === s).length;
   const shown = filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
 
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-3 gap-2 text-center">
-        {(["pending", "changes_requested", "approved"] as const).map((s) => (
+        {(["pending", "changes_requested", "approved", "suspended", "closure_pending", "closed"] as const).map((s) => (
           <Button
             key={s}
             variant="outline"
@@ -268,7 +273,7 @@ function CompanionsTab({ apps, initialFilter, onOpen }: { apps: UseQueryResult<A
             className={`h-auto flex-col whitespace-normal w-full min-w-0 rounded-2xl border-2 px-2 py-3 text-center text-foreground ${filter === s ? "border-primary bg-secondary hover:bg-secondary" : "border-border bg-card"}`}
           >
             <div className="text-2xl font-black">{count(s)}</div>
-            <span className="inline-flex items-start justify-center gap-1 text-sm"><span className="shrink-0">{STATUS_LABEL[s].split(" ")[0]}</span><span>{STATUS_LABEL[s].split(" ").slice(1).join(" ")}</span></span>
+            <span className="text-sm whitespace-normal">{RESTRICTION_LABELS[s] ?? STATUS_LABEL[s]}</span>
           </Button>
         ))}
       </div>
@@ -310,7 +315,7 @@ function CompanionsTab({ apps, initialFilter, onOpen }: { apps: UseQueryResult<A
                 {new Date(a.created_at).toLocaleDateString("fr-FR")}
               </div>
             </div>
-            <span className="col-span-2 text-sm font-bold whitespace-normal md:shrink-0">{STATUS_LABEL[a.status]}</span>
+            <span className="col-span-2 text-sm font-bold whitespace-normal md:shrink-0">{RESTRICTION_LABELS[stateOf(a)] ?? STATUS_LABEL[a.status]}</span>
           </Button>
           <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm font-bold">
             {(
@@ -427,6 +432,8 @@ function DocCard({ label, path }: { label: string; path: string | null }) {
 }
 
 function Detail({ app, onBack }: { app: App; onBack: () => void }) {
+  const restrictions = useCompanionRestrictions();
+  const closed = restrictions[app.user_id]?.status === "closed";
   const qc = useQueryClient();
   const review = useServerFn(reviewApplication);
   const [reason, setReason] = useState(app.reject_reason ?? "");
@@ -455,12 +462,13 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
             {app.situation ?? "—"}
             {app.address ? ` · ${app.address}` : ""}
           </p>
-          <p className="text-sm font-bold mt-1">{STATUS_LABEL[app.status]}</p>
+          <p className="text-sm font-bold mt-1">{RESTRICTION_LABELS[restrictions[app.user_id]?.status] ?? STATUS_LABEL[app.status]}</p>
           <p>{app.email}</p><ContractCount personId={app.user_id} role="companion" />
         </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-x-6">
+      <CompanionRestrictionPanel userId={app.user_id} email={app.email} />
       <DossierBlock title="Identité et coordonnées" open>
       <div className="text-sm space-y-1">
         <p>📧 {app.email}</p>
@@ -533,7 +541,7 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
       <DocCard label="🤳 Selfie" path={app.selfie_path} />
 
       </DossierBlock>
-      <DossierBlock title="Validation du dossier" open>
+      {!closed && <DossierBlock title="Validation du dossier" open>
       {app.reject_reason && (
         <p className="text-sm rounded-2xl bg-secondary p-3">
           Note envoyée au compagnon : {app.reject_reason}
@@ -587,12 +595,13 @@ function Detail({ app, onBack }: { app: App; onBack: () => void }) {
           Remettre en attente
         </Button>
       )}
-      </DossierBlock>
+      </DossierBlock>}
       <DossierBlock title="Contrats"><PersonContracts personId={app.user_id} role="companion" /></DossierBlock>
       <DossierBlock title="Autorisation ou mandat"><p>À venir</p></DossierBlock>
       <DossierBlock title="Missions"><DossierMissions personId={app.user_id} role="companion" /></DossierBlock>
       <DossierBlock title="Journal de ce dossier"><AccessLog personId={app.user_id} /></DossierBlock>
       </div>
+      <ArchiveDocDialog />
     </div>
   );
 }

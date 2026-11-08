@@ -10,6 +10,7 @@ import { AccountPageShell, BlockerBox } from "@/components/AccountPageShell";
 import { AccountSimulationPanel } from "@/components/AccountSimulationPanel";
 import { formatDateFr, useAccountState } from "@/lib/accountState";
 import { useAccountBlockers, useAccountRole } from "@/lib/accountBlockers";
+import { useCompanionRestrictions } from "@/lib/companionRestrictions";
 
 export const Route = createFileRoute("/compte/pause")({
   head: () => ({
@@ -28,12 +29,15 @@ export const Route = createFileRoute("/compte/pause")({
 });
 
 function PauseContent({ session }: { session: Session }) {
+  const restrictions = useCompanionRestrictions();
   const uid = session.user.id;
   const account = useAccountState(uid);
   const role = useAccountRole(uid);
   const { loading, error, blockers } = useAccountBlockers(uid, role.data, account.state.sim);
   const { state } = account;
   const failed = error || role.isError;
+
+  if (restrictions[uid] && restrictions[uid].status !== "active") return <p>Cette restriction a été décidée par Solélia Accompagnement (simulation). Écrivez à solelia.accompagnement@gmail.com ; vous ne pouvez pas la réactiver vous-même.</p>;
 
   return (
     <>
