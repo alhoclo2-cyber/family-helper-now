@@ -65,11 +65,11 @@ export function removeArchive(email: string) {
 export const archiveIsExpired = (a: Archive) => Date.now() > a.accessUntil;
 
 export async function createExitArchive({
-  userId, email, role,
-}: { userId: string; email: string; role?: "family" | "companion" }) {
+  userId, email, role, retentionYears,
+}: { userId: string; email: string; role?: "family" | "companion"; retentionYears?: number }) {
   const now = Date.now();
   let r: "family" | "companion" = role ?? "family";
-  try {
+  if (!role) try {
     const { data, error } = await supabase.from("companion_applications").select("id").eq("user_id", userId).limit(1);
     if (error) throw error;
     r = data?.length ? "companion" : "family";
@@ -114,7 +114,8 @@ export async function createExitArchive({
   docs.push(doc("Mandat Solélia", `<p>${DEMO}</p>`, now));
   docs.push(doc("Contrat(s) de travail", `<p>${DEMO}</p>`, now));
   const until = new Date(now);
-  until.setMonth(until.getMonth() + 12);
+  if (retentionYears != null) until.setFullYear(until.getFullYear() + retentionYears);
+  else until.setMonth(until.getMonth() + 12);
   const archive: Archive = { email: norm(email), role: r, createdAt: now, accessUntil: until.getTime(), documents: docs };
   saveArchive(archive);
   sendSimulatedEmail("exit_dossier", archive.email, { date: archive.accessUntil });
